@@ -61,7 +61,7 @@ module.exports = {
               this.data.fuel.gas !== UNKNOWN ||
               this.data.fuel.propane !== UNKNOWN ||
               this.data.fuel.electric !== UNKNOWN ||
-              this.data.fuel.notes.length > 0) {
+              (this.data.fuel.notes && this.data.fuel.notes.length > 0)) {
           return options.fn(this)
         }
       }
