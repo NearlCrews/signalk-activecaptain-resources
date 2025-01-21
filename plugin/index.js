@@ -149,6 +149,8 @@ module.exports = function (app) {
       poiTypes.push('Lock')
     }
 
+    if (poiTypes.length === 0) return 'Marina,Anchorage,Hazard,Business,BoatRamp,Bridge,Dam,Ferry,Inlet,Lock'
+
     return poiTypes.join()
   }
 
