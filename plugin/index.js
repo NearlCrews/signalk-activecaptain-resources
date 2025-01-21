@@ -40,9 +40,9 @@ module.exports = function (app) {
   plugin.start = function (options) {
     handlebarsUtilities.helpers()
 
-    setupForPointsOfInterest(options.cachingDurationMinutes)
+    setupPoiCache(options.cachingDurationMinutes)
 
-    registerAsNoteResourcesProvider()
+    registerAsNoteResourcesProvider(buildPoiTypesString(options))
   }
 
   plugin.stop = function () {
@@ -61,11 +61,98 @@ module.exports = function (app) {
         type: 'number',
         title: 'How long to cache data from Active Captain in minutes (longer = less data trafic; shorter = more up to date data)',
         default: 60
+      },
+      includeMarinas: {
+        type: 'boolean',
+        title: 'Include marinas',
+        default: true
+      },
+      includeAnchorages: {
+        type: 'boolean',
+        title: 'Include anchorages',
+        default: true
+      },
+      includeHazards: {
+        type: 'boolean',
+        title: 'Include hazard',
+        default: true
+      },
+      includeBusinesses: {
+        type: 'boolean',
+        title: 'Include businesses',
+        default: true
+      },
+      includeBoatRamps: {
+        type: 'boolean',
+        title: 'Include boat ramps',
+        default: true
+      },
+      includeBridges: {
+        type: 'boolean',
+        title: 'Include bridges',
+        default: true
+      },
+      includeDams: {
+        type: 'boolean',
+        title: 'Include dams',
+        default: true
+      },
+      includeFerries: {
+        type: 'boolean',
+        title: 'Include ferries',
+        default: true
+      },
+      includeInlets: {
+        type: 'boolean',
+        title: 'Include inlets',
+        default: true
+      },
+      includeLocks: {
+        type: 'boolean',
+        title: 'Include locks',
+        default: true
       }
     }
   }
 
-  function registerAsNoteResourcesProvider () {
+  function buildPoiTypesString (options) {
+    const poiTypes = []
+
+    if (options.includeMarinas) {
+      poiTypes.push('Marina')
+    }
+    if (options.includeAnchorages) {
+      poiTypes.push('Anchorage')
+    }
+    if (options.includeHazards) {
+      poiTypes.push('Hazard')
+    }
+    if (options.includeBusinesses) {
+      poiTypes.push('Business')
+    }
+    if (options.includeBoatRamps) {
+      poiTypes.push('BoatRamp')
+    }
+    if (options.includeBridges) {
+      poiTypes.push('Bridge')
+    }
+    if (options.includeDams) {
+      poiTypes.push('Dam')
+    }
+    if (options.includeFerries) {
+      poiTypes.push('Ferry')
+    }
+    if (options.includeInlets) {
+      poiTypes.push('Inlet')
+    }
+    if (options.includeLocks) {
+      poiTypes.push('Lock')
+    }
+
+    return poiTypes.join()
+  }
+
+  function registerAsNoteResourcesProvider (poiTypes) {
     try {
       app.registerResourceProvider({
         type: 'notes',
@@ -79,7 +166,7 @@ module.exports = function (app) {
               const promises = []
 
               for (const struct of sourceConfig.values()) {
-                const promise = struct.listMethod(app, bbox[0], bbox[1], bbox[2], bbox[3])
+                const promise = struct.listMethod(app, bbox[0], bbox[1], bbox[2], bbox[3], poiTypes)
                   .then(entities => {
                     return entities.map(entity => {
                       return {
@@ -176,7 +263,7 @@ module.exports = function (app) {
     }
   }
 
-  function setupForPointsOfInterest (cachingDurationMinutes) {
+  function setupPoiCache (cachingDurationMinutes) {
     sourceConfig.set('PointsOfInterest', {
       detailsCache: loadingCache.Caches.builder().expireAfterWrite(time.Time.minutes(cachingDurationMinutes)).buildAsync(
         id => {
