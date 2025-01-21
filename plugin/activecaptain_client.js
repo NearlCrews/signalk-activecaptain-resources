@@ -42,7 +42,7 @@ axios.interceptors.response.use(response => {
 })
 
 module.exports = {
-  listPointsOfInterest: function (app, x1, y1, x2, y2) {
+  listPointsOfInterest: function (app, x1, y1, x2, y2, poiTypes) {
     const url = `${baseUrl}/community/api/v1/points-of-interest/bbox`
 
     return axios.post(url, {
@@ -50,7 +50,8 @@ module.exports = {
       west: x1,
       south: y2,
       east: x2,
-      zoomLevel: 17
+      zoomLevel: 17,
+      poiTypes
     }, {
       headers: {
         'User-Agent': userAgent,
