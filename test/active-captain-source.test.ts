@@ -130,6 +130,34 @@ test('listPointsOfInterest delegates to the client', async () => {
   }
 })
 
+test('listPointsOfInterest applies the minimum-rating filter to its own results', async () => {
+  const { dataDir, cleanup } = makeTempDir()
+  try {
+    const { client } = fakeClient({
+      listPointsOfInterest: async (): Promise<ClientPoiSummary[]> => [
+        { id: '1', name: 'Good', type: 'Marina', position: { latitude: 0, longitude: 0 }, rating: 4.5, reviewCount: 10 },
+        { id: '2', name: 'Poor', type: 'Marina', position: { latitude: 0, longitude: 0 }, rating: 1, reviewCount: 3 },
+        { id: '3', name: 'Reef', type: 'Hazard', position: { latitude: 0, longitude: 0 } }
+      ]
+    })
+    const source = createActiveCaptainSource({
+      client,
+      cachingDurationMinutes: 60,
+      minimumRating: 3,
+      dataDir,
+      ...spies()
+    })
+    const list = await source.listPointsOfInterest(
+      { north: 1, south: 0, east: 1, west: 0 }, 'Marina')
+    // The low-rated marina is dropped; the high-rated marina and the
+    // non-ratable hazard both survive the threshold.
+    assert.deepEqual(list.map((poi) => poi.id), ['1', '3'])
+    source.close()
+  } finally {
+    cleanup()
+  }
+})
+
 test('a 404 detail failure records a detail success, not an error', async () => {
   const { dataDir, cleanup } = makeTempDir()
   try {

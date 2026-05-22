@@ -2,10 +2,8 @@
  * Notes-resource output.
  *
  * Registers the SignalK `notes` resource provider that exposes points of
- * interest to chart plotters. This is the ActiveCaptain-to-notes adapter: it
- * lists POIs through the aggregate source, applies the minimum-rating display
- * filter, and renders detail descriptions. It owns the `minimumRating` config
- * property, since that is a display filter on this output.
+ * interest to chart plotters. It lists POIs through the aggregate source and
+ * renders detail descriptions. It declares no configuration of its own.
  *
  * The resource provider is registered on every plugin start; the SignalK
  * server unregisters it on stop, so `stop()` here is a no-op.
@@ -15,7 +13,6 @@ import type { ResourceProviderMethods } from '@signalk/server-api'
 import type { OutputContext, OutputHandle, OutputModule } from '../output.js'
 import { buildNoteResource, readProperty } from './note-builder.js'
 import { resolveBbox } from './resource-query.js'
-import { filterByRating } from '../../inputs/active-captain/rating-filter.js'
 import { buildPoiTypesString } from '../../shared/poi-type-selection.js'
 import { PLUGIN_ID } from '../../shared/plugin-id.js'
 import type { PoiSummary } from '../../shared/types.js'
@@ -23,24 +20,9 @@ import type { PoiSummary } from '../../shared/types.js'
 /** The SignalK resource type this output provides. */
 const RESOURCE_TYPE = 'notes'
 
-/** The `minimumRating` config fragment owned by this output. */
-const CONFIG_SCHEMA: Record<string, unknown> = {
-  minimumRating: {
-    type: 'number',
-    title: 'Minimum rating: hide points of interest rated below this (0 to 5; 0 shows all)',
-    default: 0,
-    minimum: 0,
-    maximum: 5
-  }
-}
-
 /** Build the resource-provider methods bound to one plugin run's context. */
 function buildMethods (context: OutputContext): ResourceProviderMethods {
   const { app, config, pois } = context
-  const minimumRating =
-    typeof config.minimumRating === 'number' && config.minimumRating > 0
-      ? config.minimumRating
-      : 0
 
   return {
     listResources: async (query: Record<string, unknown>): Promise<Record<string, unknown>> => {
@@ -69,7 +51,6 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       }
       app.setPluginStatus(`${entities.length} point(s) of interest from the last search`)
 
-      entities = filterByRating(entities, minimumRating)
       const resources: Record<string, unknown> = {}
       for (const entity of entities) {
         resources[entity.id] = buildNoteResource(
@@ -124,7 +105,7 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
 export const notesResourceOutput: OutputModule = {
   id: 'notes-resource',
   name: 'SignalK notes resource',
-  configSchema: CONFIG_SCHEMA,
+  configSchema: {},
   isEnabled: () => true,
   start: (context: OutputContext): OutputHandle => {
     try {

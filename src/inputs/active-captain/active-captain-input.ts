@@ -2,9 +2,9 @@
  * ActiveCaptain input module.
  *
  * Registers the ActiveCaptain API as a POI source. Owns the config-schema
- * fragment for the cache duration and the 13 POI-type toggles, since those
- * tune the ActiveCaptain API specifically. Always enabled: it is the plugin's
- * only data source. The POI-type toggles control which types are fetched, not
+ * fragment for the cache duration, the minimum-rating filter, and the 13
+ * POI-type toggles, since those tune the ActiveCaptain API specifically.
+ * Always enabled: the POI-type toggles control which types are fetched, not
  * whether the source runs.
  */
 
@@ -15,12 +15,25 @@ import type { InputContext, InputModule } from '../poi-source.js'
 /** Default caching window, in minutes, when configuration omits it. */
 const DEFAULT_CACHING_DURATION_MINUTES = 60
 
-/** The cache-duration and POI-type-toggle config fragment. */
+/** Default minimum rating when configuration omits it: 0 lists every POI. */
+const DEFAULT_MINIMUM_RATING = 0
+
+/** Highest rating the ActiveCaptain review scale reaches. */
+const MAX_RATING = 5
+
+/** The cache-duration, minimum-rating, and POI-type-toggle config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
   cachingDurationMinutes: {
     type: 'number',
     title: 'How long to cache data from Active Captain in minutes (longer = less data traffic; shorter = more up to date data)',
     default: DEFAULT_CACHING_DURATION_MINUTES
+  },
+  minimumRating: {
+    type: 'number',
+    title: 'Minimum rating: hide points of interest rated below this (0 to 5; 0 shows all)',
+    default: DEFAULT_MINIMUM_RATING,
+    minimum: 0,
+    maximum: MAX_RATING
   },
   includeMarinas: { type: 'boolean', title: 'Include marinas', default: true },
   includeAnchorages: { type: 'boolean', title: 'Include anchorages', default: true },
@@ -42,6 +55,14 @@ function resolveCachingDuration (raw: unknown): number {
   return typeof raw === 'number' && raw > 0 ? raw : DEFAULT_CACHING_DURATION_MINUTES
 }
 
+/** Resolve the minimum rating from raw config, clamped to the 0-to-5 range. */
+function resolveMinimumRating (raw: unknown): number {
+  if (typeof raw !== 'number' || !(raw > 0)) {
+    return DEFAULT_MINIMUM_RATING
+  }
+  return Math.min(raw, MAX_RATING)
+}
+
 /** The ActiveCaptain input module. */
 export const activeCaptainInput: InputModule = {
   id: ACTIVE_CAPTAIN_SOURCE_ID,
@@ -53,6 +74,7 @@ export const activeCaptainInput: InputModule = {
     return createActiveCaptainSource({
       client: createActiveCaptainClient(app),
       cachingDurationMinutes: resolveCachingDuration(config.cachingDurationMinutes),
+      minimumRating: resolveMinimumRating(config.minimumRating),
       dataDir,
       status,
       app

@@ -122,8 +122,8 @@ test('the output is always enabled', () => {
   assert.equal(notesResourceOutput.isEnabled({} as never), true)
 })
 
-test('the config fragment carries the minimumRating property', () => {
-  assert.deepEqual(Object.keys(notesResourceOutput.configSchema), ['minimumRating'])
+test('the output declares no configuration of its own', () => {
+  assert.deepEqual(Object.keys(notesResourceOutput.configSchema), [])
 })
 
 test('listResources returns notes keyed by id', async () => {

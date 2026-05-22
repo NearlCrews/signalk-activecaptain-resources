@@ -6,6 +6,10 @@
  * the status recorder; a 404 is the API answering normally (the point of
  * interest does not exist), so it is recorded as a success, not an outage.
  *
+ * `listPointsOfInterest` applies the minimum-rating filter to this source's
+ * own results, so the threshold gates only ActiveCaptain POIs, the only ones
+ * that carry a review score.
+ *
  * Once `close()` has run, the source is torn down: a load that resolves after
  * close belongs to the stopped run, so its outcome is neither recorded onto a
  * later run's status nor persisted to the on-disk store.
@@ -18,6 +22,7 @@ import { createPoiCache } from './poi-cache.js'
 import { createPoiStore } from './poi-store.js'
 import type { PoiStore } from './poi-store.js'
 import { parseApiDate, renderDescription } from './poi-detail-renderer.js'
+import { filterByRating } from './rating-filter.js'
 import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
 import type { PoiDetailView } from '../../shared/types.js'
@@ -41,6 +46,11 @@ export interface ActiveCaptainSourceConfig {
   client: ActiveCaptainClient
   /** Detail cache TTL, in minutes. */
   cachingDurationMinutes: number
+  /**
+   * Lowest average rating (0 to 5) a ratable POI must reach to be listed.
+   * Omitted or 0 lists every point of interest.
+   */
+  minimumRating?: number
   /** Plugin data directory, for the on-disk store. */
   dataDir: string
   /** Status recorder for detail outcomes. */
@@ -51,7 +61,7 @@ export interface ActiveCaptainSourceConfig {
 
 /** Create the ActiveCaptain POI source. */
 export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): PoiSource {
-  const { client, cachingDurationMinutes, dataDir, status, app } = config
+  const { client, cachingDurationMinutes, dataDir, status, app, minimumRating = 0 } = config
 
   // Set by close(). Once the source is closed, a load that resolves later
   // belongs to the torn-down run: its outcome must not touch a later run's
@@ -108,12 +118,16 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
       const summaries = await client.listPointsOfInterest(bbox, poiTypes)
       // The client is source-agnostic; tag each summary with the source slug,
       // its public ActiveCaptain page, and the attribution credit.
-      return summaries.map((summary) => ({
+      const tagged = summaries.map((summary) => ({
         ...summary,
         source: ACTIVE_CAPTAIN_SOURCE_ID,
         url: `${POI_PAGE_URL_PREFIX}${summary.id}`,
         attribution: ACTIVE_CAPTAIN_ATTRIBUTION
       }))
+      // The minimum-rating filter gates ratable POIs on the review score
+      // ActiveCaptain supplies. It runs here, on this source's own results, so
+      // it never touches POIs from sources that carry no rating.
+      return filterByRating(tagged, minimumRating)
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
       const entity = await cache.get(id)
