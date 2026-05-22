@@ -1,0 +1,48 @@
+/**
+ * The OpenSeaMap seamark-group selector: a checklist of the four feature
+ * groups the OpenSeaMap source can import. A note appears when nothing is
+ * selected, because the source then has nothing to fetch.
+ */
+
+import type * as React from 'react'
+import { SEAMARK_GROUPS } from '../seamark-groups.js'
+import { S } from '../styles.js'
+
+interface Props {
+  /** The currently selected seamark group ids. */
+  selected: string[]
+  /** Called when a group checkbox is toggled. */
+  onToggle: (id: string, enabled: boolean) => void
+}
+
+/** The seamark feature-group checkboxes shown in the OpenSeaMap card body. */
+export default function SeamarkGroups ({ selected, onToggle }: Props): React.ReactElement {
+  return (
+    <section style={S.groupsSection}>
+      <fieldset style={S.group}>
+        <legend style={S.groupTitle}>Feature groups to import</legend>
+        <div style={S.checkboxGrid}>
+          {SEAMARK_GROUPS.map((group) => (
+            <label key={group.id} style={S.checkboxLabel}>
+              <input
+                type='checkbox'
+                style={S.checkbox}
+                checked={selected.includes(group.id)}
+                onChange={(e) => onToggle(group.id, e.target.checked)}
+              />
+              {group.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {selected.length === 0
+        ? (
+          <p style={S.hint}>
+            No feature groups are selected, so the OpenSeaMap source imports
+            nothing. Choose at least one group.
+          </p>
+          )
+        : null}
+    </section>
+  )
+}

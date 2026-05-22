@@ -4,6 +4,9 @@
  * and an expand chevron; the source's own fields render as `children` only
  * while the card is expanded. The card is collapsed by default, so a panel
  * with several sources stays scannable: each source is one row until opened.
+ *
+ * An always-on source (one with no enable toggle) omits `onToggleEnabled`; its
+ * checkbox is then shown checked and disabled.
  */
 
 import type * as React from 'react'
@@ -17,8 +20,11 @@ interface Props {
   enabled: boolean
   /** One-line summary of the source's settings, shown collapsed when enabled. */
   summary: string
-  /** Called when the enable checkbox is toggled. */
-  onToggleEnabled: (enabled: boolean) => void
+  /**
+   * Called when the enable checkbox is toggled. Omitted for an always-on
+   * source, whose checkbox is then shown checked and disabled.
+   */
+  onToggleEnabled?: (enabled: boolean) => void
   /** The source's configuration fields, rendered while the card is expanded. */
   children: React.ReactNode
 }
@@ -40,8 +46,9 @@ export default function DataSourceCard ({
           type='checkbox'
           style={S.checkbox}
           checked={enabled}
+          disabled={onToggleEnabled === undefined}
           aria-label={`Enable ${name}`}
-          onChange={(e) => onToggleEnabled(e.target.checked)}
+          onChange={(e) => onToggleEnabled?.(e.target.checked)}
         />
         <button
           type='button'
