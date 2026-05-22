@@ -149,8 +149,8 @@ export function createPositionMonitor (config: PositionMonitorConfig): PositionM
       // No box means nothing to fetch this tick. Contributors are still
       // evaluated with an empty result so an output can clear stale alarms
       // (for example a route that has just been finished or canceled).
-      const vesselPosition = latestPosition ?? tickPosition
       if (bbox === undefined) {
+        const vesselPosition = latestPosition ?? tickPosition
         for (const contributor of contributors) {
           contributor.evaluate(vesselPosition, [])
         }
@@ -162,10 +162,12 @@ export function createPositionMonitor (config: PositionMonitorConfig): PositionM
       if (stopped) {
         return
       }
-      // Evaluate against the newest fix, not the one the scan started from.
-      const latest = latestPosition ?? tickPosition
+      // Evaluate against the newest fix, not the one the scan started from:
+      // on a moving vessel the two differ by the distance traveled during the
+      // multi-second list request.
+      const vesselPosition = latestPosition ?? tickPosition
       for (const contributor of contributors) {
-        contributor.evaluate(latest, pois)
+        contributor.evaluate(vesselPosition, pois)
       }
     } catch (error) {
       // A failed scan is non-fatal and expected while offline: this tick simply
