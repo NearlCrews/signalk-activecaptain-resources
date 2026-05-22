@@ -2,7 +2,7 @@
  * Shared type contracts for the signalk-crows-nest plugin.
  *
  * This module is the single source of truth for the data shapes that flow
- * between the plugin's modules (geo, client, cache, templates, index). It also
+ * between the plugin's input, output, and shared modules under `src/`. It also
  * describes the subset of the ActiveCaptain wire types that the plugin
  * consumes, based on observed responses from
  * https://activecaptain.garmin.com/community/api/v1. Sections and fields the
@@ -25,7 +25,8 @@ export interface Bbox {
 
 /**
  * The vessel's active route resolved into a forward-looking polyline, ready for
- * a route-corridor hazard scan. Produced by `courseReader.getRouteAhead()`.
+ * a route-corridor hazard scan. Produced by `course-reader.ts`'s
+ * `getRouteAhead()`.
  *
  * The path ahead of the vessel is `[vesselPosition, ...waypoints]`, with
  * `vesselPosition` dropped when there is no fix. `vesselPosition` is kept
@@ -49,7 +50,7 @@ export interface RoutePolyline {
 
 /**
  * A snapshot of the vessel's own navigation data, used to scope a route scan.
- * Produced by `courseReader.getVesselState()`.
+ * Produced by `course-reader.ts`'s `getVesselState()`.
  */
 export interface VesselState {
   /** Current position, or null when there is no fix. */

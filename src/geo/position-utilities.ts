@@ -5,9 +5,10 @@
  * suitable for the ActiveCaptain bounding-box list endpoint, and measures the
  * great-circle distance between two positions for the proximity alarms.
  *
- * It works only with the typed `Position` and `Bbox` objects from `./types`.
- * Parsing the raw SignalK `ResourceProviderMethods.listResources` query into a
- * center `Position` and a distance is the job of `resourceQuery.ts`; that
+ * It works only with the typed `Position` and `Bbox` objects from
+ * `../shared/types.js`. Parsing the raw SignalK
+ * `ResourceProviderMethods.listResources` query into a center `Position` and a
+ * distance is the job of `src/outputs/notes-resource/resource-query.ts`; that
  * module supports the `position` plus `distance` form the chart plotter sends.
  */
 

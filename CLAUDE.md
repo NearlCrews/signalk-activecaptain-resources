@@ -109,7 +109,7 @@ self-contained module registered on one line in `src/index.ts`.
   flat config (`eslint.config.js`). neostandard is the modern successor to the
   project's old `eslint-config-standard` setup. The lint toolchain caps at
   ESLint 9 because neostandard peers to `eslint ^9`.
-- Node.js 20 or newer.
+- Node.js 20.3 or newer (the ActiveCaptain client uses `AbortSignal.any`).
 - Tests run on `node:test` via `tsx`, so no separate test framework.
 
 ## Commands

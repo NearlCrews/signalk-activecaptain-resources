@@ -2,7 +2,7 @@
  * Disk-backed key-value store of point-of-interest detail.
  *
  * The store persists detail responses to a single JSON file in the plugin's
- * data directory so the in-memory cache (see `poiCache.ts`) can be hydrated on
+ * data directory so the in-memory cache (see `poi-cache.ts`) can be hydrated on
  * a cold start, giving the plugin offline data without a network round-trip.
  *
  * Every read and write is resilient: a missing, unreadable, or corrupt store

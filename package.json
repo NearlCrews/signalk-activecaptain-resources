@@ -30,7 +30,7 @@
     "displayName": "Crow's Nest"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.3.0"
   },
   "author": {
     "name": "Nearl Crews",
