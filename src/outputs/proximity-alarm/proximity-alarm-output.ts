@@ -31,7 +31,7 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   proximityAlarmRadiusMeters: {
     type: 'number',
     title: 'Proximity alarm radius in meters',
-    default: 500,
+    default: DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
     minimum: 1
   }
 }

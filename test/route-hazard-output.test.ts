@@ -186,6 +186,29 @@ test('a tick with a route raises an alarm, a tick without a route clears it', as
   handle.stop()
 })
 
+test('evaluate scans the corridor from the fresh fix, not the frozen one', async () => {
+  const { context, messages } = createContext({
+    course: courseWithRoute('/resources/routes/route-1'),
+    resource: routeResource(NORTHBOUND_ROUTE)
+  })
+  const handle = routeHazardOutput.start(context)
+  await flush()
+  assert.ok(handle.positionScan)
+
+  // A hazard south of the route's first waypoint at latitude 0. Measured from
+  // the route waypoints alone it projects behind the route start and is not
+  // flagged; measured from a fresh vessel fix further south, it sits on the
+  // vessel-to-first-waypoint leg and must be flagged. evaluate must use the
+  // fresh position the monitor passes, not the one buildFetchBox froze.
+  const hazard: PoiSummary = {
+    id: 'h1', name: 'Rock', type: 'Hazard', position: { latitude: -0.05, longitude: 0 }
+  }
+  handle.positionScan.buildFetchBox({ latitude: 0, longitude: 0 })
+  handle.positionScan.evaluate({ latitude: -0.1, longitude: 0 }, [hazard])
+  assert.equal(messages.length, 1, 'the corridor scan measured from the fresh fix')
+  handle.stop()
+})
+
 test('a POI well outside the corridor is not alarmed', async () => {
   const { context, messages } = createContext({
     course: courseWithRoute('/resources/routes/route-1'),

@@ -46,7 +46,7 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   routeCorridorWidthMeters: {
     type: 'number',
     title: 'Route corridor half-width in meters (a hazard is flagged within this distance either side of the route)',
-    default: 500,
+    default: DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS,
     minimum: 1
   }
 }
@@ -109,12 +109,16 @@ export const routeHazardOutput: OutputModule = {
           ? null
           : routeCorridorBbox(tickRoute, corridorWidthMeters)
       },
-      evaluate: (_vesselPosition, pois) => {
+      evaluate: (vesselPosition, pois) => {
         let corridorPois: CorridorPoi[] = []
         if (tickRoute !== null) {
           const vesselState = courseReader.getVesselState()
           corridorPois = scanRouteCorridor({
-            route: tickRoute,
+            // Scan from the fresh fix the monitor passes, not the position
+            // getRouteAhead froze in buildFetchBox before the list request:
+            // on a moving vessel the two differ by the distance traveled
+            // during that multi-second request.
+            route: { ...tickRoute, vesselPosition },
             pois,
             corridorWidthMeters,
             speedOverGround: vesselState.speedOverGround
