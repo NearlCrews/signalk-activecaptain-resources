@@ -51,7 +51,7 @@ export default function ProximityAlarmFields ({
     <section style={S.groupsSection}>
       <fieldset style={S.group}>
         <legend style={S.groupTitle}>Proximity hazard alarms</legend>
-        <label style={S.proximityToggle}>
+        <label style={S.checkboxRow}>
           <input
             type='checkbox'
             style={S.checkbox}
@@ -65,7 +65,7 @@ export default function ProximityAlarmFields ({
           nearby hazards, and raises a Signal K notification for each hazard
           within the alarm radius.
         </p>
-        <div style={S.proximityRow}>
+        <div style={S.labelledInputRow}>
           <label htmlFor={RADIUS_FIELD_ID} style={S.label}>Alarm radius (meters)</label>
           <input
             id={RADIUS_FIELD_ID}

@@ -52,14 +52,21 @@ export const THEME_STYLE = `
 }
 `
 
-export const S: Record<string, CSSProperties> = {
+/**
+ * The named style tokens consumed by panel components. Declared with a
+ * `satisfies` clause so each value is checked as a CSSProperties literal while
+ * the inferred type of `S` keeps its specific keys: indexing `S.unknownKey`
+ * remains a TypeScript error, which a `Record<string, CSSProperties>`
+ * annotation would have silently allowed.
+ */
+export const S = {
   root: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     color: 'var(--ac-text)',
     padding: '16px 0'
   },
 
-  // Status bar.
+  // Status bar at the top of the panel.
   statusBar: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -100,7 +107,8 @@ export const S: Record<string, CSSProperties> = {
   },
   statusErrorTime: { color: 'var(--ac-text-faint)', flexShrink: 0 },
 
-  // Cache duration field.
+  // Generic field row: label, control, and a hint laid out in a flow row.
+  // Used by every single-value numeric and text input.
   fieldRow: {
     display: 'flex',
     alignItems: 'baseline',
@@ -125,7 +133,9 @@ export const S: Record<string, CSSProperties> = {
     margin: 0
   },
 
-  // POI-type groups.
+  // Grouped-options sections: a header with bulk actions, and one fieldset
+  // per group. Used by both the ActiveCaptain POI-type selector and the
+  // OpenSeaMap seamark-group checklist.
   groupsSection: { marginBottom: 16 },
   groupsHeader: {
     display: 'flex',
@@ -174,8 +184,9 @@ export const S: Record<string, CSSProperties> = {
   },
   checkbox: { width: 16, height: 16, flexShrink: 0, cursor: 'pointer' },
 
-  // Proximity alarm fields.
-  proximityToggle: {
+  // Generic checkbox row: a clickable label wrapping a single checkbox.
+  // Used by toggle controls anywhere on the panel.
+  checkboxRow: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
@@ -184,7 +195,9 @@ export const S: Record<string, CSSProperties> = {
     cursor: 'pointer',
     marginBottom: 8
   },
-  proximityRow: {
+  // Generic labelled-input row: a label, a numeric control, and a hint, laid
+  // out below a toggle in an alarm fieldset.
+  labelledInputRow: {
     display: 'flex',
     alignItems: 'baseline',
     flexWrap: 'wrap',
@@ -310,4 +323,4 @@ export const S: Record<string, CSSProperties> = {
     fontSize: 13,
     margin: '0 0 16px'
   }
-}
+} satisfies Record<string, CSSProperties>

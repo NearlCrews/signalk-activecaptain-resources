@@ -51,7 +51,7 @@ export default function RouteHazardScanFields ({
     <section style={S.groupsSection}>
       <fieldset style={S.group}>
         <legend style={S.groupTitle}>Route-corridor hazard scan</legend>
-        <label style={S.proximityToggle}>
+        <label style={S.checkboxRow}>
           <input
             type='checkbox'
             style={S.checkbox}
@@ -66,7 +66,7 @@ export default function RouteHazardScanFields ({
           each hazard, bridge, and lock within the corridor width of the
           route, with its along-track distance and ETA.
         </p>
-        <div style={S.proximityRow}>
+        <div style={S.labelledInputRow}>
           <label htmlFor={WIDTH_FIELD_ID} style={S.label}>Corridor width (meters)</label>
           <input
             id={WIDTH_FIELD_ID}

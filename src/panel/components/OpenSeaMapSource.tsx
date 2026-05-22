@@ -39,7 +39,7 @@ export default function OpenSeaMapSource ({ state, dispatch }: Props): React.Rea
             (groupId) => groupId === id ? enabled : selected.includes(groupId))
         })}
       />
-      <label style={S.proximityToggle}>
+      <label style={S.checkboxRow}>
         <input
           type='checkbox'
           style={S.checkbox}
