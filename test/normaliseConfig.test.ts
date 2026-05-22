@@ -6,7 +6,7 @@ import {
   DEFAULT_MINIMUM_RATING,
   DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
   normalizeConfig
-} from '../src/panel/normaliseConfig.js'
+} from '../src/panel/normalize-config.js'
 import { POI_TYPE_FLAGS } from '../src/shared/poi-type-selection.js'
 
 test('normalizeConfig fills every POI flag true and the default duration for an empty config', () => {

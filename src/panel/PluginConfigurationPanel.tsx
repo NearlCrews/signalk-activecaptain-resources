@@ -14,13 +14,13 @@ import ProximityAlarmFields from './components/ProximityAlarmFields.js'
 import RatingFilterField from './components/RatingFilterField.js'
 import RouteHazardScanFields from './components/RouteHazardScanFields.js'
 import StatusBar from './components/StatusBar.js'
-import { useConfig } from './hooks/useConfig.js'
-import { useStatus } from './hooks/useStatus.js'
+import { useConfig } from './hooks/use-config.js'
+import { useStatus } from './hooks/use-status.js'
 import {
   DEFAULT_MINIMUM_RATING,
   DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
   DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
-} from './normaliseConfig.js'
+} from './normalize-config.js'
 import { S, THEME_STYLE } from './styles.js'
 
 /** How long, in milliseconds, the "Saved" confirmation pill stays visible. */

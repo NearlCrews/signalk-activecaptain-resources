@@ -7,9 +7,9 @@
 import type { Dispatch } from 'react'
 import { useReducer, useState } from 'react'
 import type { PluginConfig } from '../../shared/types.js'
-import { configReducer } from '../configReducer.js'
-import type { ConfigAction } from '../configReducer.js'
-import { normalizeConfig } from '../normalizeConfig.js'
+import { configReducer } from '../config-reducer.js'
+import type { ConfigAction } from '../config-reducer.js'
+import { normalizeConfig } from '../normalize-config.js'
 
 /** The configuration state surface the panel consumes. */
 export interface UseConfigResult {

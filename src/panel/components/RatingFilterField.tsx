@@ -7,7 +7,7 @@
 
 import type * as React from 'react'
 import { useState } from 'react'
-import { MAX_RATING, MIN_RATING } from '../normaliseConfig.js'
+import { MAX_RATING, MIN_RATING } from '../normalize-config.js'
 import { S } from '../styles.js'
 
 /** Stable id linking the visible label to its input. */

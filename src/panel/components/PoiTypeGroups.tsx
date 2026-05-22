@@ -6,7 +6,7 @@
 
 import type * as React from 'react'
 import type { PluginConfig, PoiTypeFlag } from '../../shared/types.js'
-import { POI_TYPE_GROUPS } from '../poiTypeGroups.js'
+import { POI_TYPE_GROUPS } from '../poi-type-groups.js'
 import { S } from '../styles.js'
 
 interface Props {

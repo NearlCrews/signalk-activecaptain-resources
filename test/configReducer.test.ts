@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { configReducer } from '../src/panel/configReducer.js'
+import { configReducer } from '../src/panel/config-reducer.js'
 import { POI_TYPE_FLAGS } from '../src/shared/poi-type-selection.js'
 import type { PluginConfig } from '../src/shared/types.js'
 
