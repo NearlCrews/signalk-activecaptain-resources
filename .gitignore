@@ -9,16 +9,8 @@ public/
 *.log
 npm-debug.log*
 
-# Test coverage
-coverage/
-*.lcov
-
 # TypeScript incremental build cache
 *.tsbuildinfo
-
-# Tool caches
-.npm
-.eslintcache
 
 # Environment variable files
 .env
