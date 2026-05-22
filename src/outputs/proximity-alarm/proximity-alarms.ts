@@ -23,9 +23,8 @@
  * advisory's `'warn'`.
  */
 
-import type { Delta, Path, SourceRef, Timestamp } from '@signalk/server-api'
-import { PLUGIN_ID } from '../../shared/plugin-id.js'
-import { sanitizePoiId } from '../../shared/notification-path.js'
+import type { Delta } from '@signalk/server-api'
+import { emitNotification } from '../../shared/notification-path.js'
 import { distanceMeters } from '../../geo/position-utilities.js'
 import type { PoiSummary, Position } from '../../shared/types.js'
 
@@ -94,16 +93,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
   const active = new Map<string, string>()
 
   function emit (poiId: string, value: HazardNotificationValue): void {
-    app.handleMessage(PLUGIN_ID, {
-      updates: [{
-        $source: PLUGIN_ID as SourceRef,
-        timestamp: value.timestamp as Timestamp,
-        values: [{
-          path: `${NOTIFICATION_PATH_PREFIX}${sanitizePoiId(poiId)}` as Path,
-          value
-        }]
-      }]
-    })
+    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
   }
 
   function raise (poiId: string, name: string, distance: number): void {

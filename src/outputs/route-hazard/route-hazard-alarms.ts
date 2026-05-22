@@ -22,9 +22,8 @@
  * alarm's `'alarm'`.
  */
 
-import type { Delta, Path, SourceRef, Timestamp } from '@signalk/server-api'
-import { PLUGIN_ID } from '../../shared/plugin-id.js'
-import { sanitizePoiId } from '../../shared/notification-path.js'
+import type { Delta } from '@signalk/server-api'
+import { emitNotification } from '../../shared/notification-path.js'
 import type { CorridorPoi } from '../../shared/types.js'
 
 /** Path prefix for the per-point route notification, completed with the POI id. */
@@ -116,16 +115,7 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
   const active = new Map<string, { name: string, message: string }>()
 
   function emit (poiId: string, value: RouteNotificationValue): void {
-    app.handleMessage(PLUGIN_ID, {
-      updates: [{
-        $source: PLUGIN_ID as SourceRef,
-        timestamp: value.timestamp as Timestamp,
-        values: [{
-          path: `${NOTIFICATION_PATH_PREFIX}${sanitizePoiId(poiId)}` as Path,
-          value
-        }]
-      }]
-    })
+    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
   }
 
   /** Build the notification message for a flagged point: type, name, distance, and ETA. */
