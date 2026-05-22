@@ -9,6 +9,7 @@
  */
 
 import type { InputContext, InputModule, PoiSource } from './poi-source.js'
+import { BASE_SOURCE_ID, dedupeAgainstBase } from './dedupe-pois.js'
 import type { PoiSummary } from '../shared/types.js'
 
 /** Public surface of the input registry. */
@@ -38,6 +39,16 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
       for (const module of enabled) {
         sources.set(module.id, module.createSource(context))
       }
+      // Dedupe runs only when the ActiveCaptain base layer is enabled and at
+      // least one non-base input has its per-source dedupe toggle on.
+      const dedupeSources = new Set<string>()
+      if (enabled.some((module) => module.id === BASE_SOURCE_ID)) {
+        for (const module of enabled) {
+          if (module.id !== BASE_SOURCE_ID && module.isDedupeEnabled?.(context.config) === true) {
+            dedupeSources.add(module.id)
+          }
+        }
+      }
       return {
         id: 'aggregate',
         listPointsOfInterest: async (bbox, poiTypes) => {
@@ -65,7 +76,9 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
           if (!anyOk) {
             throw new Error('Every POI source failed the list request')
           }
-          return merged
+          // Merge each dedupe-enabled source's duplicates into the base layer,
+          // so a feature reported by several sources is one corroborated note.
+          return dedupeSources.size > 0 ? dedupeAgainstBase(merged, dedupeSources) : merged
         },
         getDetails: async (id) => {
           // Split on the FIRST hyphen only: a raw id (an OSM id such as

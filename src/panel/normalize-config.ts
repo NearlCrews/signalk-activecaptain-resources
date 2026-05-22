@@ -119,5 +119,10 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
         (group): group is string => typeof group === 'string' && SEAMARK_GROUP_IDS.includes(group))
     : [...SEAMARK_GROUP_IDS]
 
+  // Dedupe defaults on, matching the schema: an old config that omits the key
+  // still merges OpenSeaMap duplicates of an ActiveCaptain marker. Only an
+  // explicit false turns it off.
+  config.openSeaMapDedupe = raw.openSeaMapDedupe !== false
+
   return config
 }

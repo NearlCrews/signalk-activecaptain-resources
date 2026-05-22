@@ -78,7 +78,8 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
           entity.type.toLowerCase(),
           entity.url,
           entity.source,
-          entity.attribution
+          entity.attribution,
+          entity.sources
         )
       }
       return resources
@@ -94,6 +95,9 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
         view.url,
         view.source,
         view.attribution,
+        // A single detail fetch routes to one source, so a getResource note
+        // carries no cross-source corroboration.
+        undefined,
         view.timestamp,
         view.description
       )

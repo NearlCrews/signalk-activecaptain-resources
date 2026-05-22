@@ -10,9 +10,17 @@ test('isEnabled tracks the openSeaMapEnabled toggle', () => {
   assert.equal(openSeaMapInput.isEnabled({ openSeaMapEnabled: true } as PluginConfig), true)
 })
 
-test('the config fragment carries the enable, endpoint, and seamark-group keys', () => {
+test('the config fragment carries the enable, endpoint, seamark-group, and dedupe keys', () => {
   const keys = Object.keys(openSeaMapInput.configSchema)
-  assert.deepEqual(keys, ['openSeaMapEnabled', 'openSeaMapEndpoint', 'openSeaMapSeamarkGroups'])
+  assert.deepEqual(keys, [
+    'openSeaMapEnabled', 'openSeaMapEndpoint', 'openSeaMapSeamarkGroups', 'openSeaMapDedupe'
+  ])
+})
+
+test('isDedupeEnabled defaults on and only an explicit false turns it off', () => {
+  assert.equal(openSeaMapInput.isDedupeEnabled?.({} as PluginConfig), true)
+  assert.equal(openSeaMapInput.isDedupeEnabled?.({ openSeaMapDedupe: true } as PluginConfig), true)
+  assert.equal(openSeaMapInput.isDedupeEnabled?.({ openSeaMapDedupe: false } as PluginConfig), false)
 })
 
 test('createSource builds the OpenSeaMap PoiSource', () => {

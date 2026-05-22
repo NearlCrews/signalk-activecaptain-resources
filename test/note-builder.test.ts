@@ -26,10 +26,30 @@ test('buildNoteResource includes html description and mimeType when supplied', (
   const note = buildNoteResource(
     'Dock', { latitude: 1, longitude: 2 }, 'marina',
     SAMPLE_URL, SAMPLE_SOURCE, SAMPLE_ATTRIBUTION,
-    '2020-01-01T00:00:00.000Z', '<p>hi</p>')
+    undefined, '2020-01-01T00:00:00.000Z', '<p>hi</p>')
   assert.equal(note.description, '<p>hi</p>')
   assert.equal(note.mimeType, 'text/html')
   assert.equal(note.timestamp, '2020-01-01T00:00:00.000Z')
+})
+
+test('buildNoteResource carries corroboration when more than one source contributed', () => {
+  const note = buildNoteResource(
+    'Dock', { latitude: 1, longitude: 2 }, 'marina',
+    SAMPLE_URL, SAMPLE_SOURCE, SAMPLE_ATTRIBUTION,
+    ['activecaptain', 'openseamap'])
+  const properties = note.properties as Record<string, unknown>
+  assert.deepEqual(properties.sources, ['activecaptain', 'openseamap'])
+  assert.equal(properties.sourceCount, 2)
+})
+
+test('buildNoteResource omits corroboration for a single contributing source', () => {
+  const note = buildNoteResource(
+    'Dock', { latitude: 1, longitude: 2 }, 'marina',
+    SAMPLE_URL, SAMPLE_SOURCE, SAMPLE_ATTRIBUTION,
+    ['activecaptain'])
+  const properties = note.properties as Record<string, unknown>
+  assert.equal(properties.sources, undefined, 'one source is not a corroboration signal')
+  assert.equal(properties.sourceCount, undefined)
 })
 
 test('readProperty reads a dot path and returns undefined for a miss', () => {

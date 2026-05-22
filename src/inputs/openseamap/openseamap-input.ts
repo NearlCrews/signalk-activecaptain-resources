@@ -37,6 +37,11 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
     title: 'OpenSeaMap feature groups to import',
     items: { type: 'string', enum: ['hazards', 'navaids', 'harbours', 'infrastructure'] },
     default: ['hazards', 'navaids', 'harbours', 'infrastructure']
+  },
+  openSeaMapDedupe: {
+    type: 'boolean',
+    title: 'Merge OpenSeaMap points of interest that duplicate an ActiveCaptain marker',
+    default: true
   }
 }
 
@@ -59,6 +64,9 @@ export const openSeaMapInput: InputModule = {
   name: 'OpenSeaMap',
   configSchema: CONFIG_SCHEMA,
   isEnabled: (config: PluginConfig) => config.openSeaMapEnabled === true,
+  // Dedupe defaults on: an absent toggle still merges OpenSeaMap duplicates of
+  // an ActiveCaptain marker. Only an explicit false turns it off.
+  isDedupeEnabled: (config: PluginConfig) => config.openSeaMapDedupe !== false,
   createSource: (context: InputContext) => {
     const { app, config } = context
     return createOpenSeaMapSource({

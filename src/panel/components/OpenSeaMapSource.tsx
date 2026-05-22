@@ -9,6 +9,7 @@ import type { Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
 import { DEFAULT_OPENSEAMAP_ENDPOINT } from '../normalize-config.js'
 import { SEAMARK_GROUP_IDS } from '../seamark-groups.js'
+import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import EndpointUrlField from './EndpointUrlField.js'
 import SeamarkGroups from './SeamarkGroups.js'
@@ -38,6 +39,21 @@ export default function OpenSeaMapSource ({ state, dispatch }: Props): React.Rea
             (groupId) => groupId === id ? enabled : selected.includes(groupId))
         })}
       />
+      <label style={S.proximityToggle}>
+        <input
+          type='checkbox'
+          style={S.checkbox}
+          // Dedupe defaults on: an absent value is treated as checked.
+          checked={state.openSeaMapDedupe !== false}
+          onChange={(e) => dispatch({ type: 'setOpenSeaMapDedupe', enabled: e.target.checked })}
+        />
+        Merge OpenSeaMap markers that duplicate an ActiveCaptain marker
+      </label>
+      <p style={S.hint}>
+        When enabled, an OpenSeaMap point of interest close to an ActiveCaptain
+        point of the same type is merged into it, so one physical feature is
+        shown once. The surviving marker records every source that reported it.
+      </p>
     </>
   )
 }

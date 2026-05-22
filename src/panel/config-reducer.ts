@@ -20,6 +20,7 @@ export type ConfigAction =
   | { type: 'setOpenSeaMapEnabled', enabled: boolean }
   | { type: 'setOpenSeaMapEndpoint', endpoint: string }
   | { type: 'setOpenSeaMapSeamarkGroups', groups: string[] }
+  | { type: 'setOpenSeaMapDedupe', enabled: boolean }
   | { type: 'discard', config: PluginConfig }
 
 /**
@@ -78,5 +79,8 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
       }
       return { ...state, openSeaMapSeamarkGroups: action.groups }
     }
+    case 'setOpenSeaMapDedupe':
+      if (state.openSeaMapDedupe === action.enabled) return state
+      return { ...state, openSeaMapDedupe: action.enabled }
   }
 }

@@ -12,10 +12,12 @@ import type { Position } from '../../shared/types.js'
 /**
  * Build a SignalK `notes` resource object. The shape is shared by the list and
  * single-resource responses. `url`, `source`, and `attribution` are
- * source-specific values carried on the POI data. `timestamp` is included only
- * when a genuine resource timestamp is known (the list endpoint does not
- * supply one), and `description`, which is rendered HTML, is included only when
- * supplied.
+ * source-specific values carried on the POI data. When `sources` lists more
+ * than one source, the POI was corroborated by independent sources, so the
+ * note's `properties` carry `sources` and `sourceCount` as a confidence
+ * signal. `timestamp` is included only when a genuine resource timestamp is
+ * known (the list endpoint does not supply one), and `description`, which is
+ * rendered HTML, is included only when supplied.
  */
 export function buildNoteResource (
   name: string,
@@ -24,19 +26,22 @@ export function buildNoteResource (
   url: string,
   source: string,
   attribution: string,
+  sources?: string[],
   timestamp?: string,
   description?: string
 ): Record<string, unknown> {
+  const properties: Record<string, unknown> = { readOnly: true, skIcon, source, attribution }
+  // More than one contributing source is a corroboration signal: the same
+  // physical feature was reported independently by each listed source.
+  if (sources !== undefined && sources.length > 1) {
+    properties.sources = sources
+    properties.sourceCount = sources.length
+  }
   const note: Record<string, unknown> = {
     name,
     position,
     url,
-    properties: {
-      readOnly: true,
-      skIcon,
-      source,
-      attribution
-    },
+    properties,
     $source: PLUGIN_ID
   }
   if (timestamp !== undefined) {

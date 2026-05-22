@@ -57,6 +57,12 @@ export interface InputModule {
   readonly configSchema: Record<string, unknown>
   /** True when the current configuration enables this input. */
   isEnabled: (config: PluginConfig) => boolean
+  /**
+   * True when this non-base input should dedupe its POIs against the
+   * ActiveCaptain base layer. Absent on the base input and on any input that
+   * has no dedupe toggle; present on a non-base input that offers one.
+   */
+  isDedupeEnabled?: (config: PluginConfig) => boolean
   /** Build the source. Called once per plugin start. */
   createSource: (context: InputContext) => PoiSource
 }

@@ -148,6 +148,12 @@ export interface PoiSummary {
   url: string
   /** Human-readable attribution credit for the source. */
   attribution: string
+  /**
+   * Every source that corroborates this POI, base source first. Set by the
+   * dedupe pass: more than one entry means independent sources reported the
+   * same physical feature. Absent when the POI did not pass through dedupe.
+   */
+  sources?: string[]
   /** Average review rating (0 to 5), when the list response carries one. */
   rating?: number
   /** Number of reviews behind the rating. */
@@ -389,4 +395,6 @@ export interface PluginConfig {
   openSeaMapEndpoint?: string
   /** Which OpenSeaMap seamark feature groups to import. */
   openSeaMapSeamarkGroups?: string[]
+  /** Merge OpenSeaMap points of interest that duplicate an ActiveCaptain marker. */
+  openSeaMapDedupe?: boolean
 }
