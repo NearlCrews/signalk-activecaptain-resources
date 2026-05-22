@@ -25,7 +25,7 @@ function routeAhead (waypoints: Position[], vesselPosition: Position | null = VE
 // east along the equator, so the route's great circle is the equator and a
 // point's cross-track distance is just its latitude offset, which makes the
 // expected values easy to reason about. One degree of arc on the sphere this
-// plugin uses is about 111194.9 metres.
+// plugin uses is about 111194.9 meters.
 const VESSEL: Position = { latitude: 0, longitude: 0 }
 const ONE_DEGREE_ARC_METERS = 111194.9
 

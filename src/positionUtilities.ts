@@ -1,25 +1,25 @@
 /**
  * Geographic helpers for the signalk-crows-nest plugin.
  *
- * This module turns a centre point plus a search radius into a bounding box
+ * This module turns a center point plus a search radius into a bounding box
  * suitable for the ActiveCaptain bounding-box list endpoint, and measures the
  * great-circle distance between two positions for the proximity alarms.
  *
  * It works only with the typed `Position` and `Bbox` objects from `./types`.
  * Parsing the raw SignalK `ResourceProviderMethods.listResources` query into a
- * centre `Position` and a distance is the job of `resourceQuery.ts`; that
+ * center `Position` and a distance is the job of `resourceQuery.ts`; that
  * module supports the `position` plus `distance` form the chart plotter sends.
  */
 
 import type { Position, Bbox } from './types.js'
 
-/** Mean radius of the Earth in kilometres, used for great-circle estimates. */
+/** Mean radius of the Earth in kilometers, used for great-circle estimates. */
 const EARTH_RADIUS_KM = 6371
 
-/** Compass bearing (degrees) from the centre toward the north-west corner. */
+/** Compass bearing (degrees) from the center toward the north-west corner. */
 const NW_BEARING_DEGREES = -45
 
-/** Compass bearing (degrees) from the centre toward the south-east corner. */
+/** Compass bearing (degrees) from the center toward the south-east corner. */
 const SE_BEARING_DEGREES = 135
 
 function toRadians (degrees: number): number {
@@ -35,7 +35,7 @@ function toDegrees (radians: number): number {
  *
  * A great-circle projection near the antimeridian can produce a longitude
  * outside that range (for example 181 degrees). SignalK and the ActiveCaptain
- * API both expect normalised longitudes, so the projected value is wrapped.
+ * API both expect normalized longitudes, so the projected value is wrapped.
  */
 function normalizeLongitude (longitude: number): number {
   return ((longitude + 540) % 360) - 180
@@ -50,7 +50,7 @@ function normalizeLongitude (longitude: number): number {
  *
  * @param position - The start point.
  * @param bearingDegrees - Initial bearing in degrees (0 = north, 90 = east).
- * @param distanceKm - Distance to travel in kilometres.
+ * @param distanceKm - Distance to travel in kilometers.
  * @returns The destination position.
  */
 function projectPosition (position: Position, bearingDegrees: number, distanceKm: number): Position {
@@ -60,7 +60,7 @@ function projectPosition (position: Position, bearingDegrees: number, distanceKm
   const angularDistance = distanceKm / EARTH_RADIUS_KM
 
   // Clamp into [-1, 1] before asin: floating-point error can push this a hair
-  // past the limit for a centre extremely close to a pole, and Math.asin of an
+  // past the limit for a center extremely close to a pole, and Math.asin of an
   // out-of-range value is NaN.
   const sineNewLatitude =
     Math.sin(latitudeRad) * Math.cos(angularDistance) +
@@ -81,16 +81,16 @@ function projectPosition (position: Position, bearingDegrees: number, distanceKm
 }
 
 /**
- * Great-circle distance between two positions, in metres.
+ * Great-circle distance between two positions, in meters.
  *
  * Uses the haversine formula on a spherical Earth. Accuracy is well within a
  * fraction of a percent at the short ranges this plugin works with (a hazard
- * within a few hundred metres of the vessel), which is far better than the
+ * within a few hundred meters of the vessel), which is far better than the
  * positional accuracy of the underlying ActiveCaptain data.
  *
  * @param a - The first position.
  * @param b - The second position.
- * @returns The distance between the two positions in metres.
+ * @returns The distance between the two positions in meters.
  */
 export function distanceMeters (a: Position, b: Position): number {
   const latitudeA = toRadians(a.latitude)
@@ -113,12 +113,12 @@ export function distanceMeters (a: Position, b: Position): number {
  * Build a bounding box that fully encloses a search circle.
  *
  * `distanceMeters` is the search radius: every point within that radius of the
- * centre must fall inside the returned box. The box is derived by projecting
- * the centre toward the north-west corner (bearing -45 degrees) and the
+ * center must fall inside the returned box. The box is derived by projecting
+ * the center toward the north-west corner (bearing -45 degrees) and the
  * south-east corner (bearing 135 degrees). To make each cardinal edge sit at
- * least `distanceMeters` from the centre, the corners are projected at
+ * least `distanceMeters` from the center, the corners are projected at
  * `distanceMeters * sqrt(2)` (a corner of a square is that much further from
- * the centre than an edge). Projecting the corners at only `distanceMeters`
+ * the center than an edge). Projecting the corners at only `distanceMeters`
  * would inscribe the box inside the circle and silently drop points that lie
  * within the radius but near due north, south, east, or west.
  *
@@ -127,12 +127,12 @@ export function distanceMeters (a: Position, b: Position): number {
  * `[longitude, latitude]`. This typed version takes a `Position` object and
  * returns a `Bbox` object instead.
  *
- * @param position - The centre of the bounding box.
- * @param distanceMeters - Search radius in metres that the box must enclose.
+ * @param position - The center of the bounding box.
+ * @param distanceMeters - Search radius in meters that the box must enclose.
  * @returns A `Bbox` with `north`, `south`, `east`, and `west` edges in degrees.
  */
 export function positionToBbox (position: Position, distanceMeters: number): Bbox {
-  // Corner-to-centre distance for a square whose edges sit distanceMeters out.
+  // Corner-to-center distance for a square whose edges sit distanceMeters out.
   const cornerDistanceKm = (distanceMeters * Math.SQRT2) / 1000
   const northWest = projectPosition(position, NW_BEARING_DEGREES, cornerDistanceKm)
   const southEast = projectPosition(position, SE_BEARING_DEGREES, cornerDistanceKm)
@@ -194,7 +194,7 @@ export interface TrackProjection {
  * @param start - The leg's start point.
  * @param end - The leg's end point.
  * @param point - The point to project onto the leg.
- * @returns The signed cross-track and along-track distances, in metres.
+ * @returns The signed cross-track and along-track distances, in meters.
  */
 export function projectPointOntoLeg (start: Position, end: Position, point: Position): TrackProjection {
   const radiusMeters = EARTH_RADIUS_KM * 1000

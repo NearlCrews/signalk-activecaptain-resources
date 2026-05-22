@@ -76,7 +76,7 @@ test('omits the ETA when the corridor POI carries no etaSeconds', () => {
   assert.ok(!captured[0].value.message.includes('ETA'), 'no ETA when speed is unavailable')
 })
 
-test('formats an along-track distance of a kilometre or more in km', () => {
+test('formats an along-track distance of a kilometer or more in km', () => {
   const { app, captured } = createMockApp()
   const alarms = createRouteHazardAlarms(app)
 
@@ -165,7 +165,7 @@ test('tracks several corridor POIs independently', () => {
   assert.equal(aClear?.value.state, 'normal')
 })
 
-test('sanitises a POI id that carries path-breaking characters', () => {
+test('sanitizes a POI id that carries path-breaking characters', () => {
   const { app, captured } = createMockApp()
   const alarms = createRouteHazardAlarms(app)
 

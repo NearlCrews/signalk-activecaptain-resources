@@ -231,7 +231,7 @@ test('does not tick again until the vessel moves the minimum distance', async ()
   await flush()
   assert.equal(mockClient.calls.length, 1, 'the distance gate suppresses the second tick')
 
-  // A move of several kilometres clears both gates.
+  // A move of several kilometers clears both gates.
   mockApp.emit({ latitude: 10.05, longitude: 20 })
   await flush()
   assert.equal(mockClient.calls.length, 2, 'a tick runs once both gates are met')

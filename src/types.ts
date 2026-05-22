@@ -54,7 +54,7 @@ export interface RoutePolyline {
 export interface VesselState {
   /** Current position, or null when there is no fix. */
   position: Position | null
-  /** Speed over ground in metres per second, or null when unavailable. */
+  /** Speed over ground in meters per second, or null when unavailable. */
   speedOverGround: number | null
 }
 
@@ -68,9 +68,9 @@ export interface CorridorPoi {
   name: string
   /** The point-of-interest location. */
   position: Position
-  /** Distance, in metres, the vessel must travel along the route to draw level with this point. */
+  /** Distance, in meters, the vessel must travel along the route to draw level with this point. */
   alongTrackDistanceMeters: number
-  /** Signed perpendicular distance, in metres, from the point to the route: + right of travel, - left. */
+  /** Signed perpendicular distance, in meters, from the point to the route: + right of travel, - left. */
   crossTrackDistanceMeters: number
   /** Estimated time, in seconds, until the vessel draws level with the point; absent when no usable speed is known. */
   etaSeconds?: number
@@ -135,7 +135,7 @@ export interface PoiListResponse {
   pointsOfInterest: PoiListItem[]
 }
 
-/** Normalised list entry produced by the client for use inside the plugin. */
+/** Normalized list entry produced by the client for use inside the plugin. */
 export interface PoiSummary {
   id: string
   type: PoiType
@@ -342,11 +342,11 @@ export interface PluginConfig {
   includeAirports?: boolean
   /** Subscribe to the vessel position, scan for nearby hazards, and emit alarms. */
   enableProximityAlarms?: boolean
-  /** Distance, in metres, within which a hazard raises a proximity alarm. */
+  /** Distance, in meters, within which a hazard raises a proximity alarm. */
   proximityAlarmRadiusMeters?: number
   /** Scan the active Course API route ahead for hazards, bridges, and locks. */
   enableRouteHazardScan?: boolean
-  /** Half-width, in metres, of the route corridor a POI must fall within. */
+  /** Half-width, in meters, of the route corridor a POI must fall within. */
   routeCorridorWidthMeters?: number
   /** Hide points of interest whose average rating is below this value (0 to 5). */
   minimumRating?: number

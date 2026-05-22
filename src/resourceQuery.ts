@@ -7,9 +7,9 @@ import { positionToBbox } from './positionUtilities.js'
 import type { Bbox, Position } from './types.js'
 
 /**
- * Normalise a query `position` value into a Position, or null if unusable.
+ * Normalize a query `position` value into a Position, or null if unusable.
  *
- * SignalK passes the search centre either as a `{ latitude, longitude }`
+ * SignalK passes the search center either as a `{ latitude, longitude }`
  * object or as a `[longitude, latitude]` array (the order the legacy plugin
  * relied on).
  */
@@ -69,8 +69,8 @@ function resolveExplicitBbox (raw: unknown): Bbox | null {
  * The `notes` resource provider receives the request query as loosely typed
  * key/value pairs. Two forms are supported: an explicit `bbox` (a four-number
  * GeoJSON bounding box), and the `position` + `distance`
- * form chart plotters send, where `position` is the search centre and
- * `distance` is the radius in metres. Returns null when the query does not
+ * form chart plotters send, where `position` is the search center and
+ * `distance` is the radius in meters. Returns null when the query does not
  * carry enough information to build a box.
  */
 export function resolveBbox (query: Record<string, unknown>): Bbox | null {
@@ -83,10 +83,10 @@ export function resolveBbox (query: Record<string, unknown>): Bbox | null {
     return null
   }
 
-  const centre = resolvePosition(query.position)
-  if (centre === null) {
+  const center = resolvePosition(query.position)
+  if (center === null) {
     return null
   }
 
-  return positionToBbox(centre, distance)
+  return positionToBbox(center, distance)
 }

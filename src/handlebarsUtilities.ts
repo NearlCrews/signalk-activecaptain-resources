@@ -113,7 +113,7 @@ const relativeTimeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' }
  * Format a date relative to `now`, e.g. "3 days ago" or "in 2 hours". This is
  * the native replacement for the single `moment(date).fromNow()` call the
  * original code relied on. An invalid date yields a fallback string rather
- * than throwing, matching moment's "Invalid date" behaviour.
+ * than throwing, matching moment's "Invalid date" behavior.
  */
 export function fromNow (date: Date, now: Date = new Date()): string {
   if (!Number.isFinite(date.getTime())) {

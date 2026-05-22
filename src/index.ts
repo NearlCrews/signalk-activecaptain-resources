@@ -50,10 +50,10 @@ const POI_PAGE_URL_PREFIX = 'https://activecaptain.garmin.com/en-US/pois/'
 /** HTTP status for a point of interest that does not exist. */
 const HTTP_NOT_FOUND = 404
 
-/** Default proximity-alarm radius, in metres; mirrors the schema default. */
+/** Default proximity-alarm radius, in meters; mirrors the schema default. */
 const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
 
-/** Default route-corridor half-width, in metres; mirrors the schema default. */
+/** Default route-corridor half-width, in meters; mirrors the schema default. */
 const DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS = 500
 
 /** Lower bound on the hazard-scan radius, so the alarm check always has data. */
@@ -245,7 +245,7 @@ export = function (app: ServerAPI): Plugin {
         app.debug(`Unable to format description for ${id} - ${String(error)}`)
       }
 
-      // ActiveCaptain serves a zone-less timestamp; normalise it to a UTC
+      // ActiveCaptain serves a zone-less timestamp; normalize it to a UTC
       // ISO-8601 string so a consumer does not read it as local time. An
       // unparseable value is omitted rather than passed through.
       const modified = parseApiDate(poi.dateLastModified)
@@ -329,7 +329,7 @@ export = function (app: ServerAPI): Plugin {
         },
         proximityAlarmRadiusMeters: {
           type: 'number',
-          title: 'Proximity alarm radius in metres',
+          title: 'Proximity alarm radius in meters',
           default: 500,
           minimum: 1
         },
@@ -340,7 +340,7 @@ export = function (app: ServerAPI): Plugin {
         },
         routeCorridorWidthMeters: {
           type: 'number',
-          title: 'Route corridor width in metres',
+          title: 'Route corridor width in meters',
           default: 500,
           minimum: 1
         }

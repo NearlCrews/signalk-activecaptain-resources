@@ -1,6 +1,6 @@
 /**
  * UI metadata for the POI-type section of the configuration panel: the four
- * labelled groups and the human-readable label for each toggle. Every flag is
+ * labeled groups and the human-readable label for each toggle. Every flag is
  * one of the includeX booleans on PluginConfig, so all 13 POI types appear
  * exactly once across the groups.
  */
@@ -13,7 +13,7 @@ export interface PoiTypeOption {
   label: string
 }
 
-/** A labelled group of related POI-type toggles. */
+/** A labeled group of related POI-type toggles. */
 export interface PoiTypeGroup {
   title: string
   options: readonly PoiTypeOption[]

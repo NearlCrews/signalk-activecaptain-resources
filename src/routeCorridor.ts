@@ -40,10 +40,10 @@ export interface RouteCorridorScanInput {
   route: RoutePolyline
   /** The points of interest to test; non-corridor types are ignored. */
   pois: PoiSummary[]
-  /** Half-width of the corridor, in metres, measured either side of the route. */
+  /** Half-width of the corridor, in meters, measured either side of the route. */
   corridorWidthMeters: number
   /**
-   * Vessel speed over ground, in metres per second, used to estimate arrival
+   * Vessel speed over ground, in meters per second, used to estimate arrival
    * times. When null, undefined, zero, or non-finite, no `etaSeconds` is
    * produced. `VesselState.speedOverGround` can be passed straight through.
    */

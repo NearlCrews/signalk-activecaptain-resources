@@ -83,7 +83,7 @@ export interface RateLimitOptions {
 export interface ActiveCaptainClient {
   /**
    * List points of interest within a bounding box.
-   * Resolves with a normalised array (possibly empty). Rejects on any HTTP,
+   * Resolves with a normalized array (possibly empty). Rejects on any HTTP,
    * network, or parsing failure.
    */
   listPointsOfInterest: (bbox: Bbox, poiTypes: string) => Promise<PoiSummary[]>
@@ -233,9 +233,9 @@ export function createActiveCaptainClient (
 
   /**
    * Perform a single fetch with retry/backoff. Retries network errors and
-   * retryable HTTP statuses (429, 502, 503, 504). A 429 or 503 honours the
+   * retryable HTTP statuses (429, 502, 503, 504). A 429 or 503 honors the
    * Retry-After header when present. The body of a discarded retryable
-   * response is cancelled so its socket is released promptly. Resolves with
+   * response is canceled so its socket is released promptly. Resolves with
    * the final Response; non-ok handling is left to the caller.
    */
   async function fetchWithRetry (url: string, init: RequestInit): Promise<Response> {
@@ -260,7 +260,7 @@ export function createActiveCaptainClient (
         const retryAfter = honorsRetryAfter
           ? parseRetryAfter(response.headers.get('retry-after'))
           : undefined
-        // A Retry-After header is honoured but still capped: an upstream (or a
+        // A Retry-After header is honored but still capped: an upstream (or a
         // misbehaving edge) sending a huge value must not stall the request,
         // and its queue slot, for minutes or longer.
         const wait = Math.min(

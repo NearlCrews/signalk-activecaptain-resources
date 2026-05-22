@@ -2,7 +2,7 @@
  * The proximity hazard alarm controls: an opt-in toggle and the alarm radius.
  * The radius input holds a raw-text draft while the user edits, so the field
  * can be cleared mid-edit instead of snapping back to a number on every
- * keystroke, and commits a clamped, whole number of metres. It is disabled
+ * keystroke, and commits a clamped, whole number of meters. It is disabled
  * while alarms are off, because the radius then has no effect.
  */
 
@@ -15,7 +15,7 @@ const RADIUS_FIELD_ID = 'ac-proximity-alarm-radius'
 
 /**
  * Smallest alarm radius the plugin accepts. A zero radius would leave the
- * alarm enabled but never able to fire, so the field floors at one metre,
+ * alarm enabled but never able to fire, so the field floors at one meter,
  * matching the `proximityAlarmRadiusMeters` schema minimum.
  */
 const MIN_RADIUS_METERS = 1
@@ -66,7 +66,7 @@ export default function ProximityAlarmFields ({
           within the alarm radius.
         </p>
         <div style={S.proximityRow}>
-          <label htmlFor={RADIUS_FIELD_ID} style={S.label}>Alarm radius (metres)</label>
+          <label htmlFor={RADIUS_FIELD_ID} style={S.label}>Alarm radius (meters)</label>
           <input
             id={RADIUS_FIELD_ID}
             type='number'

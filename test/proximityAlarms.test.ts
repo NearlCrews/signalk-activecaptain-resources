@@ -35,7 +35,7 @@ function poi (id: string, type: PoiType, name: string, position: Position): PoiS
 }
 
 /**
- * A position roughly `metersNorth` metres north of the origin. One degree of
+ * A position roughly `metersNorth` meters north of the origin. One degree of
  * latitude is about 111_320 m, which is precise enough to place test fixtures
  * comfortably inside or outside a radius.
  */
@@ -190,7 +190,7 @@ test('skips a hazard with a non-finite position instead of crashing', () => {
   assert.equal(captured[0].path, 'notifications.navigation.activecaptain.hazard.good')
 })
 
-test('sanitises a POI id that carries path-breaking characters', () => {
+test('sanitizes a POI id that carries path-breaking characters', () => {
   const { app, captured } = createMockApp()
   const alarms = createProximityAlarms(app, 500)
 

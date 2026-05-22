@@ -30,7 +30,7 @@ export const POINT_OF_INTEREST_TEMPLATE = `{{> header}}
 /**
  * Shared free-form notes block. The context is the notes array itself, so each
  * section partial invokes it as `{{> notes notes}}`. An absent or empty array
- * renders nothing. The field id is humanised and the value keeps its line
+ * renders nothing. The field id is humanized and the value keeps its line
  * breaks.
  */
 export const NOTES_PARTIAL = `{{#if this}}

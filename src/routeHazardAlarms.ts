@@ -27,7 +27,7 @@ import type { CorridorPoi } from './types.js'
 /** Path prefix for the per-point route notification, completed with the POI id. */
 const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.activecaptain.route.'
 
-/** Metres in a kilometre, the threshold above which a distance is shown in km. */
+/** Meters in a kilometer, the threshold above which a distance is shown in km. */
 const METERS_PER_KM = 1000
 
 /** Seconds in a minute, used to format an ETA. */
@@ -47,8 +47,8 @@ function sanitizePoiId (poiId: string): string {
 }
 
 /**
- * Format an along-track distance for the notification message: whole metres
- * under a kilometre, kilometres to one decimal place beyond that.
+ * Format an along-track distance for the notification message: whole meters
+ * under a kilometer, kilometers to one decimal place beyond that.
  */
 function formatDistance (meters: number): string {
   if (meters >= METERS_PER_KM) {

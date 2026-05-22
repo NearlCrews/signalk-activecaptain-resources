@@ -21,7 +21,7 @@ const RATABLE_POI_TYPES = new Set<PoiType>(['Marina', 'Anchorage', 'Business'])
  * Drop point-of-interest summaries whose average rating is below
  * `minimumRating`.
  *
- * Behaviour:
+ * Behavior:
  *
  * - A `minimumRating` of 0 (or any value at or below 0) is the "show
  *   everything" case: the input array is returned unchanged.
@@ -36,7 +36,7 @@ const RATABLE_POI_TYPES = new Set<PoiType>(['Marina', 'Anchorage', 'Business'])
  *
  * The function is pure: it never mutates the input array or its elements.
  *
- * @param pois          The normalised list entries to filter.
+ * @param pois          The normalized list entries to filter.
  * @param minimumRating The lowest average rating (0 to 5) to keep.
  * @returns A new array of the entries that meet the threshold, or the original
  *          array when `minimumRating` is 0 or below.

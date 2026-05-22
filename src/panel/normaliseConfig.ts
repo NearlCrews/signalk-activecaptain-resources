@@ -25,14 +25,14 @@ export const MAX_RATING = 5
 export const DEFAULT_MINIMUM_RATING = MIN_RATING
 
 /**
- * Fallback proximity-alarm radius, in metres. Mirrors the
+ * Fallback proximity-alarm radius, in meters. Mirrors the
  * `proximityAlarmRadiusMeters` schema default in src/index.ts; keep the two in
  * step so the panel and the plugin agree.
  */
 export const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
 
 /**
- * Fallback route-corridor half-width, in metres. Mirrors the
+ * Fallback route-corridor half-width, in meters. Mirrors the
  * `routeCorridorWidthMeters` schema default in src/index.ts; keep the two in
  * step so the panel and the plugin agree.
  */

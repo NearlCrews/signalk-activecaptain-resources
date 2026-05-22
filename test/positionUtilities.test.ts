@@ -12,9 +12,9 @@ function assertClose (actual: number, expected: number, epsilon: number, message
 }
 
 test('positionToBbox encloses the search radius on every cardinal edge', () => {
-  // Centre on the origin so the great-circle projection is symmetric. The box
+  // Center on the origin so the great-circle projection is symmetric. The box
   // must enclose the search circle, so each cardinal edge sits at the full
-  // search radius from the centre. For a 10 km radius that is about 0.0899317
+  // search radius from the center. For a 10 km radius that is about 0.0899317
   // degrees (10 km / 6371 km, converted to degrees), not the smaller value an
   // inscribed box would give.
   const bbox = positionToBbox({ latitude: 0, longitude: 0 }, 10000)
@@ -25,14 +25,14 @@ test('positionToBbox encloses the search radius on every cardinal edge', () => {
   assertClose(bbox.west, -0.0899317, 1e-4, 'west edge')
 })
 
-test('positionToBbox orders the edges around the centre', () => {
-  const centre: Position = { latitude: 45, longitude: -122 }
-  const bbox = positionToBbox(centre, 5000)
+test('positionToBbox orders the edges around the center', () => {
+  const center: Position = { latitude: 45, longitude: -122 }
+  const bbox = positionToBbox(center, 5000)
 
-  assert.ok(bbox.north > centre.latitude, 'north edge is above the centre')
-  assert.ok(bbox.south < centre.latitude, 'south edge is below the centre')
-  assert.ok(bbox.east > centre.longitude, 'east edge is right of the centre')
-  assert.ok(bbox.west < centre.longitude, 'west edge is left of the centre')
+  assert.ok(bbox.north > center.latitude, 'north edge is above the center')
+  assert.ok(bbox.south < center.latitude, 'south edge is below the center')
+  assert.ok(bbox.east > center.longitude, 'east edge is right of the center')
+  assert.ok(bbox.west < center.longitude, 'west edge is left of the center')
 })
 
 test('positionToBbox is symmetric about a position on the equator and prime meridian', () => {
@@ -47,17 +47,17 @@ test('positionToBbox is symmetric about a position on the equator and prime meri
 test('positionToBbox handles a position on the equator', () => {
   const bbox = positionToBbox({ latitude: 0, longitude: -40 }, 8000)
 
-  // The centre latitude is 0, so the box straddles the equator.
+  // The center latitude is 0, so the box straddles the equator.
   assert.ok(bbox.north > 0, 'north edge crosses into the northern hemisphere')
   assert.ok(bbox.south < 0, 'south edge crosses into the southern hemisphere')
   assertClose(bbox.north, -bbox.south, 1e-9, 'box is symmetric across the equator')
-  assertClose((bbox.east + bbox.west) / 2, -40, 1e-9, 'box stays centred on longitude -40')
+  assertClose((bbox.east + bbox.west) / 2, -40, 1e-9, 'box stays centered on longitude -40')
 })
 
 test('positionToBbox handles a position on the prime meridian', () => {
   const bbox = positionToBbox({ latitude: 50, longitude: 0 }, 8000)
 
-  // The centre longitude is 0, so the box straddles the prime meridian.
+  // The center longitude is 0, so the box straddles the prime meridian.
   assert.ok(bbox.east > 0, 'east edge crosses into positive longitude')
   assert.ok(bbox.west < 0, 'west edge crosses into negative longitude')
   // Longitude is only exactly symmetric on the equator: away from it the
@@ -83,28 +83,28 @@ test('positionToBbox normalizes longitude near the antimeridian', () => {
 })
 
 test('positionToBbox grows the box as the distance increases', () => {
-  const centre: Position = { latitude: 10, longitude: 20 }
-  const small = positionToBbox(centre, 1000)
-  const large = positionToBbox(centre, 50000)
+  const center: Position = { latitude: 10, longitude: 20 }
+  const small = positionToBbox(center, 1000)
+  const large = positionToBbox(center, 50000)
 
   assert.ok(large.north - large.south > small.north - small.south, 'taller box for a larger distance')
   assert.ok(large.east - large.west > small.east - small.west, 'wider box for a larger distance')
 })
 
 test('positionToBbox returns a zero-size box for a zero distance', () => {
-  const centre: Position = { latitude: 12.34, longitude: -56.78 }
-  const bbox = positionToBbox(centre, 0)
+  const center: Position = { latitude: 12.34, longitude: -56.78 }
+  const bbox = positionToBbox(center, 0)
 
-  assertClose(bbox.north, centre.latitude, 1e-9, 'north collapses onto the centre')
-  assertClose(bbox.south, centre.latitude, 1e-9, 'south collapses onto the centre')
-  assertClose(bbox.east, centre.longitude, 1e-9, 'east collapses onto the centre')
-  assertClose(bbox.west, centre.longitude, 1e-9, 'west collapses onto the centre')
+  assertClose(bbox.north, center.latitude, 1e-9, 'north collapses onto the center')
+  assertClose(bbox.south, center.latitude, 1e-9, 'south collapses onto the center')
+  assertClose(bbox.east, center.longitude, 1e-9, 'east collapses onto the center')
+  assertClose(bbox.west, center.longitude, 1e-9, 'west collapses onto the center')
 })
 
 // An eastward leg one degree of longitude long, on the equator. Its great
 // circle is the equator itself, so a point's cross-track distance is just its
 // latitude offset, which makes the expected values easy to reason about. One
-// degree of arc on the sphere this module uses is about 111194.9 metres.
+// degree of arc on the sphere this module uses is about 111194.9 meters.
 const EQUATOR_LEG_START: Position = { latitude: 0, longitude: 0 }
 const EQUATOR_LEG_END: Position = { latitude: 0, longitude: 1 }
 const ONE_DEGREE_ARC_METERS = 111194.9

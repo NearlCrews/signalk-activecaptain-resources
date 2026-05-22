@@ -2,7 +2,7 @@
  * The route-corridor hazard scan controls: an opt-in toggle and the corridor
  * width. The width input holds a raw-text draft while the user edits, so the
  * field can be cleared mid-edit instead of snapping back to a number on every
- * keystroke, and commits a clamped, whole number of metres. It is disabled
+ * keystroke, and commits a clamped, whole number of meters. It is disabled
  * while the scan is off, because the width then has no effect.
  */
 
@@ -16,7 +16,7 @@ const WIDTH_FIELD_ID = 'ac-route-corridor-width'
 /**
  * Smallest corridor width the plugin accepts. A zero width would leave the
  * scan enabled but never able to flag a point of interest, so the field floors
- * at one metre, matching the `routeCorridorWidthMeters` schema minimum.
+ * at one meter, matching the `routeCorridorWidthMeters` schema minimum.
  */
 const MIN_WIDTH_METERS = 1
 
@@ -67,7 +67,7 @@ export default function RouteHazardScanFields ({
           route, with its along-track distance and ETA.
         </p>
         <div style={S.proximityRow}>
-          <label htmlFor={WIDTH_FIELD_ID} style={S.label}>Corridor width (metres)</label>
+          <label htmlFor={WIDTH_FIELD_ID} style={S.label}>Corridor width (meters)</label>
           <input
             id={WIDTH_FIELD_ID}
             type='number'

@@ -1,5 +1,5 @@
 /**
- * The POI-type selector: the 13 toggles laid out in four labelled groups, with
+ * The POI-type selector: the 13 toggles laid out in four labeled groups, with
  * All and None bulk buttons. A note appears when nothing is selected, because
  * the plugin then imports every type rather than none.
  */

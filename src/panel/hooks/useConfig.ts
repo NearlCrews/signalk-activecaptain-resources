@@ -1,6 +1,6 @@
 /**
  * React state hook for the panel's working configuration. It wraps the pure
- * configReducer in a useReducer, normalises the raw `configuration` prop the
+ * configReducer in a useReducer, normalizes the raw `configuration` prop the
  * admin UI hands in, and tracks the last-saved snapshot for the dirty check.
  */
 

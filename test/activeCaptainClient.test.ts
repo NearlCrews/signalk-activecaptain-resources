@@ -26,7 +26,7 @@ function jsonResponse (body: unknown, status = 200, headers: Record<string, stri
 
 /**
  * Swap in a stubbed global fetch for the duration of fn, then restore it. The
- * stub records every call so tests can assert on retry behaviour.
+ * stub records every call so tests can assert on retry behavior.
  */
 async function withMockFetch (
   handler: (callIndex: number) => Response | Promise<Response>,
@@ -46,7 +46,7 @@ async function withMockFetch (
   }
 }
 
-test('listPointsOfInterest normalises the wire response', async () => {
+test('listPointsOfInterest normalizes the wire response', async () => {
   await withMockFetch(
     () => jsonResponse({
       pointsOfInterest: [

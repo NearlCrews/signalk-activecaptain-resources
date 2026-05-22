@@ -2,7 +2,7 @@
  * Inline-style design tokens for the federated configuration panel.
  *
  * The panel renders inside the Signal K admin UI, which owns the page. Inline
- * styles cannot read the host's theme, so every colour here references an
+ * styles cannot read the host's theme, so every color here references an
  * `--ac-*` CSS custom property rather than a hex literal. THEME_STYLE (below)
  * defines those properties once on `.ac-config-panel` with explicit values, so
  * a card surface never inherits the admin's gray page background and dissolve

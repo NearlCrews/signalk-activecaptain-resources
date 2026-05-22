@@ -458,7 +458,7 @@ test('a course delta clearing the route resets the cache to null', async () => {
   await flush()
   assert.equal(reader.getRouteAhead()?.routeId, 'route-1')
 
-  // Navigation is cancelled; the Course API emits a delta.
+  // Navigation is canceled; the Course API emits a delta.
   course = courseWithoutRoute()
   emitCourseDelta()
   await flush()

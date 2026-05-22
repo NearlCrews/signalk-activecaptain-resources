@@ -16,7 +16,7 @@ const RELATIVE_UNITS: ReadonlyArray<readonly [Intl.RelativeTimeFormatUnit, numbe
   ['second', 1]
 ]
 
-/** Render an ISO-8601 timestamp as a localised, relative phrase such as "5 minutes ago". */
+/** Render an ISO-8601 timestamp as a localized, relative phrase such as "5 minutes ago". */
 function relativeTime (iso: string): string {
   const then = new Date(iso).getTime()
   if (Number.isNaN(then)) return iso

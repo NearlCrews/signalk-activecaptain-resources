@@ -30,17 +30,17 @@ import type { Bbox, CorridorPoi, PoiSummary, Position, RoutePolyline } from './t
 /** The `vessels.self` path the monitor subscribes to. */
 const SELF_POSITION_PATH = 'navigation.position'
 
-/** Default minimum distance, in metres, the vessel must move before a tick. */
+/** Default minimum distance, in meters, the vessel must move before a tick. */
 const DEFAULT_MIN_MOVE_METERS = 100
 
 /** Default minimum time, in milliseconds, between ticks. */
 const DEFAULT_MIN_INTERVAL_MS = 60_000
 
-/** Metres in a nautical mile. */
+/** Meters in a nautical mile. */
 const METERS_PER_NAUTICAL_MILE = 1852
 
 /**
- * How far ahead along the route, in metres, the fetch bounding box is widened
+ * How far ahead along the route, in meters, the fetch bounding box is widened
  * to look. The ActiveCaptain bounding-box endpoint clusters points of interest
  * once the box is too large at its fixed zoom, and the client drops cluster
  * entries, so the look-ahead is capped at a conservative 10 nautical miles.
@@ -84,7 +84,7 @@ export interface RouteScanConfig {
   courseReader: CourseReader
   /** The route-corridor hazard alarms evaluated on every tick with a route. */
   alarms: RouteHazardAlarms
-  /** Half-width, in metres, of the corridor a point of interest must fall within. */
+  /** Half-width, in meters, of the corridor a point of interest must fall within. */
   corridorWidthMeters: number
 }
 
@@ -111,10 +111,10 @@ export interface PositionMonitorConfig {
    * the points of interest they act on.
    */
   poiTypes: string
-  /** Radius, in metres, of the bounding box scanned around the vessel. */
+  /** Radius, in meters, of the bounding box scanned around the vessel. */
   scanRadiusMeters: number
   /**
-   * Minimum distance, in metres, the vessel must move before a new tick runs.
+   * Minimum distance, in meters, the vessel must move before a new tick runs.
    * Defaults to {@link DEFAULT_MIN_MOVE_METERS}.
    */
   minMoveMeters?: number
@@ -271,7 +271,7 @@ export function createPositionMonitor (config: PositionMonitorConfig): PositionM
 
       // No box means nothing to fetch: the proximity alarms are off and there
       // is no active route (or the route produced no usable box). A route that
-      // has just been finished or cancelled must still have its alarms cleared,
+      // has just been finished or canceled must still have its alarms cleared,
       // so evaluate an empty result before returning.
       if (bbox === undefined) {
         routeScan?.alarms.evaluate([])
@@ -295,7 +295,7 @@ export function createPositionMonitor (config: PositionMonitorConfig): PositionM
       // route active it flags the points of interest on the route ahead; with
       // no route active it evaluates an empty result, which clears any route
       // alarms still raised from a route that has just been finished or
-      // cancelled. Flagged points beyond the look-ahead cap are dropped so the
+      // canceled. Flagged points beyond the look-ahead cap are dropped so the
       // scan stays consistent with the capped fetch box.
       if (routeScan !== undefined) {
         let corridorPois: CorridorPoi[] = []
