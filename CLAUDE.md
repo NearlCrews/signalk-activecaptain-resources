@@ -21,59 +21,76 @@ In practice:
 - This repository ships exactly ONE npm package and ONE Signal K plugin.
 - Keep the code modular by splitting it into focused files under `src/`.
 - Never split the project into multiple npm packages or a monorepo.
-- New functionality is a new module under `src/`, not a new package.
+- New functionality is a new module under `src/`, not a new package. A new POI
+  data source is a new `InputModule` under `src/inputs/`, and a new consumer of
+  POI data is a new `OutputModule` under `src/outputs/`, each registered in
+  `src/index.ts`. This modular extension path is how the plugin grows, and it
+  does not change the one-plugin rule.
 
 ## Layout
+
+The code is organized into purpose-named directories under `src/`. A POI data
+source is an "input"; a SignalK consumer of POI data is an "output". Each is a
+self-contained module registered on one line in `src/index.ts`.
 
 - `src/` - TypeScript source. The Node plugin (everything except `src/panel/`)
   is compiled to `dist/` by `tsc`; the React panel under `src/panel/` is
   bundled to `public/` by webpack.
-  - `index.ts` - plugin entrypoint. Exports the Signal K plugin factory via
-    `export =`, defines the config schema (caching duration plus 13 POI-type
-    toggles), registers the `notes` resource provider, and mounts the
-    admin-gated status API via `registerWithRouter`.
-  - `activeCaptainClient.ts` - HTTP client for the ActiveCaptain API, built on
-    native `fetch` with rate limiting, exponential backoff, and `Retry-After`
-    support.
-  - `poiCache.ts` - TTL cache of point-of-interest detail responses, backed by
-    `lru-cache` and persisted through `poiStore.ts`.
-  - `poiStore.ts` - disk-backed store of point-of-interest detail in the plugin
-    data directory, so the cache survives a restart and is readable offline.
-  - `positionUtilities.ts` - geo helpers: position to bounding box, and the
-    great-circle `distanceMeters`.
-  - `positionMonitor.ts` - subscribes to `navigation.position`, scans for
-    nearby hazards as the vessel moves, and drives the proximity-alarm and
-    route-corridor evaluations.
-  - `proximityAlarms.ts` - emits SignalK hazard notifications, with hysteresis,
-    when the vessel is near a Hazard point of interest.
-  - `courseReader.ts` - reads the vessel's active route from the SignalK
-    Course API and exposes it as an ordered list of waypoint positions ahead
-    of the vessel.
-  - `routeCorridor.ts` - pure geometry: given the active route and a set of
-    points of interest, flags the Hazard, Bridge, and Lock points within the
-    corridor, with along-track distance and ETA.
-  - `routeHazardAlarms.ts` - emits SignalK route notifications, raised once and
-    cleared once, for the points of interest flagged on the route ahead.
-  - `resourceQuery.ts` - parses an incoming Signal K resource query into a
-    bounding box and position (`resolveBbox`, `resolvePosition`).
-  - `poiTypeSelection.ts` - maps the config POI-type toggles to the API
-    `poiTypes` string (`POI_TYPE_FLAGS`, `buildPoiTypesString`).
-  - `ratingFilter.ts` - drops list entries rated below the configured minimum.
-  - `handlebarsUtilities.ts` - registers Handlebars helpers and renders POI
-    detail descriptions. Relative times use the native `Intl` API.
-  - `templates.ts` - Handlebars templates and partials, inlined as string
-    constants so no extra files need to be published.
-  - `pluginStatus.ts` - records request outcomes and produces a
-    `StatusSnapshot` for the configuration panel.
-  - `statusRouter.ts` - admin-gated Express router factory that serves the
-    status snapshot.
-  - `statusTypes.ts` - the `StatusSnapshot` type, shared by plugin and panel.
-  - `pluginId.ts` - the plugin id, shared by the plugin and the panel.
-  - `types.ts` - shared type contracts (the single source of truth for the
-    data shapes that flow between modules and the ActiveCaptain wire types).
+  - `index.ts` - plugin entrypoint. Registers the input and output modules and
+    hands them to the plugin factory. It holds no wiring of its own.
+  - `plugin/` - the plugin shell.
+    - `plugin.ts` - the plugin factory: assembles the config schema from the
+      registries' fragments and owns the `start`/`stop` lifecycle, including
+      the shared position monitor.
+    - `plugin-config.ts` - merges the per-module config-schema fragments into
+      the single schema the SignalK admin UI renders.
+  - `inputs/` - POI data sources.
+    - `poi-source.ts` - the `PoiSource` and `InputModule` contracts an input
+      implements.
+    - `input-registry.ts` - holds the registered inputs and builds the
+      aggregate `PoiSource` for a plugin start.
+    - `active-captain/` - the ActiveCaptain input: `active-captain-input.ts`
+      (the `InputModule`), `active-captain-source.ts` (the `PoiSource` adapter
+      over the client, cache, and store), `active-captain-client.ts` (the HTTP
+      client, with rate limiting, exponential backoff, and `Retry-After`
+      support), `poi-cache.ts` (TTL detail cache), `poi-store.ts` (disk-backed
+      detail store, readable offline), `poi-detail-renderer.ts` (Handlebars
+      helpers and POI detail rendering), `templates.ts` (inlined Handlebars
+      templates), and `rating-filter.ts` (drops list entries below the
+      configured minimum rating).
+  - `outputs/` - SignalK consumers of POI data.
+    - `output.ts` - the `OutputModule`, `OutputHandle`, `OutputContext`, and
+      `PositionScanContributor` contracts an output implements.
+    - `output-registry.ts` - holds the registered outputs and starts the
+      enabled ones.
+    - `notes-resource/` - the `notes` resource output: `notes-resource-output.ts`
+      (the `OutputModule` that registers the SignalK `notes` provider),
+      `note-builder.ts` (turns a POI into a `notes` resource object), and
+      `resource-query.ts` (parses a resource query into a bounding box).
+    - `proximity-alarm/` - the proximity-alarm output: `proximity-alarm-output.ts`
+      (the `OutputModule`) and `proximity-alarms.ts` (emits SignalK hazard
+      notifications, with hysteresis, near a Hazard).
+    - `route-hazard/` - the route-corridor hazard output: `route-hazard-output.ts`
+      (the `OutputModule`), `route-hazard-alarms.ts` (emits SignalK route
+      notifications, raised once and cleared once), `route-corridor.ts` (pure
+      corridor geometry), and `course-reader.ts` (reads the active route from
+      the SignalK Course API).
+  - `monitoring/` - `position-monitor.ts` subscribes to `navigation.position`
+    and drives the per-tick scan from the position-driven outputs' scan
+    contributors.
+  - `geo/` - `position-utilities.ts`: geo helpers (position to bounding box,
+    great-circle `distanceMeters`, and `unionBbox`).
+  - `status/` - `plugin-status.ts` (records request outcomes, produces a
+    `StatusSnapshot`), `status-router.ts` (admin-gated Express router that
+    serves the snapshot), and `status-types.ts` (the `StatusSnapshot` type,
+    shared by plugin and panel).
+  - `shared/` - `types.ts` (shared type contracts, the single source of truth
+    for the data shapes), `plugin-id.ts` (the plugin id, shared by plugin and
+    panel), and `poi-type-selection.ts` (maps the config POI-type toggles to
+    the API `poiTypes` string).
   - `panel/` - federated React configuration panel (`index.tsx`,
-    `PluginConfigurationPanel.tsx`, `configReducer.ts`, `poiTypeGroups.ts`,
-    `styles.ts`, plus `hooks/` and `components/`).
+    `PluginConfigurationPanel.tsx`, `config-reducer.ts`, `normalize-config.ts`,
+    `poi-type-groups.ts`, `styles.ts`, plus `hooks/` and `components/`).
 - `test/` - `node:test` test suite, run through `tsx`.
 - `docs/` - project documentation: the development guide, troubleshooting, the
   Garmin API research notes, decision records, and maintainer notes.
@@ -111,6 +128,6 @@ In practice:
 ## Conventions
 
 - All new code is TypeScript under `src/`.
-- Keep modules focused and small. Shared types belong in `src/types.ts`.
+- Keep modules focused and small. Shared types belong in `src/shared/types.ts`.
 - Do not edit `dist/` or `public/`; they are generated.
 - Run `npm run lint`, `npm run typecheck`, and `npm test` before committing.

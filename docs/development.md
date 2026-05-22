@@ -50,27 +50,38 @@ settings form with a live status section and grouped POI-type toggles.
 
 ## Project structure
 
+A POI data source is an "input"; a SignalK consumer of POI data is an "output".
+Each is a self-contained module registered on one line in `src/index.ts`.
+
 ```
 src/                      # TypeScript source
-├── index.ts              # Plugin entrypoint: config schema, notes resource provider, lifecycle
-├── activeCaptainClient.ts# HTTP client for the ActiveCaptain API (rate limiting, backoff, Retry-After)
-├── poiCache.ts           # TTL cache of POI detail responses, backed by lru-cache
-├── positionUtilities.ts  # Geo helpers (position to bounding box, longitude normalization)
-├── resourceQuery.ts      # Parses a Signal K resource query into a bounding box and position
-├── poiTypeSelection.ts   # Maps config POI-type toggles to the API poiTypes string
-├── handlebarsUtilities.ts# Registers Handlebars helpers, renders POI detail descriptions
-├── templates.ts          # Handlebars templates and partials, inlined as string constants
-├── pluginStatus.ts       # Request-outcome recorder, produces a StatusSnapshot
-├── statusRouter.ts       # Admin-gated Express router that serves the status snapshot
-├── statusTypes.ts        # StatusSnapshot type, shared by plugin and panel
-├── types.ts              # Shared type contracts and ActiveCaptain wire types
+├── index.ts              # Plugin entrypoint: registers the input and output modules
+├── plugin/               # The plugin shell
+│   ├── plugin.ts          # Plugin factory: schema assembly, start/stop lifecycle
+│   └── plugin-config.ts   # Merges per-module config-schema fragments into one schema
+├── inputs/               # POI data sources
+│   ├── poi-source.ts      # The PoiSource and InputModule contracts
+│   ├── input-registry.ts  # Holds the inputs, builds the aggregate PoiSource
+│   └── active-captain/    # The ActiveCaptain input (module, source adapter, client,
+│                          #   cache, store, detail renderer, templates, rating filter)
+├── outputs/              # SignalK consumers of POI data
+│   ├── output.ts          # The OutputModule and PositionScanContributor contracts
+│   ├── output-registry.ts # Holds the outputs, starts the enabled ones
+│   ├── notes-resource/    # The SignalK notes resource provider output
+│   ├── proximity-alarm/   # The proximity hazard-alarm output
+│   └── route-hazard/      # The route-corridor hazard-scan output
+├── monitoring/           # position-monitor.ts: drives the per-tick scan
+├── geo/                  # position-utilities.ts: bounding-box and great-circle helpers
+├── status/               # plugin-status.ts, status-router.ts, status-types.ts
+├── shared/               # types.ts, plugin-id.ts, poi-type-selection.ts
 └── panel/                # Federated React configuration panel (bundled to public/)
     ├── index.tsx          # Federation entry; re-exports PluginConfigurationPanel
     ├── PluginConfigurationPanel.tsx  # Root panel component
-    ├── configReducer.ts   # Pure reducer over the plugin config (testable)
-    ├── poiTypeGroups.ts   # UI metadata: the four POI-type groups and labels
+    ├── config-reducer.ts  # Pure reducer over the plugin config (testable)
+    ├── normalize-config.ts# Normalizes the raw config object
+    ├── poi-type-groups.ts # UI metadata: the four POI-type groups and labels
     ├── styles.ts          # Inline style objects
-    ├── hooks/             # useConfig, useStatus
+    ├── hooks/             # use-config, use-status
     └── components/        # StatusBar, PoiTypeGroups, CacheDurationField, FooterBar
 test/                     # node:test suites, run through tsx
 dist/                     # Compiled plugin output (generated, not committed)
@@ -89,15 +100,18 @@ no separate test framework. The suite lives under `test/`, one file per tested
 module:
 
 ```
-test/activeCaptainClient.test.ts   # HTTP client: rate limiting, backoff, Retry-After
-test/configReducer.test.ts         # Panel config reducer
-test/handlebarsUtilities.test.ts   # Handlebars helpers and POI rendering
-test/poiCache.test.ts              # TTL cache behavior
-test/poiTypeSelection.test.ts      # POI-type toggle to poiTypes string mapping
-test/pluginStatus.test.ts          # Status snapshot recorder
-test/positionUtilities.test.ts     # Geo helpers
-test/resourceQuery.test.ts         # Resource query parsing
+test/active-captain-client.test.ts # HTTP client: rate limiting, backoff, Retry-After
+test/input-registry.test.ts        # Input registry: aggregate source, config fragments
+test/output-registry.test.ts       # Output registry: starts enabled outputs, isolates failures
+test/plugin-config.test.ts         # Config-schema fragment merge
+test/position-monitor.test.ts      # Per-tick scan driven by scan contributors
+test/poi-type-selection.test.ts    # POI-type toggle to poiTypes string mapping
+test/plugin-status.test.ts         # Status snapshot recorder
+test/resource-query.test.ts        # Resource query parsing
 ```
+
+Test files are named for the module they cover; the suite has one file per
+module.
 
 `npm run typecheck` runs three `tsc` passes with no emit: the plugin runtime
 (`tsconfig.json`, which excludes `test/` and `src/panel/`), the React panel
@@ -110,8 +124,11 @@ committing.
 
 This repository ships exactly ONE npm package and ONE Signal K plugin. New
 functionality is a new focused module under `src/`, never a new package or a
-monorepo. Keep modules small and put shared types in `src/types.ts`. See
-[CLAUDE.md](../CLAUDE.md) for the full architecture rule and conventions.
+monorepo. A new POI data source is a new `InputModule` under `src/inputs/`, and
+a new consumer of POI data is a new `OutputModule` under `src/outputs/`, each
+registered in `src/index.ts`. Keep modules small and put shared types in
+`src/shared/types.ts`. See [CLAUDE.md](../CLAUDE.md) for the full architecture
+rule and conventions.
 
 For details of the ActiveCaptain API the client talks to, see
 [docs/garmin-api.md](garmin-api.md).
