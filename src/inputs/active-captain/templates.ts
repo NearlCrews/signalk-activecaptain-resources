@@ -173,10 +173,10 @@ export const SERVICES_PARTIAL = `<hr/>
     {{availabilityLine repair "General repair"}}
     {{availabilityLine mechanical "Mechanical repair"}}
     {{availabilityLine repairDieselEngines "Diesel engine repair"}}
-    {{availabilityLine repairGasEngines "Petrol engine repair"}}
+    {{availabilityLine repairGasEngines "Gas engine repair"}}
     {{availabilityLine electronics "Electronics"}}
     {{availabilityLine sailsAndRigging "Sails and rigging"}}
-    {{availabilityLine fiberglass "Fibreglass"}}
+    {{availabilityLine fiberglass "Fiberglass"}}
     {{availabilityLine welding "Welding"}}
     {{availabilityLine propellerRepair "Propeller repair"}}
     {{availabilityLine canvasAndUpholstery "Canvas and upholstery"}}

@@ -206,8 +206,8 @@ export function hasMooring (details: PoiDetails): boolean {
   }
 
   return hasDefiniteAvailability(mooring) ||
-    (mooring.transient ?? 0) > 0 ||
-    (mooring.total ?? 0) > 0 ||
+    mooring.transient != null ||
+    mooring.total != null ||
     hasNotes(mooring.notes)
 }
 
@@ -220,9 +220,9 @@ export function hasNavigation (details: PoiDetails): boolean {
 
   return hasDefiniteAvailability(navigation) ||
     isKnown(navigation.current) ||
-    (navigation.bridgeHeight ?? 0) > 0 ||
-    (navigation.tide ?? 0) > 0 ||
-    (navigation.depthApproach ?? 0) > 0 ||
+    navigation.bridgeHeight != null ||
+    navigation.tide != null ||
+    navigation.depthApproach != null ||
     hasNotes(navigation.notes)
 }
 
@@ -250,7 +250,13 @@ export function isStaleHazard (details: PoiDetails, now: Date = new Date()): boo
   }
 
   const staleBefore = new Date(now)
+  const month = staleBefore.getMonth()
   staleBefore.setFullYear(staleBefore.getFullYear() - STALE_HAZARD_YEARS)
+  // Feb 29 has no counterpart in a non-leap year, so `setFullYear` rolls it
+  // forward to Mar 1. Clamp it back to Feb 28 so the 2-year cutoff stays exact.
+  if (staleBefore.getMonth() !== month) {
+    staleBefore.setDate(0)
+  }
   return modified.getTime() < staleBefore.getTime()
 }
 

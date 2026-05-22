@@ -252,12 +252,18 @@ test('hasMooring counts a transient count even when availability is Unknown', ()
   assert.equal(hasMooring(bareMarina()), false)
 
   const allUnknown = bareMarina()
-  allUnknown.mooring = { hasMoorings: 'Unknown', dinghy: 'Unknown', transient: 0, total: 0 }
+  allUnknown.mooring = { hasMoorings: 'Unknown', dinghy: 'Unknown' }
   assert.equal(hasMooring(allUnknown), false)
 
   const transientOnly = bareMarina()
   transientOnly.mooring = { hasMoorings: 'Unknown', transient: 8 }
   assert.equal(hasMooring(transientOnly), true)
+
+  // A genuine zero count is real data: a field reported as 0 is present, not
+  // missing, so the section is shown.
+  const zeroTransient = bareMarina()
+  zeroTransient.mooring = { hasMoorings: 'Unknown', transient: 0 }
+  assert.equal(hasMooring(zeroTransient), true)
 })
 
 test('hasNavigation counts a bridge height even when availability is Unknown', () => {
@@ -265,12 +271,18 @@ test('hasNavigation counts a bridge height even when availability is Unknown', (
   assert.equal(hasNavigation(bareMarina()), false)
 
   const allUnknown = bareMarina()
-  allUnknown.navigation = { current: 'Unknown', fixedBridge: 'Unknown', bridgeHeight: 0 }
+  allUnknown.navigation = { current: 'Unknown', fixedBridge: 'Unknown' }
   assert.equal(hasNavigation(allUnknown), false)
 
   const bridgeOnly = bareMarina()
   bridgeOnly.navigation = { current: 'Unknown', bridgeHeight: 13.5 }
   assert.equal(hasNavigation(bridgeOnly), true)
+
+  // A genuine zero clearance is real data: a bridge height reported as 0 is
+  // present, not missing, so the section is shown.
+  const zeroBridge = bareMarina()
+  zeroBridge.navigation = { current: 'Unknown', bridgeHeight: 0 }
+  assert.equal(hasNavigation(zeroBridge), true)
 })
 
 test('an Unknown capability renders no line, not a misleading cross', () => {
