@@ -53,25 +53,35 @@ self-contained module registered on one line in `src/index.ts`.
       to every enabled input, namespaces resource ids with the producing
       source's slug, unions the results, records per-source status, and runs
       the dedupe pass.
+    - `http-client.ts` - shared HTTP client plumbing used by every source's
+      client: a concurrency-limited and throttled request queue, retry with
+      exponential backoff that honors HTTP 429/503 `Retry-After`, and a
+      `close()` that aborts in-flight work.
     - `dedupe-pois.ts` - merges non-base POIs that duplicate an ActiveCaptain
-      base POI, so a feature reported by several sources becomes one
-      corroborated note rather than overlapping markers.
+      base POI, then runs a same-source pass that collapses internal
+      duplicates within a configurable radius (default 150 meters), so a
+      feature reported by several sources becomes one corroborated note rather
+      than overlapping markers.
     - `active-captain/` - the ActiveCaptain input: `active-captain-input.ts`
       (the `InputModule`), `active-captain-source.ts` (the `PoiSource` adapter
-      over the client, cache, and store), `active-captain-client.ts` (the HTTP
-      client, with rate limiting, exponential backoff, and `Retry-After`
-      support), `poi-cache.ts` (TTL detail cache), `poi-store.ts` (disk-backed
-      detail store, readable offline), `poi-detail-renderer.ts` (Handlebars
-      helpers and POI detail rendering), `templates.ts` (inlined Handlebars
-      templates), and `rating-filter.ts` (drops list entries below the
-      configured minimum rating).
+      over the client, cache, and store), `active-captain-client.ts` (the
+      ActiveCaptain-specific HTTP client built on `http-client.ts`),
+      `active-captain-types.ts` (the ActiveCaptain summary-API wire types,
+      private to this input), `poi-cache.ts` (TTL detail cache), `poi-store.ts`
+      (disk-backed detail store, readable offline), `poi-detail-renderer.ts`
+      (Handlebars helpers and POI detail rendering), `templates.ts` (inlined
+      Handlebars templates), and `rating-filter.ts` (drops list entries below
+      the configured minimum rating).
     - `openseamap/` - the OpenSeaMap input (OpenStreetMap marine data via the
       OSM Overpass API): `openseamap-input.ts` (the `InputModule`),
       `openseamap-source.ts` (the `PoiSource` adapter over the client and an
-      in-memory detail cache), `overpass-client.ts` (the Overpass HTTP client,
-      with rate limiting, backoff, and the required `User-Agent`), and
-      `seamark-mapping.ts` (maps `seamark:type` values onto the plugin's
-      `PoiType` union and defines the seamark feature groups).
+      in-memory detail cache; maps OpenSeaMap navaids to the Freeboard
+      `real-aton` icon and uses an underscore-separated internal id form like
+      `node_123` so the slash in raw OSM ids never splits the resource URL),
+      `overpass-client.ts` (the Overpass HTTP client built on `http-client.ts`,
+      with the required `User-Agent`), and `seamark-mapping.ts` (maps
+      `seamark:type` values onto the plugin's `PoiType` union and defines the
+      seamark feature groups).
   - `outputs/` - SignalK consumers of POI data.
     - `output.ts` - the `OutputModule`, `OutputHandle`, `OutputContext`, and
       `PositionScanContributor` contracts an output implements.
@@ -99,17 +109,38 @@ self-contained module registered on one line in `src/index.ts`.
     `StatusSnapshot`), `status-router.ts` (admin-gated Express router that
     serves the snapshot), and `status-types.ts` (the `StatusSnapshot` type,
     shared by plugin and panel).
-  - `shared/` - `types.ts` (shared type contracts, the single source of truth
-    for the data shapes), `plugin-id.ts` (the plugin id, shared by plugin and
-    panel), `poi-type-selection.ts` (maps the config POI-type toggles to the
-    API `poiTypes` string), `notification-path.ts` (builds path-safe SignalK
-    notification deltas, shared by the alarm outputs), and `time.ts` (the
-    minute-to-millisecond constant shared by the cache and store).
-  - `panel/` - federated React configuration panel (`index.tsx`,
-    `PluginConfigurationPanel.tsx`, `config-reducer.ts`, `normalize-config.ts`,
-    `active-captain-poi-types.ts`, `seamark-groups.ts`, `styles.ts`, plus
-    `hooks/` and `components/`). The panel is a per-source accordion: a
-    collapsible card per data source, then an Alerts section.
+  - `shared/` - source-agnostic contracts and helpers shared across the
+    plugin: `types.ts` (the cross-module type contracts; ActiveCaptain-only
+    wire types live next to the ActiveCaptain input, not here),
+    `plugin-id.ts` (the plugin id, shared by plugin and panel),
+    `poi-type-selection.ts` (maps the config POI-type toggles to the
+    `poiTypes` string the aggregate source uses), `seamark-groups.ts` (the
+    OpenSeaMap seamark group ids and labels, the single source of truth
+    consumed by the OpenSeaMap input, its config-schema fragment, and the
+    panel), `attribution.ts` (the source-agnostic attribution footer rendered
+    into every detail HTML, using the `crows-nest-attribution` CSS class),
+    `notification-path.ts` (builds path-safe SignalK notification deltas,
+    shared by the alarm outputs), `notification-tracker.ts` (raise/clear
+    bookkeeping shared by the proximity and route-hazard outputs),
+    `numbers.ts` (the `toFiniteNumber` narrowing helper), `cache.ts` (the
+    `MAX_POI_CACHE_ENTRIES` ceiling shared by the per-source detail caches),
+    and `time.ts` (the minute-to-millisecond constant).
+  - `panel/` - federated React configuration panel. Root and reducer:
+    `index.tsx` (Module Federation entry), `PluginConfigurationPanel.tsx`,
+    `config-reducer.ts`, `normalize-config.ts`, plus the UI-metadata modules
+    `active-captain-poi-types.ts`, `styles.ts`, and `relative-time.ts`.
+    `hooks/` holds `use-config`, `use-status`, and `use-number-draft` (the
+    raw-text draft state for clearable numeric inputs). `components/` holds
+    the layout pieces: `StatusBar`, `FooterBar`, `DataSourcesSection`
+    (the per-source accordion shell), `DataSourceCard` (one collapsible
+    card), `ActiveCaptainSource` and `OpenSeaMapSource` (the per-source card
+    bodies), `AlertsSection` (the proximity and route-hazard controls);
+    plus the per-field input components `CacheDurationField`, `EndpointUrlField`,
+    `NumberField` (the shared label-plus-input-plus-hint row), `AlarmFieldset`
+    (the toggle-plus-numeric layout shared by both alarm controls),
+    `RatingFilterField`, `ProximityAlarmFields`, `RouteHazardScanFields`,
+    `ActiveCaptainPoiTypes`, and `SeamarkGroups`. The panel is a per-source
+    accordion: a collapsible card per data source, then an Alerts section.
 - `test/` - `node:test` test suite, run through `tsx`.
 - `docs/` - project documentation: the development guide, troubleshooting, the
   Garmin API research notes, decision records, and maintainer notes.
