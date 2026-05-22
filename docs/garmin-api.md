@@ -121,7 +121,7 @@ Conventions inside sections:
 - Each section repeats `id` (number) and usually `dateLastModified`.
 - Distance/volume units are spelled out in the section (`distanceUnit: "Meter"`,
   `volumeUnits: "Gallon"`); numeric values such as `loaMax`, `beamMax`,
-  `depthApproach` are already in those units (metres in the samples seen).
+  `depthApproach` are already in those units (meters in the samples seen).
 
 The plugin's Handlebars partials render `dockage`, `mooring`, `contact`,
 `fuel`, `amenity`, `services`, `retail`, `navigation`, `business`,
@@ -238,7 +238,7 @@ response. The only response headers of note are Cloudflare's (`server: cloudflar
 The developer API's terms (rate limits included) are inside the Developer Portal
 and not public.
 
-### 3.2 Observed behaviour
+### 3.2 Observed behavior
 
 Probed responsibly on 2026-05-21 against the community API:
 
@@ -250,7 +250,7 @@ Probed responsibly on 2026-05-21 against the community API:
 No enforced limit was hit. However, the API is Cloudflare-fronted, so Cloudflare
 can throttle or serve a challenge (`429` / `503`, possibly an HTML body instead
 of JSON) for traffic it considers abusive. The absence of an enforced limit is
-not a licence to hammer the service.
+not a license to hammer the service.
 
 ### 3.3 Recommended client settings
 
@@ -264,7 +264,7 @@ Treat the plugin as a good citizen. Concrete values for the API client:
 | Retry on | `429`, `502`, `503`, `504`, and network errors only |
 | Do not retry on | other `4xx` (notably `404` = POI does not exist, permanent) |
 | Backoff | exponential with full jitter: base 1 s, factor 2, cap 30 s, max 4 retries |
-| `Retry-After` | if present on a `429`/`503`, honour it instead of the computed backoff, but cap the wait at the maximum backoff (30 s) so a huge header value cannot stall a request indefinitely |
+| `Retry-After` | if present on a `429`/`503`, honor it instead of the computed backoff, but cap the wait at the maximum backoff (30 s) so a huge header value cannot stall a request indefinitely |
 | User-Agent | keep `Signal K Active Captain Plugin` |
 
 The single most effective limiter is **caching**, which the plugin already does:
@@ -340,7 +340,7 @@ requires the developer API and an API key. For the current feature set
 - Do not add Garmin login or an API key. They unlock the developer API, whose
   extra value is write/sync/export, not display data.
 - Apply the section 3.3 client settings: concurrency 5, ~5 req/s, exponential
-  backoff (base 1 s, cap 30 s, 4 retries), honour `Retry-After` capped at the
+  backoff (base 1 s, cap 30 s, 4 retries), honor `Retry-After` capped at the
   30 s maximum, retry only `429`/`5xx`/network errors, never retry `404`.
 - Keep caching summaries (default 60 min) - it is the main load mitigation.
 - The config UI exposes all 13 selectable POI types. The plugin renders every

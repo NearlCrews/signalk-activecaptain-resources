@@ -41,7 +41,7 @@ the query into a bounding box and position, asks the ActiveCaptain client for
 POIs in that box, and returns them as notes resources. POI detail summaries are
 fetched lazily and rendered into HTML descriptions with Handlebars. The HTTP
 client rate-limits requests, retries `429` and `5xx` responses with exponential
-backoff, and honours `Retry-After`. A TTL cache holds detail responses so
+backoff, and honors `Retry-After`. A TTL cache holds detail responses so
 repeated queries do not refetch.
 
 The plugin ships its own configuration panel: a federated React app, loaded by

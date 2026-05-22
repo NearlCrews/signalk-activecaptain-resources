@@ -61,7 +61,7 @@ The default values are fine to start with, so you can just click Save.
 The plugin ships its own configuration panel. In place of the generic settings
 form it shows a live status section (Garmin API reachability, cached
 point-of-interest count, last fetch, and recent errors), a cache-duration
-field, the point-of-interest type toggles arranged in labelled groups with All
+field, the point-of-interest type toggles arranged in labeled groups with All
 and None buttons, the rating filter, and the proximity and route hazard alarm
 controls.
 
@@ -85,9 +85,9 @@ The following options are available:
 | Include airports | boolean | true | Include airport points of interest. |
 | Minimum rating | number | 0 | Hide points of interest whose average rating is below this value (0 to 5; 0 shows everything). |
 | Emit a notification when the vessel nears a hazard | boolean | false | Subscribe to the vessel position and raise a proximity alarm for nearby hazards. |
-| Proximity alarm radius in metres | number | 500 | How close a hazard must be to raise an alarm. |
+| Proximity alarm radius in meters | number | 500 | How close a hazard must be to raise an alarm. |
 | Scan the active route ahead for hazards, bridges, and locks | boolean | false | Read the active Course API route and warn about hazards, bridges, and locks along it. |
-| Route corridor width in metres | number | 500 | How far either side of the route line a point of interest counts as on the route. |
+| Route corridor width in meters | number | 500 | How far either side of the route line a point of interest counts as on the route. |
 
 Deselecting every POI type makes the plugin import nothing. A configuration
 created before these toggles existed, which carries none of the toggle
