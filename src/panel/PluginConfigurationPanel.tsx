@@ -3,24 +3,21 @@
  * loads it from remoteEntry.js and renders it in place of the generated
  * react-jsonschema-form, passing the current configuration and a fire-and-forget
  * save callback.
+ *
+ * The panel is laid out in four zones: the status bar, the Data sources
+ * accordion (one collapsible card per POI source), the Alerts section, and the
+ * footer. The accordion keeps each source to a single collapsed row by
+ * default, so adding sources does not clutter the panel.
  */
 
 import type * as React from 'react'
 import { useEffect, useState } from 'react'
-import ActiveCaptainPoiTypes from './components/ActiveCaptainPoiTypes.js'
-import CacheDurationField from './components/CacheDurationField.js'
+import AlertsSection from './components/AlertsSection.js'
+import DataSourcesSection from './components/DataSourcesSection.js'
 import FooterBar from './components/FooterBar.js'
-import ProximityAlarmFields from './components/ProximityAlarmFields.js'
-import RatingFilterField from './components/RatingFilterField.js'
-import RouteHazardScanFields from './components/RouteHazardScanFields.js'
 import StatusBar from './components/StatusBar.js'
 import { useConfig } from './hooks/use-config.js'
 import { useStatus } from './hooks/use-status.js'
-import {
-  DEFAULT_MINIMUM_RATING,
-  DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
-  DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
-} from './normalize-config.js'
 import { S, THEME_STYLE } from './styles.js'
 
 /** How long, in milliseconds, the "Saved" confirmation pill stays visible. */
@@ -67,31 +64,8 @@ export default function PluginConfigurationPanel ({ configuration, save }: Props
           </div>
           )
         : null}
-      <CacheDurationField
-        value={state.cachingDurationMinutes}
-        onChange={(minutes) => dispatch({ type: 'setCacheDuration', minutes })}
-      />
-      <RatingFilterField
-        value={state.minimumRating ?? DEFAULT_MINIMUM_RATING}
-        onChange={(rating) => dispatch({ type: 'setMinimumRating', rating })}
-      />
-      <ActiveCaptainPoiTypes
-        config={state}
-        onToggle={(flag, enabled) => dispatch({ type: 'setPoiType', flag, enabled })}
-        onSetAll={(enabled) => dispatch({ type: 'setAllPoiTypes', enabled })}
-      />
-      <ProximityAlarmFields
-        enabled={state.enableProximityAlarms === true}
-        radiusMeters={state.proximityAlarmRadiusMeters ?? DEFAULT_PROXIMITY_ALARM_RADIUS_METERS}
-        onToggleEnabled={(enabled) => dispatch({ type: 'setProximityAlarmsEnabled', enabled })}
-        onChangeRadius={(meters) => dispatch({ type: 'setProximityAlarmRadius', meters })}
-      />
-      <RouteHazardScanFields
-        enabled={state.enableRouteHazardScan === true}
-        corridorWidthMeters={state.routeCorridorWidthMeters ?? DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS}
-        onToggleEnabled={(enabled) => dispatch({ type: 'setRouteHazardScanEnabled', enabled })}
-        onChangeWidth={(meters) => dispatch({ type: 'setRouteCorridorWidth', meters })}
-      />
+      <DataSourcesSection state={state} dispatch={dispatch} />
+      <AlertsSection state={state} dispatch={dispatch} />
       <FooterBar
         dirty={dirty}
         justSavedAt={justSavedAt}
