@@ -17,6 +17,7 @@ import type { OverpassClient, OverpassElement } from './overpass-client.js'
 import { elementPoiType, seamarkRegex } from './seamark-mapping.js'
 import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
+import { MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
 import type { Bbox, PoiDetailView, PoiSummary, PoiType } from '../../shared/types.js'
 
 /** The stable id of the OpenSeaMap source. */
@@ -31,9 +32,6 @@ export const OPENSEAMAP_ATTRIBUTION = '© OpenStreetMap contributors (ODbL)'
 
 /** Prefix of an OpenStreetMap element page, completed with the typed id. */
 const OSM_ELEMENT_URL_PREFIX = 'https://www.openstreetmap.org/'
-
-/** Hard ceiling on cached detail entries, guarding memory on long sessions. */
-const MAX_CACHE_ENTRIES = 5000
 
 /** Dependencies for {@link createOpenSeaMapSource}. */
 export interface OpenSeaMapSourceConfig {
@@ -116,7 +114,7 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
 
   // Detail cache, populated from every list query. `getDetails` queries
   // Overpass by id only on a miss.
-  const cache = new LRUCache<string, OverpassElement>({ max: MAX_CACHE_ENTRIES })
+  const cache = new LRUCache<string, OverpassElement>({ max: MAX_POI_CACHE_ENTRIES })
 
   return {
     id: OPENSEAMAP_SOURCE_ID,
