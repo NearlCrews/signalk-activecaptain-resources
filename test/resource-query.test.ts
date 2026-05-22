@@ -25,6 +25,30 @@ test('resolvePosition returns null for unusable input', () => {
   assert.equal(resolvePosition({ latitude: 25.77 }), null)
 })
 
+test('resolvePosition rejects blank, whitespace-only, or null components', () => {
+  // Number('') and Number(null) both yield 0, so without an explicit guard a
+  // blank component would coerce to a real coordinate of 0 (Null Island).
+  assert.equal(resolvePosition({ latitude: '', longitude: '' }), null)
+  assert.equal(resolvePosition({ latitude: '  ', longitude: '  ' }), null)
+  assert.equal(resolvePosition({ latitude: null, longitude: null }), null)
+  assert.equal(resolvePosition({ latitude: 25.77, longitude: '' }), null)
+  assert.equal(resolvePosition(['', '']), null)
+  assert.equal(resolvePosition(['  ', '  ']), null)
+  assert.equal(resolvePosition([null, null]), null)
+})
+
+test('resolvePosition accepts genuine numeric strings, including "0"', () => {
+  assert.deepEqual(
+    resolvePosition({ latitude: '0', longitude: '0' }),
+    { latitude: 0, longitude: 0 }
+  )
+  assert.deepEqual(
+    resolvePosition({ latitude: '25.77', longitude: '-80.18' }),
+    { latitude: 25.77, longitude: -80.18 }
+  )
+  assert.deepEqual(resolvePosition(['0', '0']), { latitude: 0, longitude: 0 })
+})
+
 test('resolveBbox derives a box from a position object and distance', () => {
   const bbox = resolveBbox({ position: { latitude: 25.77, longitude: -80.18 }, distance: 3000 })
   assert.ok(bbox !== null)
@@ -66,4 +90,21 @@ test('resolveBbox returns null for a malformed bbox', () => {
   assert.equal(resolveBbox({ bbox: '1,2,3' }), null)
   assert.equal(resolveBbox({ bbox: [1, 2, 'x', 4] }), null)
   assert.equal(resolveBbox({ bbox: 42 }), null)
+})
+
+test('resolveBbox rejects a bbox of blank or null components', () => {
+  // `,,,` parses to four empty strings; Number('') is 0, so without a guard
+  // this would resolve to the box {0,0,0,0} around Null Island.
+  assert.equal(resolveBbox({ bbox: ',,,' }), null)
+  assert.equal(resolveBbox({ bbox: ' , , , ' }), null)
+  assert.equal(resolveBbox({ bbox: ['', '', '', ''] }), null)
+  assert.equal(resolveBbox({ bbox: [1, 2, null, 4] }), null)
+})
+
+test('resolveBbox does not resolve a blank position to Null Island', () => {
+  assert.equal(
+    resolveBbox({ position: { latitude: '', longitude: '' }, distance: 3000 }),
+    null
+  )
+  assert.equal(resolveBbox({ position: ['', ''], distance: 3000 }), null)
 })

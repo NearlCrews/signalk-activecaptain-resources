@@ -7,6 +7,29 @@ import { positionToBbox } from '../../geo/position-utilities.js'
 import type { Bbox, Position } from '../../shared/types.js'
 
 /**
+ * Coerce a single loosely typed query component into a finite number, or
+ * `null` when it is not a genuine number.
+ *
+ * `Number('')`, `Number('  ')`, `Number(null)`, and `Number([])` all yield 0,
+ * a finite number, so a blank, whitespace-only, or absent component would
+ * otherwise coerce to a real coordinate of 0. A blank component is rejected as
+ * not-a-number here; a genuine numeric string, including `"0"`, is accepted.
+ */
+function toFiniteNumber (raw: unknown): number | null {
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) ? raw : null
+  }
+  if (typeof raw === 'string') {
+    if (raw.trim() === '') {
+      return null
+    }
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : null
+  }
+  return null
+}
+
+/**
  * Normalize a query `position` value into a Position, or null if unusable.
  *
  * SignalK passes the search center either as a `{ latitude, longitude }`
@@ -15,9 +38,9 @@ import type { Bbox, Position } from '../../shared/types.js'
  */
 export function resolvePosition (raw: unknown): Position | null {
   if (Array.isArray(raw) && raw.length >= 2) {
-    const longitude = Number(raw[0])
-    const latitude = Number(raw[1])
-    if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
+    const longitude = toFiniteNumber(raw[0])
+    const latitude = toFiniteNumber(raw[1])
+    if (longitude !== null && latitude !== null) {
       return { latitude, longitude }
     }
     return null
@@ -25,9 +48,9 @@ export function resolvePosition (raw: unknown): Position | null {
 
   if (raw !== null && typeof raw === 'object') {
     const candidate = raw as Record<string, unknown>
-    const latitude = Number(candidate.latitude)
-    const longitude = Number(candidate.longitude)
-    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    const latitude = toFiniteNumber(candidate.latitude)
+    const longitude = toFiniteNumber(candidate.longitude)
+    if (latitude !== null && longitude !== null) {
       return { latitude, longitude }
     }
   }
@@ -56,10 +79,11 @@ function resolveExplicitBbox (raw: unknown): Bbox | null {
   if (parts.length !== 4) {
     return null
   }
-  const [west, south, east, north] = parts.map(Number)
-  if (![west, south, east, north].every(value => Number.isFinite(value))) {
+  const numbers = parts.map(toFiniteNumber)
+  if (numbers.some(value => value === null)) {
     return null
   }
+  const [west, south, east, north] = numbers as number[]
   return { west, south, east, north }
 }
 
