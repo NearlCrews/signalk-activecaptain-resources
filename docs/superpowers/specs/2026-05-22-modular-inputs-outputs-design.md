@@ -23,6 +23,11 @@ stay green.
 - The webpack-exposed Module Federation name `./PluginConfigurationPanel`
   stays exactly as-is; the SignalK admin UI looks it up by that name.
 - All 212 existing tests stay green.
+- The codebase is converted to American English (spelling in comments,
+  strings, identifiers, and docs). The current code uses British spellings
+  (`metres`, `normalise`, `behaviour`); these become `meters`, `normalize`,
+  `behavior`. This is a precondition step, done before the restructure so
+  every moved file and every new module is American English from the start.
 
 ## Concepts
 
@@ -123,8 +128,8 @@ src/
     input-registry.ts
     active-captain/
       active-captain-input.ts    the InputModule (owns its config fragment)
+      active-captain-source.ts   the PoiSource adapter (client + cache + store)
       active-captain-client.ts   (was activeCaptainClient.ts)
-      active-captain-types.ts    AC wire types (moved out of types.ts)
       poi-cache.ts               (was poiCache.ts)
       poi-store.ts               (was poiStore.ts)
       poi-detail-renderer.ts     (was handlebarsUtilities.ts)
@@ -156,7 +161,7 @@ src/
     status-router.ts             (was statusRouter.ts)
     status-types.ts              (was statusTypes.ts)
   shared/
-    types.ts                     cross-module domain types only
+    types.ts                     shared data-shape contracts (was types.ts)
     plugin-id.ts                 (was pluginId.ts)
   panel/                         files renamed; structure unchanged
 ```
