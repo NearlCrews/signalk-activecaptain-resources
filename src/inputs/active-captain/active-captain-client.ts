@@ -2,14 +2,16 @@
  * HTTP client for the ActiveCaptain community API.
  *
  * This module replaces the old axios-based client. It uses the native global
- * fetch (Node 20+), applies client-side rate limiting (concurrency cap, request
- * throttle, retry with backoff that respects HTTP 429 and the Retry-After
- * header), and exposes a small factory.
+ * fetch and `AbortSignal.any` (Node 20.3+), applies client-side rate limiting
+ * (concurrency cap, request throttle, retry with backoff that respects HTTP 429
+ * and the Retry-After header), and exposes a small factory.
  *
  * Error contract: both client methods REJECT on failure. Neither method ever
  * resolves with undefined. The old client swallowed errors in a .catch and
- * returned undefined, which crashed callers that ran .map on the result. The
- * caller (index.ts) is responsible for handling rejections.
+ * returned undefined, which crashed callers that ran .map on the result.
+ * Rejections are handled by the callers: active-captain-source.ts records
+ * list outcomes, and poi-cache.ts routes detail outcomes to the source's
+ * cache listener.
  */
 
 import type { Bbox, PoiDetails, PoiListResponse, PoiSummary, Logger } from '../../shared/types.js'
@@ -339,7 +341,10 @@ export function createActiveCaptainClient (
 
       return usable.map(poi => {
         const summary: PoiSummary = {
-          id: poi.id,
+          // The API returns numeric POI ids; coerce so PoiSummary.id is
+          // genuinely a string and a later .replace() in the alarm code
+          // cannot throw on a number.
+          id: String(poi.id),
           type: poi.poiType,
           position: {
             longitude: poi.mapLocation.longitude,
@@ -374,7 +379,12 @@ export function createActiveCaptainClient (
 
       const data = await response.json() as PoiDetails
       const poi = data?.pointOfInterest
-      if (poi?.poiType == null || poi.mapLocation == null) {
+      if (
+        poi?.poiType == null ||
+        poi.mapLocation == null ||
+        typeof poi.name !== 'string' ||
+        poi.name.length === 0
+      ) {
         throw new Error(
           `ActiveCaptain details response for ${id} is missing required point-of-interest fields`
         )
