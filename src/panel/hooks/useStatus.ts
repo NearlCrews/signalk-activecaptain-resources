@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { PLUGIN_ID } from '../../shared/plugin-id.js'
-import type { StatusSnapshot } from '../../statusTypes.js'
+import type { StatusSnapshot } from '../../status/status-types.js'
 
 /** The admin-gated status endpoint the plugin exposes through registerWithRouter. */
 const STATUS_URL = `/plugins/${PLUGIN_ID}/api/status`

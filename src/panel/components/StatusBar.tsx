@@ -5,7 +5,7 @@
  */
 
 import type * as React from 'react'
-import type { StatusSnapshot } from '../../statusTypes.js'
+import type { StatusSnapshot } from '../../status/status-types.js'
 import { S } from '../styles.js'
 
 /** Relative-time units, largest first, paired with their length in seconds. */

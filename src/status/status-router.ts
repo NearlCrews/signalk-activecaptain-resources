@@ -11,8 +11,8 @@
 
 import type { IRouter } from 'express'
 import type { ServerAPI } from '@signalk/server-api'
-import { PLUGIN_ID } from './shared/plugin-id.js'
-import type { StatusSnapshot } from './statusTypes.js'
+import { PLUGIN_ID } from '../shared/plugin-id.js'
+import type { StatusSnapshot } from './status-types.js'
 
 /** Subtree to admin-gate, an absolute path under the mounted router. */
 const API_PATH = `/plugins/${PLUGIN_ID}/api`

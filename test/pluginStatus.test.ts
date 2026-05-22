@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createPluginStatus } from '../src/pluginStatus.js'
+import { createPluginStatus } from '../src/status/plugin-status.js'
 
 test('a fresh recorder reports apiReachable null and no list fetch', () => {
   const snapshot = createPluginStatus().snapshot(0)

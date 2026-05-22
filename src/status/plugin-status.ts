@@ -8,7 +8,7 @@
  * most recent request succeeded or failed.
  */
 
-import type { LastListFetch, StatusError, StatusSnapshot } from './statusTypes.js'
+import type { LastListFetch, StatusError, StatusSnapshot } from './status-types.js'
 
 /** Upper bound on retained errors. Older entries are dropped past this count. */
 const MAX_RECENT_ERRORS = 5
