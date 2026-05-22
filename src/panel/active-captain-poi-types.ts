@@ -66,10 +66,12 @@ type GroupedFlag = typeof ACTIVE_CAPTAIN_POI_TYPE_GROUPS[number]['options'][numb
  * Compile-time guard that the grouped UI list covers every PoiTypeFlag
  * exactly. Adding a flag to PluginConfig without listing it in a group, or
  * listing a flag here that PluginConfig does not carry, makes this fail.
+ *
+ * Exported only so TypeScript treats it as a used local; nothing reads its
+ * runtime value.
  */
 type AssertExhaustive =
   Exclude<PoiTypeFlag, GroupedFlag> extends never
     ? Exclude<GroupedFlag, PoiTypeFlag> extends never ? true : 'extra flag in panel groups'
     : 'PoiTypeFlag missing from panel groups'
-const _exhaustive: AssertExhaustive = true
-void _exhaustive
+export const ACTIVE_CAPTAIN_POI_TYPE_GROUPS_EXHAUSTIVE_WITNESS: AssertExhaustive = true
