@@ -107,7 +107,7 @@ function isKnown (value: string | undefined): boolean {
  * local time. ActiveCaptain serves them as UTC, so a zone-less value gets a
  * trailing 'Z' before parsing.
  */
-function parseApiDate (value: unknown): Date {
+export function parseApiDate (value: unknown): Date {
   let text = String(value)
   if (/^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(text)) {
     text += 'Z'
@@ -145,14 +145,28 @@ export function fromNow (date: Date, now: Date = new Date()): string {
   }
 
   const deltaSeconds = Math.round((date.getTime() - now.getTime()) / 1000)
+  const absSeconds = Math.abs(deltaSeconds)
 
-  for (const [unit, secondsPerUnit] of RELATIVE_UNITS) {
-    if (Math.abs(deltaSeconds) >= secondsPerUnit || unit === 'second') {
-      return relativeTimeFormat.format(Math.round(deltaSeconds / secondsPerUnit), unit)
+  // Pick the coarsest unit the delta reaches; 'second' (the last entry) is the
+  // floor for a sub-second delta.
+  let index = RELATIVE_UNITS.length - 1
+  for (let i = 0; i < RELATIVE_UNITS.length; i++) {
+    if (absSeconds >= RELATIVE_UNITS[i][1]) {
+      index = i
+      break
     }
   }
 
-  return relativeTimeFormat.format(0, 'second')
+  // Rounding within the chosen unit can spill into the next unit up: 3599 s is
+  // under an hour but rounds to 60 minutes. When the rounded count reaches the
+  // larger unit, step up so it reads "1 hour" rather than "60 minutes".
+  while (index > 0 &&
+    Math.round(absSeconds / RELATIVE_UNITS[index][1]) * RELATIVE_UNITS[index][1] >= RELATIVE_UNITS[index - 1][1]) {
+    index -= 1
+  }
+
+  const [unit, secondsPerUnit] = RELATIVE_UNITS[index]
+  return relativeTimeFormat.format(Math.round(deltaSeconds / secondsPerUnit), unit)
 }
 
 /** True when the fuel section is present and carries at least one definite value. */
@@ -234,6 +248,34 @@ export function hasNavigation (details: PoiDetails): boolean {
     (navigation.tide ?? 0) > 0 ||
     (navigation.depthApproach ?? 0) > 0 ||
     hasNotes(navigation.notes)
+}
+
+/**
+ * A Hazard report is treated as stale once its `dateLastModified` is more than
+ * this many years in the past. A stale hazard report is a safety signal: the
+ * crew should be told the entry may no longer reflect conditions on the water.
+ */
+const STALE_HAZARD_YEARS = 2
+
+/**
+ * True when `details` is a Hazard whose last-modified date is more than
+ * `STALE_HAZARD_YEARS` years before `now`. Non-hazard points of interest, and
+ * hazards modified more recently, are never stale. An unparseable date is
+ * treated as not stale rather than raising a false warning.
+ */
+export function isStaleHazard (details: PoiDetails, now: Date = new Date()): boolean {
+  if (details.pointOfInterest.poiType !== 'Hazard') {
+    return false
+  }
+
+  const modified = parseApiDate(details.pointOfInterest.dateLastModified)
+  if (!Number.isFinite(modified.getTime())) {
+    return false
+  }
+
+  const staleBefore = new Date(now)
+  staleBefore.setFullYear(staleBefore.getFullYear() - STALE_HAZARD_YEARS)
+  return modified.getTime() < staleBefore.getTime()
 }
 
 /**
@@ -328,6 +370,12 @@ function buildEnvironment (): typeof Handlebars {
       return predicate(this.data) ? options.fn(this) : options.inverse(this)
     })
   }
+
+  // Block helper that renders its body only for a Hazard whose report has gone
+  // stale, so the header can carry a freshness warning the crew must see.
+  env.registerHelper('staleHazard', function (this: TemplateRoot, options: Handlebars.HelperOptions) {
+    return isStaleHazard(this.data) ? options.fn(this) : options.inverse(this)
+  })
 
   return env
 }

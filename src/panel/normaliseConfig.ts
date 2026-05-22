@@ -36,12 +36,34 @@ import type { PluginConfig } from '../types.js'
  */
 export const DEFAULT_CACHE_DURATION_MINUTES = 60
 
+/** Lowest minimum rating: 0 disables the rating filter and shows every point. */
+export const MIN_RATING = 0
+
+/** Highest minimum rating ActiveCaptain awards. */
+export const MAX_RATING = 5
+
+/**
+ * Fallback minimum rating. Mirrors the `minimumRating` schema default in
+ * src/index.ts; keep the two in step so the panel and the plugin agree.
+ */
+export const DEFAULT_MINIMUM_RATING = MIN_RATING
+
+/**
+ * Fallback proximity-alarm radius, in metres. Mirrors the
+ * `proximityAlarmRadiusMeters` schema default in src/index.ts; keep the two in
+ * step so the panel and the plugin agree.
+ */
+export const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
+
 /**
  * Coerce the admin UI's untyped `configuration` prop into a fully populated
  * PluginConfig. A POI-type flag absent from the stored config defaults to
  * true, matching the plugin schema, so a never-configured plugin shows every
  * type enabled rather than appearing to import nothing. A non-positive or
- * non-numeric cache duration falls back to the default.
+ * non-numeric cache duration falls back to the default. The minimum rating,
+ * the proximity-alarm toggle, and the alarm radius each fall back to their
+ * schema default when absent or unusable, and the rating is clamped to its
+ * valid range.
  */
 export function normaliseConfig (configuration: unknown): PluginConfig {
   const raw = (typeof configuration === 'object' && configuration !== null)
@@ -57,5 +79,20 @@ export function normaliseConfig (configuration: unknown): PluginConfig {
   for (const [flag] of POI_TYPE_FLAGS) {
     config[flag] = raw[flag] !== false
   }
+
+  const rating = raw.minimumRating
+  config.minimumRating = typeof rating === 'number' && Number.isFinite(rating)
+    ? Math.min(MAX_RATING, Math.max(MIN_RATING, rating))
+    : DEFAULT_MINIMUM_RATING
+
+  config.enableProximityAlarms = raw.enableProximityAlarms === true
+
+  // A zero or negative radius would leave the alarm enabled but unable to ever
+  // fire, so it is treated as unusable and falls back to the default.
+  const radius = raw.proximityAlarmRadiusMeters
+  config.proximityAlarmRadiusMeters = typeof radius === 'number' && Number.isFinite(radius) && radius > 0
+    ? radius
+    : DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+
   return config
 }

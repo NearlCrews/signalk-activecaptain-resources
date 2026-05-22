@@ -26,7 +26,8 @@
  * Geographic helpers for the signalk-activecaptain-resources plugin.
  *
  * This module turns a centre point plus a search radius into a bounding box
- * suitable for the ActiveCaptain bounding-box list endpoint.
+ * suitable for the ActiveCaptain bounding-box list endpoint, and measures the
+ * great-circle distance between two positions for the proximity alarms.
  *
  * It works only with the typed `Position` and `Bbox` objects from `./types`.
  * Parsing the raw SignalK `ResourceProviderMethods.listResources` query into a
@@ -101,6 +102,35 @@ function projectPosition (position: Position, bearingDegrees: number, distanceKm
     latitude: toDegrees(newLatitudeRad),
     longitude: normalizeLongitude(toDegrees(newLongitudeRad))
   }
+}
+
+/**
+ * Great-circle distance between two positions, in metres.
+ *
+ * Uses the haversine formula on a spherical Earth. Accuracy is well within a
+ * fraction of a percent at the short ranges this plugin works with (a hazard
+ * within a few hundred metres of the vessel), which is far better than the
+ * positional accuracy of the underlying ActiveCaptain data.
+ *
+ * @param a - The first position.
+ * @param b - The second position.
+ * @returns The distance between the two positions in metres.
+ */
+export function distanceMeters (a: Position, b: Position): number {
+  const latitudeA = toRadians(a.latitude)
+  const latitudeB = toRadians(b.latitude)
+  const deltaLatitude = toRadians(b.latitude - a.latitude)
+  const deltaLongitude = toRadians(b.longitude - a.longitude)
+
+  const haversine =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(latitudeA) * Math.cos(latitudeB) * Math.sin(deltaLongitude / 2) ** 2
+  // Clamp before asin's companion: floating-point error can push the argument
+  // a hair past 1 for two near-identical positions, and Math.sqrt of a tiny
+  // negative is NaN.
+  const angularDistance = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(Math.max(0, 1 - haversine)))
+
+  return EARTH_RADIUS_KM * 1000 * angularDistance
 }
 
 /**

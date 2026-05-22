@@ -101,6 +101,50 @@ test('setAllPoiTypes returns the same state when nothing changes', () => {
   assert.equal(next, state)
 })
 
+test('setMinimumRating updates the minimum rating', () => {
+  const next = configReducer(baseConfig(), { type: 'setMinimumRating', rating: 4 })
+  assert.equal(next.minimumRating, 4)
+})
+
+test('setMinimumRating returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), minimumRating: 3 }
+  const next = configReducer(state, { type: 'setMinimumRating', rating: 3 })
+  assert.equal(next, state)
+})
+
+test('setMinimumRating leaves the cache duration untouched', () => {
+  const next = configReducer(baseConfig(), { type: 'setMinimumRating', rating: 2 })
+  assert.equal(next.cachingDurationMinutes, 60)
+})
+
+test('setProximityAlarmsEnabled enables the alarms', () => {
+  const next = configReducer(baseConfig(), { type: 'setProximityAlarmsEnabled', enabled: true })
+  assert.equal(next.enableProximityAlarms, true)
+})
+
+test('setProximityAlarmsEnabled disables the alarms', () => {
+  const state: PluginConfig = { ...baseConfig(), enableProximityAlarms: true }
+  const next = configReducer(state, { type: 'setProximityAlarmsEnabled', enabled: false })
+  assert.equal(next.enableProximityAlarms, false)
+})
+
+test('setProximityAlarmsEnabled returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), enableProximityAlarms: true }
+  const next = configReducer(state, { type: 'setProximityAlarmsEnabled', enabled: true })
+  assert.equal(next, state)
+})
+
+test('setProximityAlarmRadius updates the radius', () => {
+  const next = configReducer(baseConfig(), { type: 'setProximityAlarmRadius', meters: 250 })
+  assert.equal(next.proximityAlarmRadiusMeters, 250)
+})
+
+test('setProximityAlarmRadius returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), proximityAlarmRadiusMeters: 500 }
+  const next = configReducer(state, { type: 'setProximityAlarmRadius', meters: 500 })
+  assert.equal(next, state)
+})
+
 test('discard returns the supplied configuration', () => {
   const edited: PluginConfig = { ...baseConfig(), cachingDurationMinutes: 999, includeMarinas: true }
   const saved: PluginConfig = { ...baseConfig(), includeAnchorages: true }

@@ -25,7 +25,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { DEFAULT_CACHE_DURATION_MINUTES, normaliseConfig } from '../src/panel/normaliseConfig.js'
+import {
+  DEFAULT_CACHE_DURATION_MINUTES,
+  DEFAULT_MINIMUM_RATING,
+  DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
+  normaliseConfig
+} from '../src/panel/normaliseConfig.js'
 import { POI_TYPE_FLAGS } from '../src/poiTypeSelection.js'
 
 test('normaliseConfig fills every POI flag true and the default duration for an empty config', () => {
@@ -59,4 +64,55 @@ test('normaliseConfig treats a non-object configuration as empty', () => {
     assert.equal(config.cachingDurationMinutes, DEFAULT_CACHE_DURATION_MINUTES)
     assert.equal(config.includeMarinas, true)
   }
+})
+
+test('normaliseConfig defaults the safety options for an empty config', () => {
+  const config = normaliseConfig({})
+  assert.equal(config.minimumRating, DEFAULT_MINIMUM_RATING)
+  assert.equal(config.enableProximityAlarms, false)
+  assert.equal(config.proximityAlarmRadiusMeters, DEFAULT_PROXIMITY_ALARM_RADIUS_METERS)
+})
+
+test('normaliseConfig keeps valid safety options', () => {
+  const config = normaliseConfig({
+    minimumRating: 3,
+    enableProximityAlarms: true,
+    proximityAlarmRadiusMeters: 250
+  })
+  assert.equal(config.minimumRating, 3)
+  assert.equal(config.enableProximityAlarms, true)
+  assert.equal(config.proximityAlarmRadiusMeters, 250)
+})
+
+test('normaliseConfig clamps an out-of-range minimum rating', () => {
+  assert.equal(normaliseConfig({ minimumRating: 9 }).minimumRating, 5)
+  assert.equal(normaliseConfig({ minimumRating: -2 }).minimumRating, 0)
+})
+
+test('normaliseConfig falls back to the default for an unusable minimum rating', () => {
+  assert.equal(normaliseConfig({ minimumRating: 'high' }).minimumRating, DEFAULT_MINIMUM_RATING)
+  assert.equal(normaliseConfig({ minimumRating: Number.NaN }).minimumRating, DEFAULT_MINIMUM_RATING)
+})
+
+test('normaliseConfig treats a non-true enableProximityAlarms as false', () => {
+  assert.equal(normaliseConfig({ enableProximityAlarms: 'yes' }).enableProximityAlarms, false)
+  assert.equal(normaliseConfig({ enableProximityAlarms: false }).enableProximityAlarms, false)
+})
+
+test('normaliseConfig falls back to the default for an unusable alarm radius', () => {
+  assert.equal(
+    normaliseConfig({ proximityAlarmRadiusMeters: -10 }).proximityAlarmRadiusMeters,
+    DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+  )
+  assert.equal(
+    normaliseConfig({ proximityAlarmRadiusMeters: 'far' }).proximityAlarmRadiusMeters,
+    DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+  )
+})
+
+test('normaliseConfig falls back to the default for a zero alarm radius', () => {
+  assert.equal(
+    normaliseConfig({ proximityAlarmRadiusMeters: 0 }).proximityAlarmRadiusMeters,
+    DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+  )
 })

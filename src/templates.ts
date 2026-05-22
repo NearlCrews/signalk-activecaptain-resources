@@ -65,9 +65,20 @@ export const NOTES_PARTIAL = `{{#if this}}
 </div>
 {{/if}}`
 
-/** Header partial: last-updated line, free-form notes, the review summary, and a featured review. */
+/**
+ * Header partial: last-updated line, a stale-hazard freshness warning,
+ * free-form notes, the review summary, and a featured review.
+ *
+ * The `staleHazard` block renders only for a Hazard whose report has not been
+ * confirmed in over two years. The warning is factual rather than alarmist: it
+ * states how long ago the report was last updated and asks the crew to confirm
+ * conditions locally.
+ */
 export const HEADER_PARTIAL = `<hr/>
 <sup>last updated {{fromNow data.pointOfInterest.dateLastModified}}</sup><br/>
+{{#staleHazard}}
+<p>\u{26A0}\u{FE0F} <strong>Hazard report not recently confirmed.</strong> This hazard report was last updated {{fromNow data.pointOfInterest.dateLastModified}} and may no longer reflect conditions on the water. Confirm locally before relying on it.</p>
+{{/staleHazard}}
 
 {{> notes data.pointOfInterest.notes}}
 

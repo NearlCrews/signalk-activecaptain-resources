@@ -36,6 +36,9 @@ export type ConfigAction =
   | { type: 'setCacheDuration', minutes: number }
   | { type: 'setPoiType', flag: PoiTypeFlag, enabled: boolean }
   | { type: 'setAllPoiTypes', enabled: boolean }
+  | { type: 'setMinimumRating', rating: number }
+  | { type: 'setProximityAlarmsEnabled', enabled: boolean }
+  | { type: 'setProximityAlarmRadius', meters: number }
   | { type: 'discard', config: PluginConfig }
 
 /**
@@ -65,5 +68,14 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
       }
       return changed ? next : state
     }
+    case 'setMinimumRating':
+      if (state.minimumRating === action.rating) return state
+      return { ...state, minimumRating: action.rating }
+    case 'setProximityAlarmsEnabled':
+      if (state.enableProximityAlarms === action.enabled) return state
+      return { ...state, enableProximityAlarms: action.enabled }
+    case 'setProximityAlarmRadius':
+      if (state.proximityAlarmRadiusMeters === action.meters) return state
+      return { ...state, proximityAlarmRadiusMeters: action.meters }
   }
 }

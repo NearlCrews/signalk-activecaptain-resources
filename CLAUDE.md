@@ -36,12 +36,21 @@ In practice:
     native `fetch` with rate limiting, exponential backoff, and `Retry-After`
     support.
   - `poiCache.ts` - TTL cache of point-of-interest detail responses, backed by
-    `lru-cache`.
-  - `positionUtilities.ts` - geo helpers (position to bounding box, etc).
+    `lru-cache` and persisted through `poiStore.ts`.
+  - `poiStore.ts` - disk-backed store of point-of-interest detail in the plugin
+    data directory, so the cache survives a restart and is readable offline.
+  - `positionUtilities.ts` - geo helpers: position to bounding box, and the
+    great-circle `distanceMeters`.
+  - `positionMonitor.ts` - subscribes to `navigation.position`, scans for
+    nearby hazards as the vessel moves, and drives the proximity-alarm
+    evaluation.
+  - `proximityAlarms.ts` - emits SignalK hazard notifications, with hysteresis,
+    when the vessel is near a Hazard point of interest.
   - `resourceQuery.ts` - parses an incoming Signal K resource query into a
     bounding box and position (`resolveBbox`, `resolvePosition`).
   - `poiTypeSelection.ts` - maps the config POI-type toggles to the API
     `poiTypes` string (`POI_TYPE_FLAGS`, `buildPoiTypesString`).
+  - `ratingFilter.ts` - drops list entries rated below the configured minimum.
   - `handlebarsUtilities.ts` - registers Handlebars helpers and renders POI
     detail descriptions. Relative times use the native `Intl` API.
   - `templates.ts` - Handlebars templates and partials, inlined as string
@@ -51,6 +60,7 @@ In practice:
   - `statusRouter.ts` - admin-gated Express router factory that serves the
     status snapshot.
   - `statusTypes.ts` - the `StatusSnapshot` type, shared by plugin and panel.
+  - `pluginId.ts` - the plugin id, shared by the plugin and the panel.
   - `types.ts` - shared type contracts (the single source of truth for the
     data shapes that flow between modules and the ActiveCaptain wire types).
   - `panel/` - federated React configuration panel (`index.tsx`,

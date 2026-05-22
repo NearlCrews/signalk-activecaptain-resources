@@ -112,6 +112,10 @@ export interface PoiSummary {
   type: PoiType
   position: Position
   name: string
+  /** Average review rating (0 to 5), when the list response carries one. */
+  rating?: number
+  /** Number of reviews behind the rating. */
+  reviewCount?: number
 }
 
 /** Identity and location block present in every summary response. */
@@ -284,10 +288,12 @@ export interface PoiDetails {
 }
 
 /**
- * The PluginConfig keys that toggle a POI type, i.e. every key except the
- * caching duration. Used to type the POI-type flag table and the config panel.
+ * The PluginConfig keys that toggle a POI type: every `includeX` key. Used to
+ * type the POI-type flag table and the config panel. Defined by the `include`
+ * prefix so non-toggle settings (the caching duration, the rating filter, the
+ * proximity-alarm options) are never mistaken for POI-type flags.
  */
-export type PoiTypeFlag = Exclude<keyof PluginConfig, 'cachingDurationMinutes'>
+export type PoiTypeFlag = Extract<keyof PluginConfig, `include${string}`>
 
 /** Plugin configuration as supplied by the SignalK admin UI. */
 export interface PluginConfig {
@@ -305,4 +311,10 @@ export interface PluginConfig {
   includeLocalKnowledge?: boolean
   includeNavigational?: boolean
   includeAirports?: boolean
+  /** Subscribe to the vessel position, scan for nearby hazards, and emit alarms. */
+  enableProximityAlarms?: boolean
+  /** Distance, in metres, within which a hazard raises a proximity alarm. */
+  proximityAlarmRadiusMeters?: number
+  /** Hide points of interest whose average rating is below this value (0 to 5). */
+  minimumRating?: number
 }

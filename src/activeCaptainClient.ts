@@ -361,15 +361,25 @@ export function createActiveCaptainClient (
         log.debug(`Skipped ${skipped} cluster or malformed point(s) of interest in the list response`)
       }
 
-      return usable.map(poi => ({
-        id: poi.id,
-        type: poi.poiType,
-        position: {
-          longitude: poi.mapLocation.longitude,
-          latitude: poi.mapLocation.latitude
-        },
-        name: poi.name
-      }))
+      return usable.map(poi => {
+        const summary: PoiSummary = {
+          id: poi.id,
+          type: poi.poiType,
+          position: {
+            longitude: poi.mapLocation.longitude,
+            latitude: poi.mapLocation.latitude
+          },
+          name: poi.name
+        }
+        // Carry the review score through when the list response includes one.
+        // A point of interest with no reviews has no reviewSummary, so rating
+        // and reviewCount are left off the summary entirely.
+        if (poi.reviewSummary != null) {
+          summary.rating = poi.reviewSummary.averageRating
+          summary.reviewCount = poi.reviewSummary.numberOfReviews
+        }
+        return summary
+      })
     } catch (error) {
       log.debug(`ERROR fetching points of interest list ${JSON.stringify(bbox)} - ${String(error)}`)
       throw error

@@ -66,7 +66,9 @@ export const THEME_STYLE = `
   outline: 2px solid var(--ac-accent);
   outline-offset: 1px;
 }
-.ac-config-panel button:disabled {
+.ac-config-panel button:disabled,
+.ac-config-panel input:disabled,
+.ac-config-panel select:disabled {
   background: var(--ac-surface-raised) !important;
   color: var(--ac-text-faint) !important;
   border-color: var(--ac-border) !important;
@@ -195,6 +197,24 @@ export const S: Record<string, CSSProperties> = {
     cursor: 'pointer'
   },
   checkbox: { width: 16, height: 16, flexShrink: 0, cursor: 'pointer' },
+
+  // Proximity alarm fields.
+  proximityToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 13,
+    color: 'var(--ac-text)',
+    cursor: 'pointer',
+    marginBottom: 8
+  },
+  proximityRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 12
+  },
 
   // Footer.
   footer: {

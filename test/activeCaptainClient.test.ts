@@ -97,6 +97,48 @@ test('listPointsOfInterest normalises the wire response', async () => {
   )
 })
 
+test('listPointsOfInterest carries the reviewSummary rating into the summary', async () => {
+  await withMockFetch(
+    () => jsonResponse({
+      pointsOfInterest: [
+        {
+          id: '42',
+          poiType: 'Marina',
+          mapLocation: { latitude: 12.5, longitude: -70.1 },
+          name: 'Rated Marina',
+          reviewSummary: { averageRating: 4.5, numberOfReviews: 12 }
+        },
+        {
+          id: '43',
+          poiType: 'Marina',
+          mapLocation: { latitude: 12.6, longitude: -70.2 },
+          name: 'Unrated Marina'
+        }
+      ]
+    }),
+    async () => {
+      const client = createActiveCaptainClient(silentLog, fastLimits)
+      const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
+      assert.deepEqual(result, [
+        {
+          id: '42',
+          type: 'Marina',
+          position: { latitude: 12.5, longitude: -70.1 },
+          name: 'Rated Marina',
+          rating: 4.5,
+          reviewCount: 12
+        },
+        {
+          id: '43',
+          type: 'Marina',
+          position: { latitude: 12.6, longitude: -70.2 },
+          name: 'Unrated Marina'
+        }
+      ])
+    }
+  )
+})
+
 test('listPointsOfInterest resolves with an empty array for an empty result', async () => {
   await withMockFetch(
     () => jsonResponse({ pointsOfInterest: [] }),

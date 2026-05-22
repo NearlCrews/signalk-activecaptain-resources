@@ -62,11 +62,10 @@ export function resolvePosition (raw: unknown): Position | null {
 /**
  * Parse an explicit `bbox` query value into a Bbox.
  *
- * The SignalK resources API expresses a bounding box as four numbers in
- * `[minLongitude, minLatitude, maxLongitude, maxLatitude]` order, supplied
- * either as an array or as a comma-separated string (with or without
- * surrounding brackets). Returns null when the value is not four finite
- * numbers.
+ * The box is four numbers in GeoJSON bounding-box order (RFC 7946),
+ * `[minLongitude, minLatitude, maxLongitude, maxLatitude]`, supplied either as
+ * an array or as a comma-separated string (with or without surrounding
+ * brackets). Returns null when the value is not four finite numbers.
  */
 function resolveExplicitBbox (raw: unknown): Bbox | null {
   let parts: unknown[]
@@ -92,8 +91,8 @@ function resolveExplicitBbox (raw: unknown): Bbox | null {
  * Derive a search bounding box from a SignalK resource query.
  *
  * The `notes` resource provider receives the request query as loosely typed
- * key/value pairs. Two forms are supported: an explicit `bbox` (the four-number
- * bounding box of the SignalK resources API), and the `position` + `distance`
+ * key/value pairs. Two forms are supported: an explicit `bbox` (a four-number
+ * GeoJSON bounding box), and the `position` + `distance`
  * form chart plotters send, where `position` is the search centre and
  * `distance` is the radius in metres. Returns null when the query does not
  * carry enough information to build a box.

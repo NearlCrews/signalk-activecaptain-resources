@@ -34,9 +34,12 @@ import { useEffect, useState } from 'react'
 import CacheDurationField from './components/CacheDurationField.js'
 import FooterBar from './components/FooterBar.js'
 import PoiTypeGroups from './components/PoiTypeGroups.js'
+import ProximityAlarmFields from './components/ProximityAlarmFields.js'
+import RatingFilterField from './components/RatingFilterField.js'
 import StatusBar from './components/StatusBar.js'
 import { useConfig } from './hooks/useConfig.js'
 import { useStatus } from './hooks/useStatus.js'
+import { DEFAULT_MINIMUM_RATING, DEFAULT_PROXIMITY_ALARM_RADIUS_METERS } from './normaliseConfig.js'
 import { S, THEME_STYLE } from './styles.js'
 
 /** How long, in milliseconds, the "Saved" confirmation pill stays visible. */
@@ -87,10 +90,20 @@ export default function PluginConfigurationPanel ({ configuration, save }: Props
         value={state.cachingDurationMinutes}
         onChange={(minutes) => dispatch({ type: 'setCacheDuration', minutes })}
       />
+      <RatingFilterField
+        value={state.minimumRating ?? DEFAULT_MINIMUM_RATING}
+        onChange={(rating) => dispatch({ type: 'setMinimumRating', rating })}
+      />
       <PoiTypeGroups
         config={state}
         onToggle={(flag, enabled) => dispatch({ type: 'setPoiType', flag, enabled })}
         onSetAll={(enabled) => dispatch({ type: 'setAllPoiTypes', enabled })}
+      />
+      <ProximityAlarmFields
+        enabled={state.enableProximityAlarms === true}
+        radiusMeters={state.proximityAlarmRadiusMeters ?? DEFAULT_PROXIMITY_ALARM_RADIUS_METERS}
+        onToggleEnabled={(enabled) => dispatch({ type: 'setProximityAlarmsEnabled', enabled })}
+        onChangeRadius={(meters) => dispatch({ type: 'setProximityAlarmRadius', meters })}
       />
       <FooterBar
         dirty={dirty}

@@ -76,11 +76,27 @@ The following options are available:
 | Include local knowledge | boolean | true | Include local knowledge points of interest. |
 | Include navigational aids | boolean | true | Include navigational aid points of interest. |
 | Include airports | boolean | true | Include airport points of interest. |
+| Minimum rating | number | 0 | Hide points of interest whose average rating is below this value (0 to 5; 0 shows everything). |
+| Emit a notification when the vessel nears a hazard | boolean | false | Subscribe to the vessel position and raise a proximity alarm for nearby hazards. |
+| Proximity alarm radius in metres | number | 500 | How close a hazard must be to raise an alarm. |
 
 Deselecting every POI type makes the plugin import nothing. A configuration
 created before these toggles existed, which carries none of the toggle
 settings, instead falls back to including all types so an upgrade keeps working
 until the plugin is reconfigured.
+
+### Proximity hazard alarms
+
+With "Emit a notification when the vessel nears a hazard" enabled, the plugin
+subscribes to `navigation.position`, scans for nearby hazards as the vessel
+moves, and emits a SignalK `notifications.navigation.activecaptain.hazard.*`
+alert whenever a Hazard point of interest is within the alarm radius. Chart
+plotters and Freeboard-SK render it as an alarm. The notification is raised
+once on approach and cleared once the vessel moves a margin beyond the radius.
+The feature is off by default.
+
+Point-of-interest detail is cached on disk, so it survives a server restart and
+stays readable when the vessel has no connectivity.
 
 ## 🎈 Usage <a name="usage"></a>
 

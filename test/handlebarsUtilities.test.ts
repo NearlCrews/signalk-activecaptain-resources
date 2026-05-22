@@ -35,12 +35,15 @@ import {
   hasNavigation,
   hasRetail,
   hasServices,
+  isStaleHazard,
   renderDescription
 } from '../src/handlebarsUtilities.js'
 import type { PoiDetails } from '../src/types.js'
 
 const NOW = new Date('2026-05-21T12:00:00.000Z')
 const THREE_DAYS_AGO = new Date(NOW.getTime() - 3 * 86400 * 1000)
+/** Comfortably older than the two-year staleness threshold. */
+const FOUR_YEARS_AGO = new Date('2022-01-01T00:00:00.000Z')
 
 /** A marina with every section populated. */
 function fullMarina (): PoiDetails {
@@ -87,6 +90,19 @@ function bareMarina (): PoiDetails {
       poiType: 'Marina',
       mapLocation: { latitude: 0, longitude: 0 },
       dateLastModified: THREE_DAYS_AGO.toISOString()
+    }
+  }
+}
+
+/** A Hazard point of interest, last modified at the given time. */
+function hazard (dateLastModified: Date): PoiDetails {
+  return {
+    pointOfInterest: {
+      id: 555,
+      name: 'Submerged Piling',
+      poiType: 'Hazard',
+      mapLocation: { latitude: 27.1, longitude: -82.5 },
+      dateLastModified: dateLastModified.toISOString()
     }
   }
 }
@@ -167,6 +183,15 @@ test('fromNow describes past and future dates relative to a reference time', () 
   assert.equal(fromNow(THREE_DAYS_AGO, NOW), '3 days ago')
   assert.equal(fromNow(new Date(NOW.getTime() + 2 * 3600 * 1000), NOW), 'in 2 hours')
   assert.equal(fromNow(new Date(NOW.getTime() - 90 * 1000), NOW), '1 minute ago')
+})
+
+test('fromNow steps up a unit when rounding spills past the boundary', () => {
+  // 3599 s is under an hour but rounds to 60 minutes; it must read "1 hour".
+  assert.equal(fromNow(new Date(NOW.getTime() - 3599 * 1000), NOW), '1 hour ago')
+  // 86399 s rounds to 24 hours, which is one day.
+  assert.equal(fromNow(new Date(NOW.getTime() - 86399 * 1000), NOW), 'yesterday')
+  // A sub-minute delta stays in seconds rather than rounding up to a minute.
+  assert.equal(fromNow(new Date(NOW.getTime() - 20 * 1000), NOW), '20 seconds ago')
 })
 
 test('fromNow returns a fallback string for an invalid date instead of throwing', () => {
@@ -305,4 +330,42 @@ test('hasDockage is true for a dockage section that carries only isFree', () => 
   freeOnly.dockage = { isFree: true }
   assert.equal(hasDockage(freeOnly), true)
   assert.match(renderDescription(freeOnly), /Free docks/)
+})
+
+test('isStaleHazard flags an old Hazard, but not a recent one or a non-Hazard', () => {
+  // A Hazard last confirmed over two years before `now` is stale.
+  assert.equal(isStaleHazard(hazard(FOUR_YEARS_AGO), NOW), true)
+  // A Hazard confirmed within the window is not.
+  assert.equal(isStaleHazard(hazard(THREE_DAYS_AGO), NOW), false)
+  // A stale date on a non-Hazard type never counts as a stale hazard.
+  const oldMarina = bareMarina()
+  oldMarina.pointOfInterest.dateLastModified = FOUR_YEARS_AGO.toISOString()
+  assert.equal(isStaleHazard(oldMarina, NOW), false)
+  // An unparseable date is treated as not stale rather than warning falsely.
+  const undatedHazard = hazard(THREE_DAYS_AGO)
+  undatedHazard.pointOfInterest.dateLastModified = 'not a date'
+  assert.equal(isStaleHazard(undatedHazard, NOW), false)
+})
+
+test('renderDescription warns when a Hazard report has gone stale', () => {
+  const html = renderDescription(hazard(FOUR_YEARS_AGO))
+
+  assert.match(html, /Hazard report not recently confirmed/)
+  assert.match(html, /Confirm locally before relying on it/)
+  // The warning names how old the report is, reusing the relative-time helper.
+  assert.match(html, /last updated .* ago/)
+})
+
+test('renderDescription does not warn for a recently confirmed Hazard', () => {
+  const html = renderDescription(hazard(THREE_DAYS_AGO))
+
+  assert.doesNotMatch(html, /Hazard report not recently confirmed/)
+})
+
+test('renderDescription does not warn for a stale non-Hazard point of interest', () => {
+  const oldMarina = bareMarina()
+  oldMarina.pointOfInterest.dateLastModified = FOUR_YEARS_AGO.toISOString()
+  const html = renderDescription(oldMarina)
+
+  assert.doesNotMatch(html, /Hazard report not recently confirmed/)
 })

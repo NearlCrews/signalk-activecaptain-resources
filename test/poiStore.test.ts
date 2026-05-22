@@ -1,0 +1,225 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2024 Paul Willems <paul.willems@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { createPoiStore } from '../src/poiStore.js'
+import type { PoiDetails } from '../src/types.js'
+
+/** Generous TTL so entries never expire mid-test unless a test forces it. */
+const TTL_MINUTES = 60
+
+/** File name the store persists to, matching the poiStore implementation. */
+const STORE_FILE_NAME = 'poi-cache.json'
+
+/** Build a minimal but valid PoiDetails record for the given id. */
+function makeDetails (id: string): PoiDetails {
+  return {
+    pointOfInterest: {
+      id: Number(id),
+      name: `POI ${id}`,
+      poiType: 'Marina',
+      mapLocation: { latitude: 0, longitude: 0 },
+      dateLastModified: '2024-01-01T00:00:00Z'
+    }
+  }
+}
+
+/** Run a test body with a fresh temporary directory, removed afterwards. */
+function withTempDir (body: (dir: string) => void): void {
+  const dir = mkdtempSync(join(tmpdir(), 'poi-store-'))
+  try {
+    body(dir)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+test('persisted entries survive into a fresh store instance', () => {
+  withTempDir((dir) => {
+    const writer = createPoiStore(dir, TTL_MINUTES)
+    writer.persist('1', makeDetails('1'))
+    writer.persist('2', makeDetails('2'))
+
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+
+    assert.equal(loaded.size, 2)
+    assert.equal(loaded.get('1')?.details.pointOfInterest.name, 'POI 1')
+    assert.equal(loaded.get('2')?.details.pointOfInterest.name, 'POI 2')
+    assert.equal(typeof loaded.get('1')?.timestamp, 'number')
+  })
+})
+
+test('persist replaces an existing entry rather than duplicating it', () => {
+  withTempDir((dir) => {
+    const store = createPoiStore(dir, TTL_MINUTES)
+    store.persist('1', makeDetails('1'))
+    const replacement = makeDetails('1')
+    replacement.pointOfInterest.name = 'Renamed POI'
+    store.persist('1', replacement)
+
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+
+    assert.equal(loaded.size, 1)
+    assert.equal(loaded.get('1')?.details.pointOfInterest.name, 'Renamed POI')
+  })
+})
+
+test('load drops entries older than the TTL window and keeps fresh ones', () => {
+  withTempDir((dir) => {
+    const now = Date.now()
+    const fileContents = {
+      version: 1,
+      entries: {
+        stale: { timestamp: now - 90 * 60_000, details: makeDetails('1') },
+        fresh: { timestamp: now - 5 * 60_000, details: makeDetails('2') }
+      }
+    }
+    writeFileSync(join(dir, STORE_FILE_NAME), JSON.stringify(fileContents))
+
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+
+    assert.equal(loaded.size, 1, 'the 90-minute-old entry should be dropped')
+    assert.ok(loaded.has('fresh'))
+    assert.ok(!loaded.has('stale'))
+  })
+})
+
+test('load returns an empty map when the store file is missing', () => {
+  withTempDir((dir) => {
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+    assert.equal(loaded.size, 0)
+  })
+})
+
+test('load survives a corrupt store file and starts empty', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, STORE_FILE_NAME), '{ this is not valid json')
+
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+
+    assert.equal(loaded.size, 0)
+  })
+})
+
+test('load ignores a readable file of the wrong shape', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, STORE_FILE_NAME), JSON.stringify({ unexpected: true }))
+
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+
+    assert.equal(loaded.size, 0)
+  })
+})
+
+test('load drops individual malformed entries but keeps valid ones', () => {
+  withTempDir((dir) => {
+    const fileContents = {
+      version: 1,
+      entries: {
+        good: { timestamp: Date.now(), details: makeDetails('1') },
+        bad: { timestamp: 'not-a-number', details: makeDetails('2') }
+      }
+    }
+    writeFileSync(join(dir, STORE_FILE_NAME), JSON.stringify(fileContents))
+
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+
+    assert.equal(loaded.size, 1)
+    assert.ok(loaded.has('good'))
+  })
+})
+
+test('load drops an entry whose details are structurally incomplete', () => {
+  withTempDir((dir) => {
+    // `details` is an object, so a shallow check would accept it, but it has
+    // no `pointOfInterest`: hydrating it would crash getResource later.
+    const fileContents = {
+      version: 1,
+      entries: {
+        good: { timestamp: Date.now(), details: makeDetails('1') },
+        empty: { timestamp: Date.now(), details: {} },
+        partial: { timestamp: Date.now(), details: { pointOfInterest: {} } }
+      }
+    }
+    writeFileSync(join(dir, STORE_FILE_NAME), JSON.stringify(fileContents))
+
+    const loaded = createPoiStore(dir, TTL_MINUTES).load()
+
+    assert.equal(loaded.size, 1, 'only the structurally complete entry survives')
+    assert.ok(loaded.has('good'))
+  })
+})
+
+test('clear empties the store and removes the backing file', () => {
+  withTempDir((dir) => {
+    const store = createPoiStore(dir, TTL_MINUTES)
+    store.persist('1', makeDetails('1'))
+    assert.ok(existsSync(join(dir, STORE_FILE_NAME)))
+
+    store.clear()
+
+    assert.ok(!existsSync(join(dir, STORE_FILE_NAME)))
+    assert.equal(createPoiStore(dir, TTL_MINUTES).load().size, 0)
+  })
+})
+
+test('clear is a no-op when nothing has been persisted', () => {
+  withTempDir((dir) => {
+    assert.doesNotThrow(() => { createPoiStore(dir, TTL_MINUTES).clear() })
+  })
+})
+
+test('persist creates the data directory when it does not yet exist', () => {
+  withTempDir((dir) => {
+    const nested = join(dir, 'does', 'not', 'exist')
+    const store = createPoiStore(nested, TTL_MINUTES)
+
+    assert.doesNotThrow(() => { store.persist('1', makeDetails('1')) })
+    assert.equal(createPoiStore(nested, TTL_MINUTES).load().size, 1)
+  })
+})
+
+test('a stale entry is pruned from disk on the next persist', () => {
+  withTempDir((dir) => {
+    const now = Date.now()
+    const fileContents = {
+      version: 1,
+      entries: {
+        stale: { timestamp: now - 90 * 60_000, details: makeDetails('1') }
+      }
+    }
+    writeFileSync(join(dir, STORE_FILE_NAME), JSON.stringify(fileContents))
+
+    const store = createPoiStore(dir, TTL_MINUTES)
+    store.load() // drops the stale entry from the in-memory mirror
+    store.persist('2', makeDetails('2'))
+
+    const onDisk = JSON.parse(readFileSync(join(dir, STORE_FILE_NAME), 'utf8'))
+    assert.deepEqual(Object.keys(onDisk.entries), ['2'])
+  })
+})

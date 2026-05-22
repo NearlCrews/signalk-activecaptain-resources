@@ -32,6 +32,14 @@ import type * as React from 'react'
 import type { StatusSnapshot } from '../../statusTypes.js'
 import { S } from '../styles.js'
 
+/** Relative-time units, largest first, paired with their length in seconds. */
+const RELATIVE_UNITS: ReadonlyArray<readonly [Intl.RelativeTimeFormatUnit, number]> = [
+  ['day', 86400],
+  ['hour', 3600],
+  ['minute', 60],
+  ['second', 1]
+]
+
 /** Render an ISO-8601 timestamp as a localised, relative phrase such as "5 minutes ago". */
 function relativeTime (iso: string): string {
   const then = new Date(iso).getTime()
@@ -41,10 +49,23 @@ function relativeTime (iso: string): string {
   const absSeconds = Math.abs(deltaSeconds)
   const format = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
 
-  if (absSeconds < 60) return format.format(deltaSeconds, 'second')
-  if (absSeconds < 3600) return format.format(Math.round(deltaSeconds / 60), 'minute')
-  if (absSeconds < 86400) return format.format(Math.round(deltaSeconds / 3600), 'hour')
-  return format.format(Math.round(deltaSeconds / 86400), 'day')
+  // Pick the coarsest unit the delta reaches.
+  let index = RELATIVE_UNITS.length - 1
+  for (let i = 0; i < RELATIVE_UNITS.length; i++) {
+    if (absSeconds >= RELATIVE_UNITS[i][1]) {
+      index = i
+      break
+    }
+  }
+  // Rounding within a unit can spill into the next unit up (3599 s rounds to
+  // 60 minutes); step up so it reads "1 hour" rather than "60 minutes".
+  while (index > 0 &&
+    Math.round(absSeconds / RELATIVE_UNITS[index][1]) * RELATIVE_UNITS[index][1] >= RELATIVE_UNITS[index - 1][1]) {
+    index -= 1
+  }
+
+  const [unit, unitSeconds] = RELATIVE_UNITS[index]
+  return format.format(Math.round(deltaSeconds / unitSeconds), unit)
 }
 
 /** Map the tri-state apiReachable flag to a status dot style and label. */

@@ -12,9 +12,9 @@ opportunities come from making it position-aware and offline-capable.
 The recommended next release. None of these need a Garmin API key or carry
 terms-of-service exposure.
 
-- **Position subscription and cache pre-warm.** Subscribe to
-  `navigation.position` and pre-fetch points of interest around the vessel
-  into the cache. The enabler for the rest of this tier.
+- **Position subscription and hazard scan.** Subscribe to
+  `navigation.position` and scan for points of interest around the vessel as
+  it moves. The enabler for the proximity alarms.
 - **Proximity hazard alarms.** When the vessel nears a Hazard (and optionally
   a Bridge, Lock, or Inlet), emit a SignalK `notifications.*` delta. Turns a
   passive chart layer into an active safety tool.

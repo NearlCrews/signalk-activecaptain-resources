@@ -29,9 +29,15 @@
  * @inventivetalent/time dependencies with lru-cache (v11). On a cache miss the
  * configured fetchMethod loads the entry from the ActiveCaptain client; a
  * rejected load propagates to the caller and is not stored.
+ *
+ * When a persistent {@link PoiStore} is supplied, the cache hydrates from it on
+ * creation so a cold start has offline data without a network round-trip, and
+ * persists every real load back to it. The persistent layer is always on; it
+ * has no configuration toggle.
  */
 
 import { LRUCache } from 'lru-cache'
+import type { PoiStore } from './poiStore.js'
 import type { PoiDetails } from './types.js'
 
 /** Hard ceiling on cached entries, guarding memory use on long sessions. */
@@ -64,7 +70,11 @@ export interface PoiCache {
    * the underlying load rejects.
    */
   get: (id: string) => Promise<PoiDetails>
-  /** Drop every cached entry. Call this from plugin.stop. */
+  /**
+   * Drop every cached entry, in memory and on disk. This is a full wipe: it
+   * also empties the persistent store, so do NOT call it from plugin.stop,
+   * which would discard the offline cache on every config-change restart.
+   */
   clear: () => void
   /** Number of detail entries currently held in the cache. */
   size: () => number
@@ -76,19 +86,27 @@ export interface PoiCache {
  * @param client     Source used to load entries on a cache miss.
  * @param ttlMinutes How long, in minutes, a loaded entry stays fresh.
  * @param listener   Optional hooks invoked only on a real load (a cache miss).
+ * @param store      Optional persistent store. When supplied, the cache
+ *                   hydrates from it on creation and persists every real load
+ *                   back to it, surviving plugin restarts.
  */
 export function createPoiCache (
   client: PoiDetailsSource,
   ttlMinutes: number,
-  listener: PoiCacheListener = {}
+  listener: PoiCacheListener = {},
+  store?: PoiStore
 ): PoiCache {
+  const ttlMs = ttlMinutes * MS_PER_MINUTE
   const cache = new LRUCache<string, PoiDetails>({
     max: MAX_CACHE_ENTRIES,
-    ttl: ttlMinutes * MS_PER_MINUTE,
+    ttl: ttlMs,
     fetchMethod: async (id: string): Promise<PoiDetails> => {
       try {
         const details = await client.pointOfInterestDetails(id)
         listener.onLoadSuccess?.()
+        // Persist the freshly loaded entry so a later cold start can serve it
+        // offline. A failed write is swallowed inside the store.
+        store?.persist(id, details)
         return details
       } catch (error) {
         listener.onLoadError?.(error)
@@ -96,6 +114,19 @@ export function createPoiCache (
       }
     }
   })
+
+  // Hydrate the in-memory cache from the persistent store. Each entry keeps
+  // only its true remaining freshness, so a restart never extends an entry's
+  // lifetime beyond the configured TTL window.
+  if (store !== undefined) {
+    const now = Date.now()
+    for (const [id, entry] of store.load()) {
+      const remainingTtl = ttlMs - (now - entry.timestamp)
+      if (remainingTtl > 0) {
+        cache.set(id, entry.details, { ttl: remainingTtl })
+      }
+    }
+  }
 
   return {
     get: async (id: string): Promise<PoiDetails> => {
@@ -107,6 +138,8 @@ export function createPoiCache (
     },
     clear: (): void => {
       cache.clear()
+      // Also drop the persisted copy so a restart starts genuinely empty.
+      store?.clear()
     },
     size: (): number => {
       return cache.size

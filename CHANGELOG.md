@@ -1,5 +1,40 @@
 ## Change Log
 
+<a id="v130"></a>
+
+### v1.3.0 (2026/05/22) - position-aware safety
+
+**The plugin gains a position-aware safety feature set: proximity hazard alarms, an offline cache, a rating filter, and stale-hazard warnings.**
+
+#### Proximity hazard alarms
+
+- A new opt-in option, "Emit a notification when the vessel nears a hazard",
+  subscribes to `navigation.position`. When the vessel comes within the
+  configured radius of a Hazard point of interest, the plugin emits a SignalK
+  `notifications.navigation.activecaptain.hazard.*` alert that chart plotters
+  and Freeboard-SK render as an alarm. The notification is raised once on
+  approach and cleared once the vessel moves a margin beyond the radius, so the
+  alarm does not chatter on the boundary.
+- While the feature is on, the plugin scans for nearby hazards as the vessel
+  moves, throttled by distance and time so it stays within the API limits.
+- The alarm radius is configurable; the feature is off by default.
+
+#### Persistent, offline cache
+
+- Point-of-interest detail is now cached on disk in the plugin data directory,
+  so it survives a server restart and is readable with no connectivity. The
+  cache still honours the configured caching duration.
+
+#### Rating filter
+
+- A new "Minimum rating" option hides points of interest rated below the
+  chosen value (0 to 5; 0 shows everything), cutting clutter on dense charts.
+
+#### Hazard freshness
+
+- A Hazard point of interest whose report has not been confirmed in over two
+  years now carries a prominent freshness warning in its description.
+
 <a id="v120"></a>
 
 ### v1.2.0 (2026/05/21) - TypeScript rewrite, modern toolchain, and a React configuration panel

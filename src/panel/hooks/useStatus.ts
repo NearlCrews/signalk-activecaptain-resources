@@ -62,6 +62,9 @@ export function useStatus (): UseStatusResult {
 
   useEffect(() => {
     cancelled.current = false
+    // Aborted on unmount so an outstanding request does not run to its
+    // timeout against a component that is already gone.
+    const unmountController = new AbortController()
 
     // poll never rejects: it catches its own failures and surfaces them
     // through setError, so callers can leave its promise unhandled.
@@ -75,7 +78,10 @@ export function useStatus (): UseStatusResult {
       try {
         const response = await fetch(STATUS_URL, {
           credentials: 'same-origin',
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+          signal: AbortSignal.any([
+            unmountController.signal,
+            AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+          ])
         })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const body = await response.json() as StatusSnapshot
@@ -106,6 +112,7 @@ export function useStatus (): UseStatusResult {
 
     return () => {
       cancelled.current = true
+      unmountController.abort()
       clearInterval(intervalId)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }

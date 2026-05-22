@@ -40,11 +40,15 @@ import type {
 
 import { createActiveCaptainClient, HttpError, type ActiveCaptainClient } from './activeCaptainClient.js'
 import { createPoiCache, type PoiCache } from './poiCache.js'
+import { createPoiStore } from './poiStore.js'
 import { createPluginStatus } from './pluginStatus.js'
 import { createStatusRouter } from './statusRouter.js'
-import { renderDescription } from './handlebarsUtilities.js'
+import { createProximityAlarms } from './proximityAlarms.js'
+import { createPositionMonitor, type PositionMonitor } from './positionMonitor.js'
+import { parseApiDate, renderDescription } from './handlebarsUtilities.js'
 import { PLUGIN_ID } from './pluginId.js'
 import { buildPoiTypesString } from './poiTypeSelection.js'
+import { filterByRating } from './ratingFilter.js'
 import { resolveBbox } from './resourceQuery.js'
 import type { PluginConfig, PoiSummary, Position } from './types.js'
 
@@ -63,6 +67,12 @@ const POI_PAGE_URL_PREFIX = 'https://activecaptain.garmin.com/en-US/pois/'
 
 /** HTTP status for a point of interest that does not exist. */
 const HTTP_NOT_FOUND = 404
+
+/** Default proximity-alarm radius, in metres; mirrors the schema default. */
+const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
+
+/** Lower bound on the hazard-scan radius, so the alarm check always has data. */
+const MIN_SCAN_RADIUS_METERS = 2000
 
 /**
  * OpenAPI description of the plugin's HTTP API. The SignalK server-api docs
@@ -99,6 +109,10 @@ interface Runtime {
   cache: PoiCache
   /** The API `poiTypes` string, or null when the config selects no type. */
   poiTypes: string | null
+  /** Hide list results rated below this value (0 keeps everything). */
+  minimumRating: number
+  /** The position monitor, present only when proximity alarms are enabled. */
+  monitor?: PositionMonitor
 }
 
 /**
@@ -135,6 +149,18 @@ function buildNoteResource (
     note.mimeType = 'text/html'
   }
   return note
+}
+
+/**
+ * Ensure the POI-types string includes `Hazard`. The position monitor uses it
+ * for its hazard-scan fetch, and proximity alarms can only fire on hazards
+ * that the fetch actually returned.
+ */
+function withHazard (poiTypes: string | null): string {
+  if (poiTypes === null || poiTypes === '') {
+    return 'Hazard'
+  }
+  return poiTypes.split(',').includes('Hazard') ? poiTypes : `${poiTypes},Hazard`
 }
 
 /** Read a dot-notation property path out of a note object. */
@@ -187,6 +213,9 @@ export = function (app: ServerAPI): Plugin {
       status.recordListFetch(entities.length)
       app.setPluginStatus(`${entities.length} point(s) of interest from the last search`)
 
+      // Drop points of interest rated below the configured minimum.
+      entities = filterByRating(entities, runtime.minimumRating)
+
       // The bounding-box endpoint carries no per-POI last-modified time, so
       // list entries omit `timestamp` rather than report a fetch time that
       // changes on every call.
@@ -221,12 +250,19 @@ export = function (app: ServerAPI): Plugin {
         app.debug(`Unable to format description for ${id} - ${String(error)}`)
       }
 
+      // ActiveCaptain serves a zone-less timestamp; normalise it to a UTC
+      // ISO-8601 string so a consumer does not read it as local time. An
+      // unparseable value is omitted rather than passed through.
+      const modified = parseApiDate(poi.dateLastModified)
+      const timestamp = Number.isFinite(modified.getTime())
+        ? modified.toISOString()
+        : undefined
       const note = buildNoteResource(
         id,
         poi.name,
         { ...poi.mapLocation },
         poi.poiType.toLowerCase(),
-        poi.dateLastModified,
+        timestamp,
         description
       )
 
@@ -283,11 +319,38 @@ export = function (app: ServerAPI): Plugin {
         includeLocks: { type: 'boolean', title: 'Include locks', default: true },
         includeLocalKnowledge: { type: 'boolean', title: 'Include local knowledge', default: true },
         includeNavigational: { type: 'boolean', title: 'Include navigational aids', default: true },
-        includeAirports: { type: 'boolean', title: 'Include airports', default: true }
+        includeAirports: { type: 'boolean', title: 'Include airports', default: true },
+        minimumRating: {
+          type: 'number',
+          title: 'Minimum rating: hide points of interest rated below this (0 to 5; 0 shows all)',
+          default: 0,
+          minimum: 0,
+          maximum: 5
+        },
+        enableProximityAlarms: {
+          type: 'boolean',
+          title: 'Emit a notification when the vessel nears a hazard (subscribes to the vessel position)',
+          default: false
+        },
+        proximityAlarmRadiusMeters: {
+          type: 'number',
+          title: 'Proximity alarm radius in metres',
+          default: 500,
+          minimum: 1
+        }
       }
     },
 
     start: (config: object): void => {
+      // stop() should have cleared the previous run, but guard against a
+      // start() without a matching stop(): tear the old runtime down first so
+      // its client and position monitor do not leak.
+      if (runtime !== undefined) {
+        runtime.client.close()
+        runtime.monitor?.stop()
+        runtime = undefined
+      }
+
       const options = config as Partial<PluginConfig>
       const cachingDurationMinutes =
         typeof options.cachingDurationMinutes === 'number' && options.cachingDurationMinutes > 0
@@ -295,6 +358,10 @@ export = function (app: ServerAPI): Plugin {
           : DEFAULT_CACHING_DURATION_MINUTES
 
       const poiTypes = buildPoiTypesString(options)
+      const minimumRating =
+        typeof options.minimumRating === 'number' && options.minimumRating > 0
+          ? options.minimumRating
+          : 0
       app.debug(`Starting with caching ${cachingDurationMinutes}min, poiTypes: ${poiTypes ?? 'none'}`)
 
       // A fresh recorder per start: this run reports its own start time and
@@ -302,6 +369,9 @@ export = function (app: ServerAPI): Plugin {
       status = createPluginStatus()
 
       const client = createActiveCaptainClient(app)
+      // The cache is backed by an on-disk store in the plugin data directory,
+      // so cached detail survives a restart and is readable offline.
+      const store = createPoiStore(app.getDataDirPath(), cachingDurationMinutes)
       runtime = {
         client,
         cache: createPoiCache(client, cachingDurationMinutes, {
@@ -314,11 +384,42 @@ export = function (app: ServerAPI): Plugin {
             if (error instanceof HttpError && error.status === HTTP_NOT_FOUND) {
               status.recordDetailSuccess()
             } else {
-              status.recordError(`Detail request failed: ${String(error)}`)
+              // Surface a genuine detail outage on the SignalK plugin status
+              // too, not just the panel snapshot, so it matches how a failed
+              // list request is reported.
+              const message = `Detail request failed: ${String(error)}`
+              status.recordError(message)
+              app.setPluginError(message)
             }
           }
-        }),
-        poiTypes
+        }, store),
+        poiTypes,
+        minimumRating
+      }
+
+      // When proximity alarms are enabled, run the position monitor: it
+      // subscribes to the vessel position, scans for nearby hazards, and
+      // raises a notification when one is within range. A non-positive radius
+      // would disable the alarm silently, so it falls back to the default.
+      // The monitor is an optional extra: if its construction throws, the
+      // failure is logged and the core notes resource provider still starts.
+      if (options.enableProximityAlarms === true) {
+        const radiusMeters =
+          typeof options.proximityAlarmRadiusMeters === 'number' && options.proximityAlarmRadiusMeters > 0
+            ? options.proximityAlarmRadiusMeters
+            : DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+        try {
+          runtime.monitor = createPositionMonitor({
+            app,
+            client,
+            alarms: createProximityAlarms(app, radiusMeters),
+            poiTypes: withHazard(poiTypes),
+            scanRadiusMeters: Math.max(radiusMeters * 3, MIN_SCAN_RADIUS_METERS)
+          })
+          app.debug(`Proximity alarms enabled, radius ${radiusMeters}m`)
+        } catch (error) {
+          app.error(`Cannot start the proximity-alarm position monitor: ${String(error)}`)
+        }
       }
 
       // Register on every start(). The SignalK server unregisters a plugin's
@@ -336,10 +437,13 @@ export = function (app: ServerAPI): Plugin {
     },
 
     stop: (): void => {
-      // Abort in-flight requests so a late response cannot record onto the
-      // next run's status, then drop the cache.
+      // Abort in-flight requests and stop the position monitor so a late
+      // callback cannot touch the next run. The persistent cache is left on
+      // disk, since it is the offline store, so cache.clear() is deliberately
+      // not called here: the server discards the in-memory cache anyway when
+      // `runtime` is dropped.
       runtime?.client.close()
-      runtime?.cache.clear()
+      runtime?.monitor?.stop()
       runtime = undefined
     },
 
