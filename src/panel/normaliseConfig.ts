@@ -48,7 +48,7 @@ export const DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS = 500
  * schema default when absent or unusable, and the rating is clamped to its
  * valid range.
  */
-export function normaliseConfig (configuration: unknown): PluginConfig {
+export function normalizeConfig (configuration: unknown): PluginConfig {
   const raw = (typeof configuration === 'object' && configuration !== null)
     ? configuration as Record<string, unknown>
     : {}

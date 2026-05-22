@@ -9,7 +9,7 @@ import { useReducer, useState } from 'react'
 import type { PluginConfig } from '../../types.js'
 import { configReducer } from '../configReducer.js'
 import type { ConfigAction } from '../configReducer.js'
-import { normaliseConfig } from '../normaliseConfig.js'
+import { normalizeConfig } from '../normalizeConfig.js'
 
 /** The configuration state surface the panel consumes. */
 export interface UseConfigResult {
@@ -29,7 +29,7 @@ export interface UseConfigResult {
  * the only writer and updates `savedState` directly through markSaved.
  */
 export function useConfig (configuration: unknown): UseConfigResult {
-  const [initial] = useState<PluginConfig>(() => normaliseConfig(configuration))
+  const [initial] = useState<PluginConfig>(() => normalizeConfig(configuration))
   const [state, dispatch] = useReducer(configReducer, initial)
   const [savedState, setSavedState] = useState<PluginConfig>(initial)
 

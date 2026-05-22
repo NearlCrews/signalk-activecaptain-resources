@@ -254,10 +254,10 @@ export function createActiveCaptainClient (
           return response
         }
 
-        const honoursRetryAfter =
+        const honorsRetryAfter =
           response.status === HTTP_TOO_MANY_REQUESTS ||
           response.status === HTTP_SERVICE_UNAVAILABLE
-        const retryAfter = honoursRetryAfter
+        const retryAfter = honorsRetryAfter
           ? parseRetryAfter(response.headers.get('retry-after'))
           : undefined
         // A Retry-After header is honoured but still capped: an upstream (or a

@@ -182,18 +182,18 @@ function routeCorridorBbox (route: RoutePolyline, corridorWidthMeters: number): 
     : [...route.waypoints]
 
   let box: Bbox | undefined
-  let travelledMeters = 0
+  let traveledMeters = 0
   let previous: Position | undefined
   for (const point of points) {
     if (previous !== undefined) {
-      travelledMeters += distanceMeters(previous, point)
+      traveledMeters += distanceMeters(previous, point)
     }
     const pointBox = positionToBbox(point, corridorWidthMeters)
     box = box === undefined ? pointBox : unionBbox(box, pointBox)
     previous = point
     // Include the leg that crosses the cap, then stop: a slightly generous box
     // is harmless, a short one would miss a point of interest near the cap.
-    if (travelledMeters >= ROUTE_LOOK_AHEAD_METERS) {
+    if (traveledMeters >= ROUTE_LOOK_AHEAD_METERS) {
       break
     }
   }

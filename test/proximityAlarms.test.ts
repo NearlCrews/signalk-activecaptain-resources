@@ -35,12 +35,12 @@ function poi (id: string, type: PoiType, name: string, position: Position): PoiS
 }
 
 /**
- * A position roughly `metresNorth` metres north of the origin. One degree of
+ * A position roughly `metersNorth` metres north of the origin. One degree of
  * latitude is about 111_320 m, which is precise enough to place test fixtures
  * comfortably inside or outside a radius.
  */
-function northOfOrigin (metresNorth: number): Position {
-  return { latitude: metresNorth / 111_320, longitude: 0 }
+function northOfOrigin (metersNorth: number): Position {
+  return { latitude: metersNorth / 111_320, longitude: 0 }
 }
 
 const ORIGIN: Position = { latitude: 0, longitude: 0 }

@@ -33,11 +33,11 @@ export interface UseStatusResult {
 export function useStatus (): UseStatusResult {
   const [status, setStatus] = useState<StatusSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const cancelled = useRef(false)
+  const canceled = useRef(false)
   const inFlight = useRef(false)
 
   useEffect(() => {
-    cancelled.current = false
+    canceled.current = false
     // Aborted on unmount so an outstanding request does not run to its
     // timeout against a component that is already gone.
     const unmountController = new AbortController()
@@ -61,12 +61,12 @@ export function useStatus (): UseStatusResult {
         })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const body = await response.json() as StatusSnapshot
-        if (!cancelled.current) {
+        if (!canceled.current) {
           setStatus(body)
           setError(null)
         }
       } catch (e) {
-        if (!cancelled.current) {
+        if (!canceled.current) {
           setError(e instanceof Error ? e.message : String(e))
         }
       } finally {
@@ -87,7 +87,7 @@ export function useStatus (): UseStatusResult {
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
-      cancelled.current = true
+      canceled.current = true
       unmountController.abort()
       clearInterval(intervalId)
       document.removeEventListener('visibilitychange', onVisibilityChange)

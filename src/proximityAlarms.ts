@@ -40,7 +40,7 @@ const EXIT_RADIUS_FACTOR = 1.2
  * silently fork the notification onto a different path, so any character
  * outside `[A-Za-z0-9_-]` is replaced.
  */
-function sanitisePoiId (poiId: string): string {
+function sanitizePoiId (poiId: string): string {
   return poiId.replace(/[^A-Za-z0-9_-]/g, '_')
 }
 
@@ -100,7 +100,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
         $source: PLUGIN_ID as SourceRef,
         timestamp: value.timestamp as Timestamp,
         values: [{
-          path: `${NOTIFICATION_PATH_PREFIX}${sanitisePoiId(poiId)}` as Path,
+          path: `${NOTIFICATION_PATH_PREFIX}${sanitizePoiId(poiId)}` as Path,
           value
         }]
       }]
