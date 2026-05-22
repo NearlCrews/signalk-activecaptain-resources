@@ -853,81 +853,89 @@ npm run typecheck && npm run lint && npm test && npm run build
 git add -A && git commit -m "feat: register the OpenSeaMap input and wire per-source status"
 ```
 
-### Task 6.2: Deduplicate and corroborate co-located POIs
+### Task 6.2: Per-source dedupe and corroboration against the ActiveCaptain base
 
-With two or more sources enabled, the same physical marina, hazard, or lock can
-appear as separate markers a few meters apart. This task collapses them into one
-marker and turns the multi-source agreement into a corroboration signal: a note
-confirmed by more than one independent source is more trustworthy. Absence of
-corroboration is NOT a negative signal (coverage is uneven), so this is surfaced
-only as confidence-up.
+With more than one source enabled, the same physical marina, hazard, or lock
+can appear as separate markers a few meters apart. ActiveCaptain is the fixed
+"base" layer. Each non-base source carries its own opt-in dedupe toggle,
+checked by default. When a non-base source's dedupe is on, its POIs that
+coincide with a base ActiveCaptain POI merge into that base marker, and the
+surviving note records every contributing source as a corroboration signal.
+Absence of corroboration is NOT a negative signal (source coverage is uneven),
+so it is surfaced only as confidence-up.
 
 **Files:**
 - Create: `src/inputs/dedupe-pois.ts`
 - Test: `test/dedupe-pois.test.ts`
 - Modify: `src/inputs/input-registry.ts`, `src/shared/types.ts`,
-  `src/plugin/plugin-config.ts`, `src/outputs/notes-resource/note-builder.ts`,
-  and the panel (`config-reducer.ts`, `normalize-config.ts`,
-  `PluginConfigurationPanel.tsx` plus a small toggle component).
+  `src/inputs/openseamap/openseamap-input.ts`,
+  `src/outputs/notes-resource/note-builder.ts`, and the panel
+  (`config-reducer.ts`, `normalize-config.ts`, the OpenSeaMap source card).
 
 - [ ] **Step 1: Write the failing test `test/dedupe-pois.test.ts`**
 
-Cover: two POIs of the SAME `PoiType` from DIFFERENT sources within the radius
-collapse to one entry whose `sources` lists both slugs; two POIs of different
-types at the same spot do NOT merge; two POIs from the same source do NOT
-merge; POIs farther apart than the radius do NOT merge; the surviving entry is
-the one whose `source` is earliest in the priority list; a POI with no
-co-located peer passes through with `sources` equal to its own single source.
+Cover: a non-base POI of the same `PoiType` within the radius of a base
+(`activecaptain`) POI merges into the base POI, whose `sources` then lists both
+slugs; the base POI is always the survivor (its id and content win); a non-base
+POI of a DIFFERENT type at the same spot does NOT merge; a dedupe-enabled
+non-base POI with no co-located base POI passes through unmerged with `sources`
+equal to its own source; two non-base sources both co-located with one base POI
+all merge into that base POI (`sources` lists all three); a POI from a source
+NOT in the dedupe-enabled set is never merged or dropped; when no base POI
+exists at all (ActiveCaptain disabled), every POI passes through unmerged.
 
 - [ ] **Step 2: Run it to verify it fails.**
 
 - [ ] **Step 3: Write `src/inputs/dedupe-pois.ts`**
 
 Add an optional `sources?: string[]` field to `PoiSummary` in
-`src/shared/types.ts`. Export
-`dedupeColocatedPois(pois: PoiSummary[], sourcePriority: readonly string[], radiusMeters: number): PoiSummary[]`.
+`src/shared/types.ts`. Export `BASE_SOURCE_ID = 'activecaptain'` and
+`dedupeAgainstBase(pois: PoiSummary[], dedupeSources: ReadonlySet<string>, radiusMeters: number): PoiSummary[]`.
 Bucket the POIs into a spatial grid (cell side equal to `radiusMeters`) so the
-pass is O(n), not O(n^2). Within a cluster of same-`type` POIs from different
-sources that are within `radiusMeters` (use `distanceMeters` from
-`src/geo/position-utilities.ts`), keep the entry whose `source` is earliest in
-`sourcePriority` and set its `sources` to every contributing source slug,
-deduplicated, in priority order. A POI with no peer keeps `sources: [its own
-source]`. Default radius: 50 meters.
+pass is O(n), not O(n^2). For each base POI (`source === BASE_SOURCE_ID`), find
+same-`type` POIs within `radiusMeters` (use `distanceMeters` from
+`src/geo/position-utilities.ts`) whose `source` is in `dedupeSources`; drop
+those non-base POIs and set the base POI's `sources` to the base slug plus
+every merged source slug, deduplicated. A dedupe-enabled non-base POI with no
+co-located base POI passes through with `sources: [its own source]`. A POI
+whose `source` is not in `dedupeSources` is never merged or dropped. Default
+radius: 50 meters.
 
 - [ ] **Step 4: Wire it into the aggregate registry**
 
-In `input-registry.ts`, after the `Promise.allSettled` union, when
-`context.config.mergeCoLocatedPois !== false`, run `dedupeColocatedPois` over
-the merged list with the source priority equal to the registration order of
-the enabled modules (`[...sources.keys()]`). When the flag is false, skip it
-and return the plain union.
+In `input-registry.ts`, after the `Promise.allSettled` union, build the
+`dedupeSources` set from the enabled non-base modules whose per-source dedupe
+config flag is true, then run `dedupeAgainstBase`. When the set is empty, or
+the base source is not enabled, return the plain union unchanged.
 
-- [ ] **Step 5: Add the config key and schema property**
+- [ ] **Step 5: Add the per-source dedupe config key**
 
-Add `mergeCoLocatedPois?: boolean` to `PluginConfig`. Add a `mergeCoLocatedPois`
-boolean to the assembled plugin schema as a plugin-level base fragment in
-`plugin-config.ts` (title: "Merge points of interest reported at the same place
-by more than one source", default `true`).
+Add `openSeaMapDedupe?: boolean` to `PluginConfig`, and add an
+`openSeaMapDedupe` boolean to the OpenSeaMap input module's `configSchema`
+fragment in `openseamap-input.ts` (title: "Merge OpenSeaMap points of interest
+that duplicate an ActiveCaptain marker", default `true`). Each future non-base
+source adds its own `<source>Dedupe` key the same way; ActiveCaptain, the base,
+has no dedupe key.
 
 - [ ] **Step 6: Surface corroboration on the note**
 
 In `note-builder.ts`, when the POI's `sources` has more than one entry, add
 `sources` and `sourceCount` to the note's `properties`, and have `attribution`
 credit every contributing source. This is the corroboration signal a consumer
-reads to know a marker is confirmed by more than one source.
+reads to know a marker is confirmed by more than one independent source.
 
-- [ ] **Step 7: Add the panel toggle**
+- [ ] **Step 7: Add the dedupe toggle to the OpenSeaMap card**
 
-Add a single `mergeCoLocatedPois` checkbox to the configuration panel, checked
-by default, in the Data sources section (a small focused component), with a
-hint that it merges duplicate markers reported by more than one source. Add the
-reducer action and the `normalize-config.ts` default (`true`).
+Add the `openSeaMapDedupe` checkbox, checked by default, to the OpenSeaMap
+source card in the panel, with a hint that it removes OpenSeaMap markers that
+duplicate an ActiveCaptain one. Add the reducer action and the
+`normalize-config.ts` default (`true`).
 
 - [ ] **Step 8: Verify the gate and commit**
 
 ```bash
 npm run typecheck && npm run lint && npm test && npm run build
-git add -A && git commit -m "feat: merge and corroborate co-located POIs from multiple sources"
+git add -A && git commit -m "feat: per-source dedupe and corroboration against the ActiveCaptain base"
 ```
 
 ### Task 6.3: End-to-end test of the multi-source path
