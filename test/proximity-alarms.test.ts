@@ -1,60 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createProximityAlarms, type AlarmApp } from '../src/outputs/proximity-alarm/proximity-alarms.js'
-import type { PoiSummary, PoiType, Position } from '../src/shared/types.js'
-
-/** Shape of the notification value the alarms emit on the hazard path. */
-interface CapturedNotification {
-  path: string
-  value: { state: string, method: string[], message: string, timestamp: string }
-}
-
-/** A mock AlarmApp that records every notification delta `handleMessage` sees. */
-function createMockApp (): { app: AlarmApp, captured: CapturedNotification[] } {
-  const captured: CapturedNotification[] = []
-  const app: AlarmApp = {
-    handleMessage: (_id, delta) => {
-      const update = delta.updates?.[0]
-      if (update !== undefined && 'values' in update) {
-        for (const pathValue of update.values) {
-          captured.push({
-            path: String(pathValue.path),
-            value: pathValue.value as CapturedNotification['value']
-          })
-        }
-      }
-    },
-    debug: () => {}
-  }
-  return { app, captured }
-}
-
-/** Build a POI summary of the given type at the given position. */
-function poi (id: string, type: PoiType, name: string, position: Position): PoiSummary {
-  return {
-    id,
-    type,
-    position,
-    name,
-    source: 'activecaptain',
-    url: `https://activecaptain.garmin.com/en-US/pois/${id}`,
-    attribution: 'Data from Garmin ActiveCaptain'
-  }
-}
-
-/**
- * A position roughly `metersNorth` meters north of the origin. One degree of
- * latitude is about 111_320 m, which is precise enough to place test fixtures
- * comfortably inside or outside a radius.
- */
-function northOfOrigin (metersNorth: number): Position {
-  return { latitude: metersNorth / 111_320, longitude: 0 }
-}
+import { createProximityAlarms } from '../src/outputs/proximity-alarm/proximity-alarms.js'
+import type { Position } from '../src/shared/types.js'
+import { createCapturingApp, northOfOrigin, poiSummary as poi } from './helpers.js'
 
 const ORIGIN: Position = { latitude: 0, longitude: 0 }
 
 test('raises an alarm for a hazard within the radius', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
 
   alarms.evaluate(ORIGIN, [poi('h1', 'Hazard', 'Submerged rock', northOfOrigin(100))])
@@ -69,7 +22,7 @@ test('raises an alarm for a hazard within the radius', () => {
 })
 
 test('does not raise an alarm for a hazard outside the radius', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
 
   alarms.evaluate(ORIGIN, [poi('h1', 'Hazard', 'Far rock', northOfOrigin(2000))])
@@ -78,7 +31,7 @@ test('does not raise an alarm for a hazard outside the radius', () => {
 })
 
 test('ignores non-Hazard points of interest within the radius', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
 
   alarms.evaluate(ORIGIN, [
@@ -90,7 +43,7 @@ test('ignores non-Hazard points of interest within the radius', () => {
 })
 
 test('does not re-fire while a hazard stays within the radius', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
   const pois = [poi('h1', 'Hazard', 'Rock', northOfOrigin(100))]
 
@@ -103,7 +56,7 @@ test('does not re-fire while a hazard stays within the radius', () => {
 })
 
 test('clears the alarm exactly once when the hazard leaves the radius', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
   const hazard = poi('h1', 'Hazard', 'Rock', northOfOrigin(100))
 
@@ -120,7 +73,7 @@ test('clears the alarm exactly once when the hazard leaves the radius', () => {
 })
 
 test('re-arms a hazard after it leaves and re-enters the radius', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
   const hazard = poi('h1', 'Hazard', 'Rock', northOfOrigin(100))
 
@@ -135,7 +88,7 @@ test('re-arms a hazard after it leaves and re-enters the radius', () => {
 })
 
 test('does not clear a hazard that was never alarmed', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
 
   // The hazard is out of range on every pass, so it never enters the alarm
@@ -147,7 +100,7 @@ test('does not clear a hazard that was never alarmed', () => {
 })
 
 test('tracks several hazards independently', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
   const near = poi('near', 'Hazard', 'Near rock', northOfOrigin(100))
   const far = poi('far', 'Hazard', 'Far rock', northOfOrigin(3000))
@@ -169,7 +122,7 @@ test('tracks several hazards independently', () => {
 })
 
 test('applies a hysteresis band: an active alarm holds until past the exit radius', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
   const hazard = poi('h1', 'Hazard', 'Rock', northOfOrigin(100))
 
@@ -188,7 +141,7 @@ test('applies a hysteresis band: an active alarm holds until past the exit radiu
 })
 
 test('skips a hazard with a non-finite position instead of crashing', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
   const bad = poi('bad', 'Hazard', 'Bad coords', { latitude: Number.NaN, longitude: 0 })
   const good = poi('good', 'Hazard', 'Real rock', northOfOrigin(100))
@@ -199,7 +152,7 @@ test('skips a hazard with a non-finite position instead of crashing', () => {
 })
 
 test('sanitizes a POI id that carries path-breaking characters', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
 
   alarms.evaluate(ORIGIN, [poi('a.b/c', 'Hazard', 'Rock', northOfOrigin(100))])
@@ -208,7 +161,7 @@ test('sanitizes a POI id that carries path-breaking characters', () => {
 })
 
 test('clearAll clears every active hazard exactly once', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createProximityAlarms(app, 500)
 
   alarms.evaluate(ORIGIN, [

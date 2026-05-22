@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { proximityAlarmOutput } from '../src/outputs/proximity-alarm/proximity-alarm-output.js'
 import type { OutputContext } from '../src/outputs/output.js'
-import type { Position } from '../src/shared/types.js'
+import { northOfOrigin } from './helpers.js'
 
 /** Build an OutputContext whose app records every notification delta. */
 function createContext (messages: unknown[]): OutputContext {
@@ -29,11 +29,6 @@ function notifications (messages: unknown[]): Array<{ path: string, state: strin
     }
   }
   return out
-}
-
-/** A position roughly `metersNorth` meters north of the origin. */
-function northOfOrigin (metersNorth: number): Position {
-  return { latitude: metersNorth / 111_320, longitude: 0 }
 }
 
 test('isEnabled tracks the config flag', () => {

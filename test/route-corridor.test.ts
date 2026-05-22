@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { scanRouteCorridor } from '../src/outputs/route-hazard/route-corridor.js'
-import type { PoiSummary, PoiType, Position, RoutePolyline } from '../src/shared/types.js'
+import type { Position, RoutePolyline } from '../src/shared/types.js'
+import { poiSummary as poi } from './helpers.js'
 
 /** Assert that two numbers are within `epsilon` of each other. */
 function assertClose (actual: number, expected: number, epsilon: number, message: string): void {
@@ -9,19 +10,6 @@ function assertClose (actual: number, expected: number, epsilon: number, message
     Math.abs(actual - expected) <= epsilon,
     `${message}: expected ${actual} to be within ${epsilon} of ${expected}`
   )
-}
-
-/** Build a POI summary of the given type at the given position. */
-function poi (id: string, type: PoiType, name: string, position: Position): PoiSummary {
-  return {
-    id,
-    type,
-    position,
-    name,
-    source: 'activecaptain',
-    url: `https://activecaptain.garmin.com/en-US/pois/${id}`,
-    attribution: 'Data from Garmin ActiveCaptain'
-  }
 }
 
 /** Build a route polyline ahead of the vessel from a list of waypoints. */

@@ -1,33 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createRouteHazardAlarms, type RouteAlarmApp } from '../src/outputs/route-hazard/route-hazard-alarms.js'
+import { createRouteHazardAlarms } from '../src/outputs/route-hazard/route-hazard-alarms.js'
 import type { CorridorPoi, PoiType } from '../src/shared/types.js'
-
-/** Shape of the notification value the alarms emit on a route path. */
-interface CapturedNotification {
-  path: string
-  value: { state: string, method: string[], message: string, timestamp: string }
-}
-
-/** A mock RouteAlarmApp that records every notification delta `handleMessage` sees. */
-function createMockApp (): { app: RouteAlarmApp, captured: CapturedNotification[] } {
-  const captured: CapturedNotification[] = []
-  const app: RouteAlarmApp = {
-    handleMessage: (_id, delta) => {
-      const update = delta.updates?.[0]
-      if (update !== undefined && 'values' in update) {
-        for (const pathValue of update.values) {
-          captured.push({
-            path: String(pathValue.path),
-            value: pathValue.value as CapturedNotification['value']
-          })
-        }
-      }
-    },
-    debug: () => {}
-  }
-  return { app, captured }
-}
+import { createCapturingApp } from './helpers.js'
 
 /** Build a flagged corridor POI with sensible defaults for the optional fields. */
 function corridorPoi (
@@ -49,7 +24,7 @@ function corridorPoi (
 }
 
 test('raises a warn notification when a POI first appears on the route', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
 
   alarms.evaluate([corridorPoi('h1', 'Hazard', 'Submerged rock', 800, 600)])
@@ -66,7 +41,7 @@ test('raises a warn notification when a POI first appears on the route', () => {
 })
 
 test('omits the ETA when the corridor POI carries no etaSeconds', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
 
   alarms.evaluate([corridorPoi('b1', 'Bridge', 'Old swing bridge', 1500)])
@@ -77,7 +52,7 @@ test('omits the ETA when the corridor POI carries no etaSeconds', () => {
 })
 
 test('formats an along-track distance of a kilometer or more in km', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
 
   alarms.evaluate([corridorPoi('l1', 'Lock', 'Canal lock', 3400)])
@@ -86,7 +61,7 @@ test('formats an along-track distance of a kilometer or more in km', () => {
 })
 
 test('does not re-fire while a POI stays on the route ahead', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
   const pois = [corridorPoi('h1', 'Hazard', 'Rock', 800)]
 
@@ -99,7 +74,7 @@ test('does not re-fire while a POI stays on the route ahead', () => {
 })
 
 test('refreshes the notification when the along-track distance or ETA changes', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
 
   alarms.evaluate([corridorPoi('h1', 'Hazard', 'Rock', 1800, 600)])
@@ -113,7 +88,7 @@ test('refreshes the notification when the along-track distance or ETA changes', 
 })
 
 test('clears the alarm exactly once when the POI drops off the route ahead', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
   const hazard = corridorPoi('h1', 'Hazard', 'Rock', 800)
 
@@ -130,7 +105,7 @@ test('clears the alarm exactly once when the POI drops off the route ahead', () 
 })
 
 test('re-arms a POI after it drops off and reappears on the route', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
   const hazard = corridorPoi('h1', 'Hazard', 'Rock', 800)
 
@@ -145,7 +120,7 @@ test('re-arms a POI after it drops off and reappears on the route', () => {
 })
 
 test('tracks several corridor POIs independently', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
   const first = corridorPoi('a', 'Hazard', 'Rock', 500)
   const second = corridorPoi('b', 'Lock', 'Lock', 1200)
@@ -166,7 +141,7 @@ test('tracks several corridor POIs independently', () => {
 })
 
 test('sanitizes a POI id that carries path-breaking characters', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
 
   alarms.evaluate([corridorPoi('a.b/c', 'Hazard', 'Rock', 800)])
@@ -175,7 +150,7 @@ test('sanitizes a POI id that carries path-breaking characters', () => {
 })
 
 test('clearAll clears every active route alarm exactly once', () => {
-  const { app, captured } = createMockApp()
+  const { app, captured } = createCapturingApp()
   const alarms = createRouteHazardAlarms(app)
 
   alarms.evaluate([
