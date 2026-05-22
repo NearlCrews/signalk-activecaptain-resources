@@ -17,11 +17,20 @@ import type { ActiveCaptainClient } from './active-captain-client.js'
 import { createPoiCache } from './poi-cache.js'
 import { createPoiStore } from './poi-store.js'
 import type { PoiStore } from './poi-store.js'
+import { parseApiDate, renderDescription } from './poi-detail-renderer.js'
 import type { PoiSource } from '../poi-source.js'
+import { appendAttribution } from '../../shared/attribution.js'
+import type { PoiDetailView } from '../../shared/types.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
 /** The stable id of the ActiveCaptain source. */
 export const ACTIVE_CAPTAIN_SOURCE_ID = 'activecaptain'
+
+/** Human-readable attribution credit for ActiveCaptain data. */
+const ACTIVE_CAPTAIN_ATTRIBUTION = 'Data from Garmin ActiveCaptain'
+
+/** Public ActiveCaptain page for a point of interest, by id. */
+const POI_PAGE_URL_PREFIX = 'https://activecaptain.garmin.com/en-US/pois/'
 
 /** HTTP status for a point of interest that does not exist. */
 const HTTP_NOT_FOUND = 404
@@ -36,8 +45,8 @@ export interface ActiveCaptainSourceConfig {
   dataDir: string
   /** Status recorder for detail outcomes. */
   status: PluginStatus
-  /** SignalK app, for `setPluginError`. */
-  app: Pick<ServerAPI, 'setPluginError'>
+  /** SignalK app, for `setPluginError` and `debug`. */
+  app: Pick<ServerAPI, 'setPluginError' | 'debug'>
 }
 
 /** Create the ActiveCaptain POI source. */
@@ -95,8 +104,38 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
 
   return {
     id: ACTIVE_CAPTAIN_SOURCE_ID,
-    listPointsOfInterest: (bbox, poiTypes) => client.listPointsOfInterest(bbox, poiTypes),
-    getDetails: (id) => cache.get(id),
+    listPointsOfInterest: async (bbox, poiTypes) => {
+      const summaries = await client.listPointsOfInterest(bbox, poiTypes)
+      // The client is source-agnostic; tag each summary with the source slug,
+      // its public ActiveCaptain page, and the attribution credit.
+      return summaries.map((summary) => ({
+        ...summary,
+        source: ACTIVE_CAPTAIN_SOURCE_ID,
+        url: `${POI_PAGE_URL_PREFIX}${summary.id}`,
+        attribution: ACTIVE_CAPTAIN_ATTRIBUTION
+      }))
+    },
+    getDetails: async (id: string): Promise<PoiDetailView> => {
+      const entity = await cache.get(id)
+      const poi = entity.pointOfInterest
+      let description: string | undefined
+      try {
+        description = appendAttribution(renderDescription(entity), ACTIVE_CAPTAIN_ATTRIBUTION)
+      } catch (error) {
+        app.debug(`Unable to format description for ${id}: ${String(error)}`)
+      }
+      const modified = parseApiDate(poi.dateLastModified)
+      return {
+        name: poi.name,
+        position: { ...poi.mapLocation },
+        type: poi.poiType,
+        url: `${POI_PAGE_URL_PREFIX}${id}`,
+        source: ACTIVE_CAPTAIN_SOURCE_ID,
+        attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
+        ...(description !== undefined && { description }),
+        ...(Number.isFinite(modified.getTime()) && { timestamp: modified.toISOString() })
+      }
+    },
     cacheSize: () => cache.size(),
     close: () => {
       closed = true

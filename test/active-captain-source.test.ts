@@ -5,10 +5,21 @@ import os from 'node:os'
 import path from 'node:path'
 import { createActiveCaptainSource } from '../src/inputs/active-captain/active-captain-source.js'
 import { HttpError } from '../src/inputs/active-captain/active-captain-client.js'
-import type { ActiveCaptainClient } from '../src/inputs/active-captain/active-captain-client.js'
-import type { PoiDetails, PoiSummary } from '../src/shared/types.js'
+import type {
+  ActiveCaptainClient,
+  ClientPoiSummary
+} from '../src/inputs/active-captain/active-captain-client.js'
+import type { PoiDetails } from '../src/shared/types.js'
 
-const sampleDetails = { pointOfInterest: { name: 'X' } } as unknown as PoiDetails
+const sampleDetails = {
+  pointOfInterest: {
+    id: 1,
+    name: 'X',
+    poiType: 'Marina',
+    mapLocation: { latitude: 1, longitude: 2 },
+    dateLastModified: '2020-01-01T00:00:00.000'
+  }
+} as unknown as PoiDetails
 
 /** Create a fresh, isolated temp directory so a test never inherits another's
  *  poi-cache.json. The returned `cleanup` removes it. */
@@ -27,7 +38,7 @@ function fakeClient (overrides: Partial<ActiveCaptainClient> = {}): {
 } {
   let calls = 0
   const client: ActiveCaptainClient = {
-    listPointsOfInterest: async (): Promise<PoiSummary[]> =>
+    listPointsOfInterest: async (): Promise<ClientPoiSummary[]> =>
       [{ id: '1', name: 'A', type: 'Marina', position: { latitude: 0, longitude: 0 } }],
     pointOfInterestDetails: async (): Promise<PoiDetails> => {
       calls++
@@ -64,7 +75,15 @@ test('getDetails returns detail through the cache', async () => {
       dataDir,
       ...spies()
     })
-    assert.equal((await source.getDetails('1')).pointOfInterest.name, 'X')
+    const view = await source.getDetails('1')
+    assert.equal(view.name, 'X')
+    assert.equal(view.type, 'Marina')
+    assert.equal(view.source, 'activecaptain')
+    assert.equal(view.url, 'https://activecaptain.garmin.com/en-US/pois/1')
+    assert.ok(
+      view.description?.includes('Data from Garmin ActiveCaptain'),
+      'the rendered description carries the attribution footer'
+    )
     assert.equal(source.id, 'activecaptain')
     source.close()
   } finally {
@@ -103,6 +122,8 @@ test('listPointsOfInterest delegates to the client', async () => {
     const list = await source.listPointsOfInterest(
       { north: 1, south: 0, east: 1, west: 0 }, 'Marina')
     assert.equal(list.length, 1)
+    assert.equal(list[0].source, 'activecaptain')
+    assert.equal(list[0].url, 'https://activecaptain.garmin.com/en-US/pois/1')
     source.close()
   } finally {
     cleanup()

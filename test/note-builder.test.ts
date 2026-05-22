@@ -2,17 +2,30 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildNoteResource, readProperty } from '../src/outputs/notes-resource/note-builder.js'
 
+const SAMPLE_URL = 'https://activecaptain.garmin.com/en-US/pois/7'
+const SAMPLE_SOURCE = 'activecaptain'
+const SAMPLE_ATTRIBUTION = 'Data from Garmin ActiveCaptain'
+
 test('buildNoteResource omits timestamp and description when not supplied', () => {
-  const note = buildNoteResource('7', 'Dock', { latitude: 1, longitude: 2 }, 'marina')
+  const note = buildNoteResource(
+    'Dock', { latitude: 1, longitude: 2 }, 'marina',
+    SAMPLE_URL, SAMPLE_SOURCE, SAMPLE_ATTRIBUTION)
   assert.equal(note.name, 'Dock')
-  assert.equal(note.url, 'https://activecaptain.garmin.com/en-US/pois/7')
+  assert.equal(note.url, SAMPLE_URL)
   assert.equal(note.timestamp, undefined)
   assert.equal(note.description, undefined)
-  assert.deepEqual(note.properties, { readOnly: true, skIcon: 'marina' })
+  assert.deepEqual(note.properties, {
+    readOnly: true,
+    skIcon: 'marina',
+    source: SAMPLE_SOURCE,
+    attribution: SAMPLE_ATTRIBUTION
+  })
 })
 
 test('buildNoteResource includes html description and mimeType when supplied', () => {
-  const note = buildNoteResource('7', 'Dock', { latitude: 1, longitude: 2 }, 'marina',
+  const note = buildNoteResource(
+    'Dock', { latitude: 1, longitude: 2 }, 'marina',
+    SAMPLE_URL, SAMPLE_SOURCE, SAMPLE_ATTRIBUTION,
     '2020-01-01T00:00:00.000Z', '<p>hi</p>')
   assert.equal(note.description, '<p>hi</p>')
   assert.equal(note.mimeType, 'text/html')
@@ -20,13 +33,19 @@ test('buildNoteResource includes html description and mimeType when supplied', (
 })
 
 test('readProperty reads a dot path and returns undefined for a miss', () => {
-  const note = buildNoteResource('7', 'Dock', { latitude: 1, longitude: 2 }, 'marina')
+  const note = buildNoteResource(
+    'Dock', { latitude: 1, longitude: 2 }, 'marina',
+    SAMPLE_URL, SAMPLE_SOURCE, SAMPLE_ATTRIBUTION)
   assert.equal(readProperty(note, 'properties.skIcon'), 'marina')
+  assert.equal(readProperty(note, 'properties.source'), SAMPLE_SOURCE)
+  assert.equal(readProperty(note, 'properties.attribution'), SAMPLE_ATTRIBUTION)
   assert.equal(readProperty(note, 'properties.nope'), undefined)
 })
 
 test('readProperty returns undefined when an intermediate segment is not an object', () => {
-  const note = buildNoteResource('7', 'Dock', { latitude: 1, longitude: 2 }, 'marina')
+  const note = buildNoteResource(
+    'Dock', { latitude: 1, longitude: 2 }, 'marina',
+    SAMPLE_URL, SAMPLE_SOURCE, SAMPLE_ATTRIBUTION)
   // `name` is the string 'Dock', so descending into `name.foo` cannot resolve;
   // readProperty must return undefined rather than throw on the string.
   assert.doesNotThrow(() => readProperty(note, 'name.foo'))

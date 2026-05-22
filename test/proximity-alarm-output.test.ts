@@ -55,7 +55,15 @@ test('start contributes a Hazard scan and raises an alarm on evaluate', () => {
   const box = handle.positionScan.buildFetchBox({ latitude: 10, longitude: 20 })
   assert.ok(box !== null && box.north > 10 && box.south < 10)
   handle.positionScan.evaluate({ latitude: 0, longitude: 0 }, [
-    { id: 'h1', name: 'Rock', type: 'Hazard', position: { latitude: 0, longitude: 0 } }
+    {
+      id: 'h1',
+      name: 'Rock',
+      type: 'Hazard',
+      position: { latitude: 0, longitude: 0 },
+      source: 'activecaptain',
+      url: 'https://activecaptain.garmin.com/en-US/pois/h1',
+      attribution: 'Data from Garmin ActiveCaptain'
+    }
   ])
   assert.equal(messages.length, 1)
   handle.stop()
@@ -69,7 +77,15 @@ test('a non-Hazard POI inside the radius is ignored', () => {
   // A marina sitting right on the vessel is well inside the radius, but only
   // Hazard points raise a proximity alarm, so nothing is emitted.
   handle.positionScan.evaluate({ latitude: 0, longitude: 0 }, [
-    { id: 'm1', name: 'Close marina', type: 'Marina', position: { latitude: 0, longitude: 0 } }
+    {
+      id: 'm1',
+      name: 'Close marina',
+      type: 'Marina',
+      position: { latitude: 0, longitude: 0 },
+      source: 'activecaptain',
+      url: 'https://activecaptain.garmin.com/en-US/pois/m1',
+      attribution: 'Data from Garmin ActiveCaptain'
+    }
   ])
   assert.equal(messages.length, 0)
   handle.stop()
@@ -81,8 +97,13 @@ test('multiple hazards raise and clear independently', () => {
   const handle = proximityAlarmOutput.start(createContext(messages))
   assert.ok(handle.positionScan)
 
-  const near = { id: 'near', name: 'Near rock', type: 'Hazard' as const, position: northOfOrigin(100) }
-  const far = { id: 'far', name: 'Far rock', type: 'Hazard' as const, position: northOfOrigin(3000) }
+  const tag = {
+    source: 'activecaptain',
+    url: 'https://activecaptain.garmin.com/en-US/pois/x',
+    attribution: 'Data from Garmin ActiveCaptain'
+  }
+  const near = { id: 'near', name: 'Near rock', type: 'Hazard' as const, position: northOfOrigin(100), ...tag }
+  const far = { id: 'far', name: 'Far rock', type: 'Hazard' as const, position: northOfOrigin(3000), ...tag }
 
   // Pass one: only `near` is within the 500 m radius.
   handle.positionScan.evaluate({ latitude: 0, longitude: 0 }, [near, far])

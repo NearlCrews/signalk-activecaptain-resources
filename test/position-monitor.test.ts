@@ -140,7 +140,10 @@ const HAZARD: PoiSummary = {
   id: 'h1',
   type: 'Hazard',
   position: { latitude: 10.01, longitude: 20 },
-  name: 'Rock'
+  name: 'Rock',
+  source: 'activecaptain',
+  url: 'https://activecaptain.garmin.com/en-US/pois/h1',
+  attribution: 'Data from Garmin ActiveCaptain'
 }
 
 /** A bounding box around the test's home position. */

@@ -170,7 +170,13 @@ test('a tick with a route raises an alarm, a tick without a route clears it', as
 
   // A hazard close ahead on the route corridor raises one notification.
   const hazard: PoiSummary = {
-    id: 'h1', name: 'Rock', type: 'Hazard', position: { latitude: 0.1, longitude: 0 }
+    id: 'h1',
+    name: 'Rock',
+    type: 'Hazard',
+    position: { latitude: 0.1, longitude: 0 },
+    source: 'activecaptain',
+    url: 'https://activecaptain.garmin.com/en-US/pois/h1',
+    attribution: 'Data from Garmin ActiveCaptain'
   }
   handle.positionScan.buildFetchBox({ latitude: 0, longitude: 0 })
   handle.positionScan.evaluate({ latitude: 0, longitude: 0 }, [hazard])
@@ -201,7 +207,13 @@ test('evaluate scans the corridor from the fresh fix, not the frozen one', async
   // vessel-to-first-waypoint leg and must be flagged. evaluate must use the
   // fresh position the monitor passes, not the one buildFetchBox froze.
   const hazard: PoiSummary = {
-    id: 'h1', name: 'Rock', type: 'Hazard', position: { latitude: -0.05, longitude: 0 }
+    id: 'h1',
+    name: 'Rock',
+    type: 'Hazard',
+    position: { latitude: -0.05, longitude: 0 },
+    source: 'activecaptain',
+    url: 'https://activecaptain.garmin.com/en-US/pois/h1',
+    attribution: 'Data from Garmin ActiveCaptain'
   }
   handle.positionScan.buildFetchBox({ latitude: 0, longitude: 0 })
   handle.positionScan.evaluate({ latitude: -0.1, longitude: 0 }, [hazard])
@@ -221,7 +233,13 @@ test('a POI well outside the corridor is not alarmed', async () => {
   // A hazard 0.1 deg of longitude east of the route (about 11 km) is far
   // outside the 500 m corridor half-width, so evaluate must not alarm it.
   const hazard: PoiSummary = {
-    id: 'h1', name: 'Distant rock', type: 'Hazard', position: { latitude: 0.5, longitude: 0.1 }
+    id: 'h1',
+    name: 'Distant rock',
+    type: 'Hazard',
+    position: { latitude: 0.5, longitude: 0.1 },
+    source: 'activecaptain',
+    url: 'https://activecaptain.garmin.com/en-US/pois/h1',
+    attribution: 'Data from Garmin ActiveCaptain'
   }
   handle.positionScan.buildFetchBox({ latitude: 0, longitude: 0 })
   handle.positionScan.evaluate({ latitude: 0, longitude: 0 }, [hazard])
@@ -239,7 +257,13 @@ test('stop stops the course reader and clears active alarms', async () => {
   assert.ok(handle.positionScan)
 
   const hazard: PoiSummary = {
-    id: 'h1', name: 'Rock', type: 'Hazard', position: { latitude: 0.1, longitude: 0 }
+    id: 'h1',
+    name: 'Rock',
+    type: 'Hazard',
+    position: { latitude: 0.1, longitude: 0 },
+    source: 'activecaptain',
+    url: 'https://activecaptain.garmin.com/en-US/pois/h1',
+    attribution: 'Data from Garmin ActiveCaptain'
   }
   handle.positionScan.buildFetchBox({ latitude: 0, longitude: 0 })
   handle.positionScan.evaluate({ latitude: 0, longitude: 0 }, [hazard])

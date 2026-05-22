@@ -136,16 +136,47 @@ export interface PoiListResponse {
   pointsOfInterest: PoiListItem[]
 }
 
-/** Normalized list entry produced by the client for use inside the plugin. */
+/** Normalized list entry produced by a source for use inside the plugin. */
 export interface PoiSummary {
   id: string
   type: PoiType
   position: Position
   name: string
+  /** Source slug that produced this entry, e.g. `activecaptain`. */
+  source: string
+  /** Public web page for this POI (source-specific). */
+  url: string
+  /** Human-readable attribution credit for the source. */
+  attribution: string
   /** Average review rating (0 to 5), when the list response carries one. */
   rating?: number
   /** Number of reviews behind the rating. */
   reviewCount?: number
+}
+
+/**
+ * A source-agnostic, fully rendered point-of-interest detail view. Every
+ * `PoiSource.getDetails` returns this shape: the source has already rendered
+ * its own detail HTML (with an attribution footer), so the `notes` output
+ * builds a note from this without knowing which source produced it.
+ */
+export interface PoiDetailView {
+  /** Display name. */
+  name: string
+  /** Map position. */
+  position: Position
+  /** POI type, used for the note `skIcon`. */
+  type: PoiType
+  /** Public web page for this POI (source-specific). */
+  url: string
+  /** Source slug, e.g. `activecaptain` or `openseamap`. */
+  source: string
+  /** Human-readable attribution credit for the source. */
+  attribution: string
+  /** Rendered HTML description, including the attribution footer. Omitted when none. */
+  description?: string
+  /** ISO-8601 UTC last-modified time, omitted when unknown. */
+  timestamp?: string
 }
 
 /** Identity and location block present in every summary response. */
@@ -352,4 +383,10 @@ export interface PluginConfig {
   routeCorridorWidthMeters?: number
   /** Hide points of interest whose average rating is below this value (0 to 5). */
   minimumRating?: number
+  /** Import points of interest from OpenSeaMap (OpenStreetMap marine data). */
+  openSeaMapEnabled?: boolean
+  /** Overpass API endpoint URL the OpenSeaMap source queries. */
+  openSeaMapEndpoint?: string
+  /** Which OpenSeaMap seamark feature groups to import. */
+  openSeaMapSeamarkGroups?: string[]
 }

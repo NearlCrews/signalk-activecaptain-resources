@@ -10,7 +10,7 @@
 
 import type { ServerAPI } from '@signalk/server-api'
 import type { PluginStatus } from '../status/plugin-status.js'
-import type { Bbox, PluginConfig, PoiDetails, PoiSummary } from '../shared/types.js'
+import type { Bbox, PluginConfig, PoiDetailView, PoiSummary } from '../shared/types.js'
 
 /** One upstream provider of points of interest. */
 export interface PoiSource {
@@ -21,8 +21,11 @@ export interface PoiSource {
    * comma-separated, source-specific `poiTypes` filter. Rejects on failure.
    */
   listPointsOfInterest: (bbox: Bbox, poiTypes: string) => Promise<PoiSummary[]>
-  /** Fetch the full detail for one point of interest by id. Rejects on failure. */
-  getDetails: (id: string) => Promise<PoiDetails>
+  /**
+   * Fetch one point of interest by id as a fully rendered, source-agnostic
+   * detail view. Rejects on failure.
+   */
+  getDetails: (id: string) => Promise<PoiDetailView>
   /** Number of detail entries currently cached, for the status snapshot. */
   cacheSize: () => number
   /** Abort in-flight work and release resources. Called on plugin stop. */

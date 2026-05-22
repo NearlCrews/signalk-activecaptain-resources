@@ -31,7 +31,15 @@ function createMockApp (): { app: AlarmApp, captured: CapturedNotification[] } {
 
 /** Build a POI summary of the given type at the given position. */
 function poi (id: string, type: PoiType, name: string, position: Position): PoiSummary {
-  return { id, type, position, name }
+  return {
+    id,
+    type,
+    position,
+    name,
+    source: 'activecaptain',
+    url: `https://activecaptain.garmin.com/en-US/pois/${id}`,
+    attribution: 'Data from Garmin ActiveCaptain'
+  }
 }
 
 /**

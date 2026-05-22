@@ -16,6 +16,13 @@
 
 import type { Bbox, PoiDetails, PoiListResponse, PoiSummary, Logger } from '../../shared/types.js'
 
+/**
+ * A list entry as produced by the client. It carries every `PoiSummary` field
+ * except the source-identity fields (`source`, `url`, and `attribution`): the
+ * client has no notion of the source slug, so the source adapter tags those on.
+ */
+export type ClientPoiSummary = Omit<PoiSummary, 'source' | 'url' | 'attribution'>
+
 const BASE_URL = 'https://activecaptain.garmin.com'
 const USER_AGENT = 'Signal K Active Captain Plugin'
 
@@ -88,7 +95,7 @@ export interface ActiveCaptainClient {
    * Resolves with a normalized array (possibly empty). Rejects on any HTTP,
    * network, or parsing failure.
    */
-  listPointsOfInterest: (bbox: Bbox, poiTypes: string) => Promise<PoiSummary[]>
+  listPointsOfInterest: (bbox: Bbox, poiTypes: string) => Promise<ClientPoiSummary[]>
   /**
    * Fetch the full detail summary for a single point of interest.
    * Rejects on any HTTP, network, or parsing failure.
@@ -294,7 +301,7 @@ export function createActiveCaptainClient (
     }
   }
 
-  async function listPointsOfInterest (bbox: Bbox, poiTypes: string): Promise<PoiSummary[]> {
+  async function listPointsOfInterest (bbox: Bbox, poiTypes: string): Promise<ClientPoiSummary[]> {
     const url = `${BASE_URL}/community/api/v1/points-of-interest/bbox`
     try {
       const response = await queue.run(() => fetchWithRetry(url, {
@@ -340,7 +347,7 @@ export function createActiveCaptainClient (
       }
 
       return usable.map(poi => {
-        const summary: PoiSummary = {
+        const summary: ClientPoiSummary = {
           // The API returns numeric POI ids; coerce so PoiSummary.id is
           // genuinely a string and a later .replace() in the alarm code
           // cannot throw on a number.

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { notesResourceOutput } from '../src/outputs/notes-resource/notes-resource-output.js'
 import type { OutputContext } from '../src/outputs/output.js'
-import type { PoiDetails } from '../src/shared/types.js'
+import type { PoiDetailView } from '../src/shared/types.js'
 
 function recordingApp () {
   const provider: { methods?: Record<string, unknown> } = {}
@@ -61,16 +61,24 @@ function contextWith (overrides: Partial<OutputContext>): OutputContext {
     pois: {
       id: 'activecaptain',
       listPointsOfInterest: async () => [
-        { id: '1', name: 'A', type: 'Marina', position: { latitude: 0, longitude: 0 } }
-      ],
-      getDetails: async (): Promise<PoiDetails> => ({
-        pointOfInterest: {
+        {
+          id: '1',
           name: 'A',
-          poiType: 'Marina',
-          mapLocation: { latitude: 0, longitude: 0 },
-          dateLastModified: '2020-01-01 00:00:00'
+          type: 'Marina',
+          position: { latitude: 0, longitude: 0 },
+          source: 'activecaptain',
+          url: 'https://activecaptain.garmin.com/en-US/pois/1',
+          attribution: 'Data from Garmin ActiveCaptain'
         }
-      }) as unknown as PoiDetails,
+      ],
+      getDetails: async (): Promise<PoiDetailView> => ({
+        name: 'A',
+        type: 'Marina',
+        position: { latitude: 0, longitude: 0 },
+        url: 'https://activecaptain.garmin.com/en-US/pois/1',
+        source: 'activecaptain',
+        attribution: 'Data from Garmin ActiveCaptain'
+      }),
       cacheSize: () => 0,
       close: () => {}
     },
@@ -139,7 +147,7 @@ test('listResources records the error and rethrows on a list failure', async () 
     pois: {
       id: 'activecaptain',
       listPointsOfInterest: async () => { throw new Error('boom') },
-      getDetails: async (): Promise<PoiDetails> => { throw new Error('not used') },
+      getDetails: async (): Promise<PoiDetailView> => { throw new Error('not used') },
       cacheSize: () => 0,
       close: () => {}
     } as never
@@ -175,7 +183,7 @@ test('getResource rejects cleanly when getDetails fails', async () => {
     pois: {
       id: 'activecaptain',
       listPointsOfInterest: async () => [],
-      getDetails: async (): Promise<PoiDetails> => { throw new Error('detail boom') },
+      getDetails: async (): Promise<PoiDetailView> => { throw new Error('detail boom') },
       cacheSize: () => 0,
       close: () => {}
     } as never

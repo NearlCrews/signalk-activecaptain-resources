@@ -9,30 +9,33 @@
 import { PLUGIN_ID } from '../../shared/plugin-id.js'
 import type { Position } from '../../shared/types.js'
 
-/** Public ActiveCaptain page for a point of interest, by id. */
-const POI_PAGE_URL_PREFIX = 'https://activecaptain.garmin.com/en-US/pois/'
-
 /**
  * Build a SignalK `notes` resource object. The shape is shared by the list and
- * single-resource responses. `timestamp` is included only when a genuine
- * resource timestamp is known (the list endpoint does not supply one), and
- * `description`, which is rendered HTML, is included only when supplied.
+ * single-resource responses. `url`, `source`, and `attribution` are
+ * source-specific values carried on the POI data. `timestamp` is included only
+ * when a genuine resource timestamp is known (the list endpoint does not
+ * supply one), and `description`, which is rendered HTML, is included only when
+ * supplied.
  */
 export function buildNoteResource (
-  id: string,
   name: string,
   position: Position,
   skIcon: string,
+  url: string,
+  source: string,
+  attribution: string,
   timestamp?: string,
   description?: string
 ): Record<string, unknown> {
   const note: Record<string, unknown> = {
     name,
     position,
-    url: `${POI_PAGE_URL_PREFIX}${id}`,
+    url,
     properties: {
       readOnly: true,
-      skIcon
+      skIcon,
+      source,
+      attribution
     },
     $source: PLUGIN_ID
   }

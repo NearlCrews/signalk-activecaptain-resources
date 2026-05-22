@@ -16,7 +16,6 @@ import type { OutputContext, OutputHandle, OutputModule } from '../output.js'
 import { buildNoteResource, readProperty } from './note-builder.js'
 import { resolveBbox } from './resource-query.js'
 import { filterByRating } from '../../inputs/active-captain/rating-filter.js'
-import { parseApiDate, renderDescription } from '../../inputs/active-captain/poi-detail-renderer.js'
 import { buildPoiTypesString } from '../../shared/poi-type-selection.js'
 import { PLUGIN_ID } from '../../shared/plugin-id.js'
 import type { PoiSummary } from '../../shared/types.js'
@@ -73,10 +72,12 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       const resources: Record<string, unknown> = {}
       for (const entity of entities) {
         resources[entity.id] = buildNoteResource(
-          entity.id,
           entity.name,
           { ...entity.position },
-          entity.type.toLowerCase()
+          entity.type.toLowerCase(),
+          entity.url,
+          entity.source,
+          entity.attribution
         )
       }
       return resources
@@ -84,27 +85,16 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
 
     getResource: async (id: string, property?: string): Promise<object> => {
       app.debug(`Incoming request to get note ${id}${property != null ? ` property ${property}` : ''}`)
-      const entity = await pois.getDetails(id)
-      const poi = entity.pointOfInterest
-
-      let description = ''
-      try {
-        description = renderDescription(entity)
-      } catch (error) {
-        app.debug(`Unable to format description for ${id} - ${String(error)}`)
-      }
-
-      const modified = parseApiDate(poi.dateLastModified)
-      const timestamp = Number.isFinite(modified.getTime())
-        ? modified.toISOString()
-        : undefined
+      const view = await pois.getDetails(id)
       const note = buildNoteResource(
-        id,
-        poi.name,
-        { ...poi.mapLocation },
-        poi.poiType.toLowerCase(),
-        timestamp,
-        description
+        view.name,
+        { ...view.position },
+        view.type.toLowerCase(),
+        view.url,
+        view.source,
+        view.attribution,
+        view.timestamp,
+        view.description
       )
 
       if (property === undefined || property === '') {
