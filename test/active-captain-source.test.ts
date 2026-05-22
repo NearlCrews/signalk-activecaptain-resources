@@ -9,7 +9,7 @@ import type {
   ActiveCaptainClient,
   ClientPoiSummary
 } from '../src/inputs/active-captain/active-captain-client.js'
-import type { PoiDetails } from '../src/shared/types.js'
+import type { PoiDetails } from '../src/inputs/active-captain/active-captain-types.js'
 
 const sampleDetails = {
   pointOfInterest: {

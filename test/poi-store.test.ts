@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createPoiStore } from '../src/inputs/active-captain/poi-store.js'
-import type { PoiDetails } from '../src/shared/types.js'
+import type { PoiDetails } from '../src/inputs/active-captain/active-captain-types.js'
 
 /** Generous TTL so entries never expire mid-test unless a test forces it. */
 const TTL_MINUTES = 60

@@ -14,7 +14,8 @@
  */
 
 import { assertResponseOk, createHttpClient, type RateLimitOptions } from '../http-client.js'
-import type { Bbox, PoiDetails, PoiListResponse, PoiSummary, Logger } from '../../shared/types.js'
+import type { Bbox, PoiSummary, Logger } from '../../shared/types.js'
+import type { PoiDetails, PoiListResponse } from './active-captain-types.js'
 
 export { HttpError } from '../http-client.js'
 export type { RateLimitOptions } from '../http-client.js'

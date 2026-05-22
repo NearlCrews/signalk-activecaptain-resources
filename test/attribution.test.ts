@@ -10,13 +10,13 @@ test('appendAttribution appends a footer containing the credit to the HTML', () 
 
 test('appendAttribution still yields a footer for an empty description', () => {
   const result = appendAttribution('', 'Data from X')
-  assert.equal(result, '<p class="ac-attribution">Data from X</p>')
+  assert.equal(result, '<p class="crows-nest-attribution">Data from X</p>')
 })
 
 test('appendAttribution uses a single, consistent footer element', () => {
   const result = appendAttribution('<p>hi</p>', '© OpenStreetMap contributors (ODbL)')
   assert.equal(
     result,
-    '<p>hi</p><p class="ac-attribution">© OpenStreetMap contributors (ODbL)</p>'
+    '<p>hi</p><p class="crows-nest-attribution">© OpenStreetMap contributors (ODbL)</p>'
   )
 })

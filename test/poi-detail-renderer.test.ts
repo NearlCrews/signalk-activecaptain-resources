@@ -14,7 +14,7 @@ import {
   isStaleHazard,
   renderDescription
 } from '../src/inputs/active-captain/poi-detail-renderer.js'
-import type { PoiDetails } from '../src/shared/types.js'
+import type { PoiDetails } from '../src/inputs/active-captain/active-captain-types.js'
 
 const NOW = new Date('2026-05-21T12:00:00.000Z')
 const THREE_DAYS_AGO = new Date(NOW.getTime() - 3 * 86400 * 1000)

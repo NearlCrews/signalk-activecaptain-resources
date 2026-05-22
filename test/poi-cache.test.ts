@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createPoiCache, type PoiDetailsSource } from '../src/inputs/active-captain/poi-cache.js'
 import { createPoiStore } from '../src/inputs/active-captain/poi-store.js'
-import type { PoiDetails } from '../src/shared/types.js'
+import type { PoiDetails } from '../src/inputs/active-captain/active-captain-types.js'
 
 /** Generous cache lifetime so entries never expire mid-test. */
 const TTL_MINUTES = 60

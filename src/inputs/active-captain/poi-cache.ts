@@ -15,7 +15,7 @@ import { LRUCache } from 'lru-cache'
 import type { PoiStore } from './poi-store.js'
 import { MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
 import { MS_PER_MINUTE } from '../../shared/time.js'
-import type { PoiDetails } from '../../shared/types.js'
+import type { PoiDetails } from './active-captain-types.js'
 
 /** The slice of the ActiveCaptain client this cache depends on. */
 export interface PoiDetailsSource {

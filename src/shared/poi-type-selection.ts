@@ -1,7 +1,8 @@
 /**
  * Translation from the plugin's POI-type configuration toggles to the
- * comma-separated `poiTypes` string the ActiveCaptain bounding-box endpoint
- * expects.
+ * comma-separated `poiTypes` string the aggregate POI source uses to scope
+ * list requests. ActiveCaptain's bounding-box endpoint is the original
+ * consumer, and other inputs accept the same comma-separated form.
  */
 
 import type { PluginConfig, PoiType, PoiTypeFlag } from './types.js'

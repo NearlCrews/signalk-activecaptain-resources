@@ -8,5 +8,5 @@
 
 /** Append a source attribution footer to a rendered HTML description. */
 export function appendAttribution (html: string, attribution: string): string {
-  return `${html}<p class="ac-attribution">${attribution}</p>`
+  return `${html}<p class="crows-nest-attribution">${attribution}</p>`
 }
