@@ -27,9 +27,26 @@ import type { CorridorPoi, PoiSummary, PoiType, Position, RoutePolyline } from '
 /**
  * The point-of-interest types the corridor scan flags. Marinas, anchorages,
  * and the rest are out of scope: only obstructions a vessel must plan around
- * raise a corridor hazard.
+ * raise a corridor hazard. The tuple is the single source of truth: the route
+ * output reads it to size its fetch types, so the scan filter and the fetch
+ * request cannot drift.
  */
-const CORRIDOR_POI_TYPES: ReadonlySet<PoiType> = new Set<PoiType>(['Hazard', 'Bridge', 'Lock'])
+export const CORRIDOR_POI_TYPES = ['Hazard', 'Bridge', 'Lock'] as const satisfies readonly PoiType[]
+
+const CORRIDOR_POI_TYPE_SET: ReadonlySet<PoiType> = new Set<PoiType>(CORRIDOR_POI_TYPES)
+
+/**
+ * Build the leg-point chain for the route ahead. With a vessel fix the chain
+ * runs from the vessel through every waypoint, so the along-track distance is
+ * measured from where the vessel is now; without a fix it runs waypoint to
+ * waypoint. Shared by the corridor scan and the route-hazard fetch box so the
+ * two cannot drift.
+ */
+export function routeLegPoints (route: RoutePolyline): Position[] {
+  return route.vesselPosition !== null
+    ? [route.vesselPosition, ...route.waypoints]
+    : [...route.waypoints]
+}
 
 /** Inputs for {@link scanRouteCorridor}. */
 export interface RouteCorridorScanInput {
@@ -64,15 +81,20 @@ export function scanRouteCorridor (input: RouteCorridorScanInput): CorridorPoi[]
   // The legs run vessel to first waypoint to second waypoint, and so on. With
   // no vessel fix the first leg starts at the next waypoint instead, so the
   // along-track distance is then measured from there.
-  const legPoints: Position[] =
-    route.vesselPosition !== null
-      ? [route.vesselPosition, ...route.waypoints]
-      : [...route.waypoints]
+  const legPoints = routeLegPoints(route)
   // `!(corridorWidthMeters > 0)` rather than `<= 0` so a non-finite width (NaN)
   // is rejected too: NaN fails every comparison, so a `<= 0` test would let it
   // through and then `abs(crossTrack) > NaN` would be false for every point,
   // silently flagging everything in the box regardless of the corridor.
   if (legPoints.length < 2 || !(corridorWidthMeters > 0) || pois.length === 0) {
+    return []
+  }
+
+  // Filter to corridor types once, not on every leg: only Hazard, Bridge, and
+  // Lock can be flagged, and the per-leg type check would otherwise rerun for
+  // every poi on every leg.
+  const corridorPois = pois.filter((poi) => CORRIDOR_POI_TYPE_SET.has(poi.type))
+  if (corridorPois.length === 0) {
     return []
   }
 
@@ -97,10 +119,7 @@ export function scanRouteCorridor (input: RouteCorridorScanInput): CorridorPoi[]
       continue
     }
 
-    for (const poi of pois) {
-      if (!CORRIDOR_POI_TYPES.has(poi.type)) {
-        continue
-      }
+    for (const poi of corridorPois) {
       const projection = projectPointOntoLeg(start, end, poi.position)
       if (!Number.isFinite(projection.crossTrackMeters) || !Number.isFinite(projection.alongTrackMeters)) {
         continue

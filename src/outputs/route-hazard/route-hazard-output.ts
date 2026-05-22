@@ -14,7 +14,7 @@
 
 import { createCourseReader } from './course-reader.js'
 import { createRouteHazardAlarms } from './route-hazard-alarms.js'
-import { scanRouteCorridor } from './route-corridor.js'
+import { CORRIDOR_POI_TYPES, routeLegPoints, scanRouteCorridor } from './route-corridor.js'
 import type { OutputContext, OutputHandle, OutputModule, PositionScanContributor } from '../output.js'
 import { distanceMeters, positionToBbox, unionBbox } from '../../geo/position-utilities.js'
 import type { Bbox, CorridorPoi, Position, RoutePolyline } from '../../shared/types.js'
@@ -32,9 +32,6 @@ const METERS_PER_NAUTICAL_MILE = 1852
  * later tick.
  */
 const ROUTE_LOOK_AHEAD_METERS = 10 * METERS_PER_NAUTICAL_MILE
-
-/** POI types the route-corridor scan acts on. */
-const ROUTE_SCAN_POI_TYPES = ['Hazard', 'Bridge', 'Lock'] as const
 
 /** The route-hazard config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
@@ -62,9 +59,7 @@ function resolveCorridorWidth (raw: unknown): number {
  * the route carries no usable points. Lifted from the legacy position monitor.
  */
 function routeCorridorBbox (route: RoutePolyline, corridorWidthMeters: number): Bbox | null {
-  const points: Position[] = route.vesselPosition !== null
-    ? [route.vesselPosition, ...route.waypoints]
-    : [...route.waypoints]
+  const points = routeLegPoints(route)
 
   let box: Bbox | undefined
   let traveledMeters = 0
@@ -102,7 +97,7 @@ export const routeHazardOutput: OutputModule = {
     let tickRoute: RoutePolyline | null = null
 
     const positionScan: PositionScanContributor = {
-      poiTypes: ROUTE_SCAN_POI_TYPES,
+      poiTypes: CORRIDOR_POI_TYPES,
       buildFetchBox: () => {
         tickRoute = courseReader.getRouteAhead()
         return tickRoute === null
