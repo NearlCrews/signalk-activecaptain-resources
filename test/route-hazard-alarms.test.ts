@@ -55,7 +55,7 @@ test('raises a warn notification when a POI first appears on the route', () => {
   alarms.evaluate([corridorPoi('h1', 'Hazard', 'Submerged rock', 800, 600)])
 
   assert.equal(captured.length, 1)
-  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.route.h1')
+  assert.equal(captured[0].path, 'notifications.navigation.crowsNest.route.h1')
   assert.equal(captured[0].value.state, 'warn')
   assert.deepEqual(captured[0].value.method, ['visual'])
   assert.ok(captured[0].value.message.includes('Submerged rock'), 'message names the POI')
@@ -125,7 +125,7 @@ test('clears the alarm exactly once when the POI drops off the route ahead', () 
   assert.equal(captured.length, 2, 'one warn on appearance, one clear on departure')
   assert.equal(captured[0].value.state, 'warn')
   assert.equal(captured[1].value.state, 'normal')
-  assert.equal(captured[1].path, 'notifications.navigation.activecaptain.route.h1')
+  assert.equal(captured[1].path, 'notifications.navigation.crowsNest.route.h1')
   assert.ok(captured[1].value.message.includes('Rock'), 'the clear message names the POI')
 })
 
@@ -156,7 +156,7 @@ test('tracks several corridor POIs independently', () => {
   alarms.evaluate([second])
 
   assert.equal(captured.length, 3)
-  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.route.a')
+  assert.equal(captured[0].path, 'notifications.navigation.crowsNest.route.a')
   assert.equal(captured[0].value.state, 'warn')
   const secondPass = captured.slice(1)
   const bWarn = secondPass.find(entry => entry.path.endsWith('.b'))
@@ -171,7 +171,7 @@ test('sanitizes a POI id that carries path-breaking characters', () => {
 
   alarms.evaluate([corridorPoi('a.b/c', 'Hazard', 'Rock', 800)])
 
-  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.route.a_b_c')
+  assert.equal(captured[0].path, 'notifications.navigation.crowsNest.route.a_b_c')
 })
 
 test('clearAll clears every active route alarm exactly once', () => {

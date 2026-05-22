@@ -9,7 +9,7 @@
  * while the hazard hovers near the boundary.
  *
  * The notification is emitted through `app.handleMessage` on the path
- * `notifications.navigation.activecaptain.hazard.<poiId>`, in the
+ * `notifications.navigation.crowsNest.hazard.<poiId>`, in the
  * `vessels.self` context (the default when a delta carries no context). The
  * `notifications.navigation` branch is the standard place for navigational
  * alerts, so consumers categorize it correctly.
@@ -29,7 +29,7 @@ import { distanceMeters } from '../../geo/position-utilities.js'
 import type { PoiSummary, Position } from '../../shared/types.js'
 
 /** Path prefix for the per-hazard notification, completed with the POI id. */
-const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.activecaptain.hazard.'
+const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.crowsNest.hazard.'
 
 /** The POI type that raises a proximity alarm. Other types are out of scope. */
 const HAZARD_POI_TYPE = 'Hazard'

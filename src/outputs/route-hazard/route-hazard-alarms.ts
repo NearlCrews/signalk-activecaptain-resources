@@ -13,7 +13,7 @@
  * stateful raise/clear layer on top of that pure scan.
  *
  * The notification is emitted through `app.handleMessage` on the path
- * `notifications.navigation.activecaptain.route.<poiId>`, in the
+ * `notifications.navigation.crowsNest.route.<poiId>`, in the
  * `vessels.self` context. It carries `state: 'warn'` rather than `'alarm'`:
  * a hazard, bridge, or lock several miles ahead on the route is an advisory
  * the crew should plan around, not the imminent danger that the proximity
@@ -27,7 +27,7 @@ import { emitNotification } from '../../shared/notification-path.js'
 import type { CorridorPoi } from '../../shared/types.js'
 
 /** Path prefix for the per-point route notification, completed with the POI id. */
-const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.activecaptain.route.'
+const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.crowsNest.route.'
 
 /** Meters in a kilometer, the threshold above which a distance is shown in km. */
 const METERS_PER_KM = 1000

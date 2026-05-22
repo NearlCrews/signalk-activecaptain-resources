@@ -113,7 +113,7 @@ test('multiple hazards raise and clear independently', () => {
   const events = notifications(messages)
   assert.equal(events.length, 3)
   assert.deepEqual(events[0], {
-    path: 'notifications.navigation.activecaptain.hazard.near', state: 'alarm'
+    path: 'notifications.navigation.crowsNest.hazard.near', state: 'alarm'
   })
   const farRaise = events.slice(1).find(entry => entry.path.endsWith('.far'))
   const nearClear = events.slice(1).find(entry => entry.path.endsWith('.near'))

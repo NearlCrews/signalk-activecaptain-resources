@@ -60,7 +60,7 @@ test('raises an alarm for a hazard within the radius', () => {
   alarms.evaluate(ORIGIN, [poi('h1', 'Hazard', 'Submerged rock', northOfOrigin(100))])
 
   assert.equal(captured.length, 1)
-  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.hazard.h1')
+  assert.equal(captured[0].path, 'notifications.navigation.crowsNest.hazard.h1')
   assert.equal(captured[0].value.state, 'alarm')
   assert.deepEqual(captured[0].value.method, ['visual', 'sound'])
   assert.ok(captured[0].value.message.includes('Submerged rock'), 'message names the hazard')
@@ -115,7 +115,7 @@ test('clears the alarm exactly once when the hazard leaves the radius', () => {
   assert.equal(captured.length, 2, 'one alarm on entry, one clear on exit')
   assert.equal(captured[0].value.state, 'alarm')
   assert.equal(captured[1].value.state, 'normal')
-  assert.equal(captured[1].path, 'notifications.navigation.activecaptain.hazard.h1')
+  assert.equal(captured[1].path, 'notifications.navigation.crowsNest.hazard.h1')
   assert.ok(captured[1].value.message.includes('Rock'), 'the clear message names the hazard')
 })
 
@@ -158,7 +158,7 @@ test('tracks several hazards independently', () => {
   alarms.evaluate(northOfOrigin(3000), [near, far])
 
   assert.equal(captured.length, 3)
-  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.hazard.near')
+  assert.equal(captured[0].path, 'notifications.navigation.crowsNest.hazard.near')
   assert.equal(captured[0].value.state, 'alarm')
   // The second pass raises `far` and clears `near`, order independent.
   const secondPass = captured.slice(1)
@@ -195,7 +195,7 @@ test('skips a hazard with a non-finite position instead of crashing', () => {
 
   assert.doesNotThrow(() => alarms.evaluate(ORIGIN, [bad, good]))
   assert.equal(captured.length, 1, 'only the well-formed hazard raises an alarm')
-  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.hazard.good')
+  assert.equal(captured[0].path, 'notifications.navigation.crowsNest.hazard.good')
 })
 
 test('sanitizes a POI id that carries path-breaking characters', () => {
@@ -204,7 +204,7 @@ test('sanitizes a POI id that carries path-breaking characters', () => {
 
   alarms.evaluate(ORIGIN, [poi('a.b/c', 'Hazard', 'Rock', northOfOrigin(100))])
 
-  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.hazard.a_b_c')
+  assert.equal(captured[0].path, 'notifications.navigation.crowsNest.hazard.a_b_c')
 })
 
 test('clearAll clears every active hazard exactly once', () => {
