@@ -4,8 +4,10 @@ import assert from 'node:assert/strict'
 import {
   DEFAULT_CACHE_DURATION_MINUTES,
   DEFAULT_MINIMUM_RATING,
+  DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS,
   DEFAULT_OPENSEAMAP_ENDPOINT,
   DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
+  DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS,
   normalizeConfig
 } from '../src/panel/normalize-config.js'
 import { SEAMARK_GROUP_IDS } from '../src/shared/seamark-groups.js'
@@ -129,4 +131,72 @@ test('normalizeConfig drops unknown seamark groups and keeps an explicit empty s
     ['hazards']
   )
   assert.deepEqual(normalizeConfig({ openSeaMapSeamarkGroups: [] }).openSeaMapSeamarkGroups, [])
+})
+
+test('normalizeConfig defaults the route-hazard scan options for an empty config', () => {
+  const config = normalizeConfig({})
+  assert.equal(config.enableRouteHazardScan, false)
+  assert.equal(config.routeCorridorWidthMeters, DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS)
+})
+
+test('normalizeConfig keeps valid route-hazard scan options', () => {
+  const config = normalizeConfig({
+    enableRouteHazardScan: true,
+    routeCorridorWidthMeters: 750
+  })
+  assert.equal(config.enableRouteHazardScan, true)
+  assert.equal(config.routeCorridorWidthMeters, 750)
+})
+
+test('normalizeConfig treats a non-true enableRouteHazardScan as false', () => {
+  assert.equal(normalizeConfig({ enableRouteHazardScan: 'yes' }).enableRouteHazardScan, false)
+  assert.equal(normalizeConfig({ enableRouteHazardScan: false }).enableRouteHazardScan, false)
+})
+
+test('normalizeConfig falls back to the default for an unusable corridor width', () => {
+  for (const input of [0, -10, 'wide', Number.NaN]) {
+    assert.equal(
+      normalizeConfig({ routeCorridorWidthMeters: input }).routeCorridorWidthMeters,
+      DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+    )
+  }
+})
+
+test('normalizeConfig defaults openSeaMapDedupe to true when the key is absent', () => {
+  assert.equal(normalizeConfig({}).openSeaMapDedupe, true)
+})
+
+test('normalizeConfig honors an explicit openSeaMapDedupe false', () => {
+  assert.equal(normalizeConfig({ openSeaMapDedupe: false }).openSeaMapDedupe, false)
+})
+
+test('normalizeConfig treats a non-false openSeaMapDedupe value as true', () => {
+  // Only an explicit false turns dedupe off; anything else (including unusable
+  // values) keeps the default-on behavior so old configs migrate cleanly.
+  assert.equal(normalizeConfig({ openSeaMapDedupe: true }).openSeaMapDedupe, true)
+  assert.equal(normalizeConfig({ openSeaMapDedupe: 'no' }).openSeaMapDedupe, true)
+  assert.equal(normalizeConfig({ openSeaMapDedupe: 0 }).openSeaMapDedupe, true)
+})
+
+test('normalizeConfig defaults the dedupe merge radius for an empty config', () => {
+  assert.equal(
+    normalizeConfig({}).openSeaMapDedupeRadiusMeters,
+    DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
+  )
+})
+
+test('normalizeConfig keeps a valid dedupe merge radius', () => {
+  assert.equal(
+    normalizeConfig({ openSeaMapDedupeRadiusMeters: 75 }).openSeaMapDedupeRadiusMeters,
+    75
+  )
+})
+
+test('normalizeConfig falls back to the default for an unusable dedupe merge radius', () => {
+  for (const input of [0, -5, 'near', Number.NaN]) {
+    assert.equal(
+      normalizeConfig({ openSeaMapDedupeRadiusMeters: input }).openSeaMapDedupeRadiusMeters,
+      DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
+    )
+  }
 })

@@ -163,6 +163,62 @@ test('setOpenSeaMapSeamarkGroups returns the same state when the groups are unch
   assert.equal(next, state)
 })
 
+test('setRouteHazardScanEnabled enables the route-hazard scan', () => {
+  const next = configReducer(baseConfig(), { type: 'setRouteHazardScanEnabled', enabled: true })
+  assert.equal(next.enableRouteHazardScan, true)
+})
+
+test('setRouteHazardScanEnabled disables the route-hazard scan', () => {
+  const state: PluginConfig = { ...baseConfig(), enableRouteHazardScan: true }
+  const next = configReducer(state, { type: 'setRouteHazardScanEnabled', enabled: false })
+  assert.equal(next.enableRouteHazardScan, false)
+})
+
+test('setRouteHazardScanEnabled returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), enableRouteHazardScan: true }
+  const next = configReducer(state, { type: 'setRouteHazardScanEnabled', enabled: true })
+  assert.equal(next, state)
+})
+
+test('setRouteCorridorWidth updates the corridor width', () => {
+  const next = configReducer(baseConfig(), { type: 'setRouteCorridorWidth', meters: 750 })
+  assert.equal(next.routeCorridorWidthMeters, 750)
+})
+
+test('setRouteCorridorWidth returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), routeCorridorWidthMeters: 500 }
+  const next = configReducer(state, { type: 'setRouteCorridorWidth', meters: 500 })
+  assert.equal(next, state)
+})
+
+test('setOpenSeaMapDedupe enables the dedupe pass', () => {
+  const next = configReducer(baseConfig(), { type: 'setOpenSeaMapDedupe', enabled: true })
+  assert.equal(next.openSeaMapDedupe, true)
+})
+
+test('setOpenSeaMapDedupe disables the dedupe pass', () => {
+  const state: PluginConfig = { ...baseConfig(), openSeaMapDedupe: true }
+  const next = configReducer(state, { type: 'setOpenSeaMapDedupe', enabled: false })
+  assert.equal(next.openSeaMapDedupe, false)
+})
+
+test('setOpenSeaMapDedupe returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), openSeaMapDedupe: false }
+  const next = configReducer(state, { type: 'setOpenSeaMapDedupe', enabled: false })
+  assert.equal(next, state)
+})
+
+test('setOpenSeaMapDedupeRadius updates the dedupe merge radius', () => {
+  const next = configReducer(baseConfig(), { type: 'setOpenSeaMapDedupeRadius', meters: 200 })
+  assert.equal(next.openSeaMapDedupeRadiusMeters, 200)
+})
+
+test('setOpenSeaMapDedupeRadius returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), openSeaMapDedupeRadiusMeters: 150 }
+  const next = configReducer(state, { type: 'setOpenSeaMapDedupeRadius', meters: 150 })
+  assert.equal(next, state)
+})
+
 test('discard returns the supplied configuration', () => {
   const edited: PluginConfig = { ...baseConfig(), cachingDurationMinutes: 999, includeMarinas: true }
   const saved: PluginConfig = { ...baseConfig(), includeAnchorages: true }
