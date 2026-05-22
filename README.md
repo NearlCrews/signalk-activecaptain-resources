@@ -32,8 +32,10 @@ See the [CHANGELOG](CHANGELOG.md) for the full history.
   knowledge, navigational aids, and airports as Signal K `notes` resources.
 - **Multiple data sources.** Imports from Garmin ActiveCaptain and OpenSeaMap
   (OpenStreetMap marine data, via the OSM Overpass API), merged into one chart
-  layer. A duplicate of a feature reported by more than one source is merged,
-  and the note records every contributing source as a corroboration signal.
+  layer. A duplicate of a feature reported by more than one source is merged
+  within a configurable radius (default 150 meters), and a second pass
+  collapses same-source duplicates of the same feature; the surviving note
+  records every contributing source as a corroboration signal.
 - **Rich point detail.** Each point's description renders its services, retail,
   mooring, navigation, dockage, fuel, and contact sections, and a featured user
   review.
@@ -104,6 +106,7 @@ The following options are available:
 | Overpass API endpoint URL | string | `https://overpass-api.de/api/interpreter` | The Overpass API endpoint the OpenSeaMap source queries. |
 | OpenSeaMap feature groups to import | array | all four | Which seamark groups to import: hazards, navigational aids, harbours, and infrastructure. |
 | Merge OpenSeaMap points of interest that duplicate an ActiveCaptain marker | boolean | true | Merge an OpenSeaMap point into a co-located ActiveCaptain point of the same type, recording both sources on the surviving note. |
+| Merge radius for OpenSeaMap points of interest, in meters | number | 150 | Two POIs of the same type within this distance count as the same physical feature. Widen it if duplicate markers still appear on your chart, tighten it if neighbors are merging. |
 
 Deselecting every POI type makes the plugin import nothing. A configuration
 created before these toggles existed, which carries none of the toggle
@@ -157,8 +160,16 @@ OpenSeaMap and ActiveCaptain points merge into one `notes` layer. When both
 sources report the same physical feature, the OpenSeaMap point is merged into
 the co-located ActiveCaptain marker of the same type, so the chart shows it
 once; the surviving note's `properties.sources` lists every contributing
-source as a corroboration signal. This dedupe is on by default and can be
-turned off in the OpenSeaMap card.
+source as a corroboration signal, and `properties.sourceCount` is its length.
+"Same physical feature" means same POI type within a configurable merge
+radius (default 150 meters). A second pass collapses OpenSeaMap points that
+duplicate themselves, so a feature that OSM tagged twice (typically once as
+a node and once as a way) still becomes one note. This dedupe is on by
+default and can be turned off in the OpenSeaMap card.
+
+Navigational aids from OpenSeaMap render with a Freeboard `real-aton` icon
+rather than the generic `navigational` glyph, since Freeboard ships no
+dedicated navaid SVG.
 
 OpenStreetMap data is published under the
 [Open Database License](https://opendatacommons.org/licenses/odbl/) (ODbL),
