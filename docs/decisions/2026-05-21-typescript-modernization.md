@@ -1,10 +1,10 @@
 # TypeScript modernization of signalk-crows-nest
 
-**Status:** Accepted. Implemented for v1.2.0.
+**Status:** Accepted. Implemented for v0.2.0.
 
 **Date:** 2026-05-21
 
-**Target release:** v1.2.0
+**Target release:** v0.2.0
 
 ## 1. Context
 

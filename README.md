@@ -46,7 +46,7 @@ See the [CHANGELOG](CHANGELOG.md) for the full history.
 
 - A running [Signal K server](https://github.com/SignalK/signalk-server) with a
   position source (a GPS).
-- Node.js 20 or newer.
+- Node.js 20.3 or newer.
 - The configuration panel needs Signal K admin UI 2.26.0 or newer. On older
   servers the plugin still works and falls back to the standard settings form.
 
@@ -87,7 +87,7 @@ The following options are available:
 | Emit a notification when the vessel nears a hazard | boolean | false | Subscribe to the vessel position and raise a proximity alarm for nearby hazards. |
 | Proximity alarm radius in meters | number | 500 | How close a hazard must be to raise an alarm. |
 | Scan the active route ahead for hazards, bridges, and locks | boolean | false | Read the active Course API route and warn about hazards, bridges, and locks along it. |
-| Route corridor width in meters | number | 500 | How far either side of the route line a point of interest counts as on the route. |
+| Route corridor half-width in meters | number | 500 | A point of interest within this distance either side of the route line counts as on the route. |
 
 Deselecting every POI type makes the plugin import nothing. A configuration
 created before these toggles existed, which carries none of the toggle

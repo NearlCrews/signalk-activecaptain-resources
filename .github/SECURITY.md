@@ -6,13 +6,13 @@ We actively support the following versions with security updates:
 
 | Version | Supported |
 | ------- | --------- |
-| 1.2.x   | Yes       |
-| < 1.2   | No        |
+| 0.4.x   | Yes       |
+| < 0.4   | No        |
 
 ## Reporting a Vulnerability
 
-We take the security of Signal K ActiveCaptain Resources seriously. If you
-discover a security vulnerability, please follow these guidelines.
+We take the security of Crow's Nest seriously. If you discover a security
+vulnerability, please follow these guidelines.
 
 ### How to Report
 

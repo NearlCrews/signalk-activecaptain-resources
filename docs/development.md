@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 20 or newer
+- Node.js 20.3 or newer
 - TypeScript 6+ (installed as a dev dependency)
 - npm
 
@@ -92,28 +92,16 @@ docs/                     # Project documentation
 .github/                  # Community files, issue templates, and CI workflows
 ```
 
-`dist/` and `public/` are the only directories published to npm (see the
-`files` field in `package.json`).
+`dist/`, `public/`, and `assets/` are the directories published to npm (see
+the `files` field in `package.json`).
 
 ## Testing
 
 Tests run on the Node.js built-in `node:test` runner through `tsx`, so there is
-no separate test framework. The suite lives under `test/`, one file per tested
-module:
-
-```
-test/active-captain-client.test.ts # HTTP client: rate limiting, backoff, Retry-After
-test/input-registry.test.ts        # Input registry: aggregate source, config fragments
-test/output-registry.test.ts       # Output registry: starts enabled outputs, isolates failures
-test/plugin-config.test.ts         # Config-schema fragment merge
-test/position-monitor.test.ts      # Per-tick scan driven by scan contributors
-test/poi-type-selection.test.ts    # POI-type toggle to poiTypes string mapping
-test/plugin-status.test.ts         # Status snapshot recorder
-test/resource-query.test.ts        # Resource query parsing
-```
-
-Test files are named for the module they cover; the suite has one file per
-module.
+no separate test framework. The suite lives under `test/`, with one test file
+per module, named for the module it covers (for example,
+`test/active-captain-client.test.ts` covers the HTTP client and
+`test/position-monitor.test.ts` covers the per-tick scan).
 
 `npm run typecheck` runs three `tsc` passes with no emit: the plugin runtime
 (`tsconfig.json`, which excludes `test/` and `src/panel/`), the React panel

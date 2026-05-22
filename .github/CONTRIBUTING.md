@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to Signal K ActiveCaptain Resources.
+Thanks for your interest in contributing to Crow's Nest (`signalk-crows-nest`).
 
 ## Code of Conduct
 
@@ -39,7 +39,7 @@ serves, and any implementation ideas you have.
 - All source is TypeScript under `src/`. The Node plugin is compiled to
   `dist/` by `tsc`; the React panel under `src/panel/` is bundled to `public/`
   by webpack.
-- Keep modules focused and small. Shared types belong in `src/types.ts`.
+- Keep modules focused and small. Shared types belong in `src/shared/types.ts`.
 - Lint with ESLint 9 and [neostandard](https://github.com/neostandard/neostandard)
   (`npm run lint`, or `npm run lint:fix` to auto-fix).
 - Do not edit `dist/` or `public/`; they are generated build output.

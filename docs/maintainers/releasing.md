@@ -14,8 +14,8 @@ package is published, so the npm tarball always reflects a fresh build.
 The workflow requires an `npm_token` repository secret (an npm Automation
 token, or a Granular token with publish and read access to this package).
 
-The package's `files` field publishes only `dist/` and `public/`; source,
-tests, and docs are not shipped to npm.
+The package's `files` field publishes `dist/`, `public/`, and `assets/`;
+source, tests, and docs are not shipped to npm.
 
 ## Checklist
 
@@ -24,7 +24,7 @@ Before creating the GitHub release:
 1. Bump `version` in `package.json`.
 2. Add a new `### vX.Y.Z (YYYY/MM/DD) - <title>` entry at the top of
    `CHANGELOG.md`, with an `<a id="vXYZ"></a>` anchor line directly above the
-   heading (digits only, no dots: `v1.2.0` -> `v120`).
+   heading (digits only, no dots: `v0.5.0` -> `v050`).
 3. Run the full local check, and confirm each command passes:
    ```bash
    npm run lint
@@ -36,11 +36,13 @@ Before creating the GitHub release:
    behavior, commands, or configuration options.
 5. Commit the version bump and changelog entry.
 6. Create a GitHub release whose tag matches the new `package.json` version
-   (for example, tag `v1.2.0`). Creating the release triggers the publish
+   (for example, tag `v0.5.0`). Creating the release triggers the publish
    workflow; once it succeeds the new version is live on npm.
 
 ## Supported Node.js versions
 
 CI (`.github/workflows/ci.yml`) builds, type-checks, tests, and lints on
-Node.js 20 and 22. The publish workflow runs on Node.js 22. Keep the `engines`
-field in `package.json` (`>=20`) aligned with the lowest version CI exercises.
+Node.js 20 and 22. The publish workflow runs on Node.js 22. The `engines`
+field in `package.json` is `>=20.3.0` (the ActiveCaptain client uses
+`AbortSignal.any`, added in Node 20.3); keep it at or below the lowest
+Node.js version CI exercises.

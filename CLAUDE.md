@@ -98,8 +98,8 @@ self-contained module registered on one line in `src/index.ts`.
 - `docs/` - project documentation: the development guide, troubleshooting, the
   Garmin API research notes, decision records, and maintainer notes.
 - `dist/` and `public/` - compiled plugin and bundled panel. Generated, not
-  committed. These are the only directories published to npm (see the `files`
-  field in `package.json`).
+  committed. They, together with the committed `assets/` directory, are
+  published to npm (see the `files` field in `package.json`).
 
 ## Toolchain
 

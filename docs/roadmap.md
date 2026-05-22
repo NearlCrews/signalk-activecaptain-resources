@@ -7,9 +7,9 @@ for chart display"). Produced by a four-expert review on 2026-05-22.
 The original plugin is purely pull-driven and read-only. The largest
 opportunities come from making it position-aware and offline-capable.
 
-## Tier 1: position-aware safety (target v1.3.0)
+## Tier 1: position-aware safety (shipped in v0.3.0)
 
-The recommended next release. None of these need a Garmin API key or carry
+Shipped in v0.3.0. None of these needed a Garmin API key or carried
 terms-of-service exposure.
 
 - **Position subscription and hazard scan.** Subscribe to
@@ -30,7 +30,7 @@ terms-of-service exposure.
 ## Tier 2: strong, moderate effort
 
 - Route-corridor hazard scan: flag hazards, bridges, and locks along an active
-  Course API route, with distance and ETA. Shipped in v1.4.0.
+  Course API route, with distance and ETA. Shipped in v0.4.0.
 - Route-ahead prefetch: warm the cache for points of interest ahead of the
   vessel while connectivity still exists.
 - "Navigate to this POI": one-tap set the Course API destination.

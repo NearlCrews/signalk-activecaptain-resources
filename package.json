@@ -1,7 +1,7 @@
 {
   "name": "signalk-crows-nest",
   "version": "0.4.0",
-  "description": "Provides points of interest from Garmin Active Captain API as SignalK resources",
+  "description": "Imports Garmin ActiveCaptain points of interest as Signal K notes resources, with proximity and route-corridor hazard alarms",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
