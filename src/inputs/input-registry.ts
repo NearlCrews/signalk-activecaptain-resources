@@ -45,16 +45,21 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
             [...sources.values()].map((s) => s.listPointsOfInterest(bbox, poiTypes)))
           const merged: PoiSummary[] = []
           let anyOk = false
+          // The aggregate is the only component that knows each source's
+          // individual list outcome, so it owns the per-source status
+          // recording: a fulfilled source records its own list fetch, a
+          // rejected source records its own error.
           results.forEach((result, index) => {
             const sourceId = [...sources.keys()][index]
             if (result.status === 'fulfilled') {
               anyOk = true
+              context.status.recordListFetch(sourceId, result.value.length)
               for (const poi of result.value) {
                 merged.push({ ...poi, id: `${sourceId}-${poi.id}` })
               }
             } else {
               context.status.recordError(
-                `List from "${sourceId}" failed: ${String(result.reason)}`)
+                sourceId, `List from "${sourceId}" failed: ${String(result.reason)}`)
             }
           })
           if (!anyOk) {

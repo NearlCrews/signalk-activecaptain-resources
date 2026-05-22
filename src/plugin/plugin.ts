@@ -65,7 +65,9 @@ export function createPlugin (
   outputs: OutputRegistry
 ): Plugin {
   let runtime: Runtime | undefined
-  let status = createPluginStatus()
+  // Replaced on every start with a recorder built for that run's enabled
+  // sources; an empty recorder stands in before the first start.
+  let status = createPluginStatus([])
 
   /**
    * Tear the current runtime down. Idempotent.
@@ -117,9 +119,13 @@ export function createPlugin (
       teardown()
 
       const config = rawConfig as PluginConfig
-      // A fresh recorder per run: this run reports its own start time and a
-      // clean error history.
-      status = createPluginStatus()
+      // A fresh recorder per run, built with this run's enabled sources so the
+      // status snapshot carries one row per source; it reports this run's own
+      // start time and a clean error history.
+      const enabledSources = inputs.modules
+        .filter((module) => module.isEnabled(config))
+        .map((module) => ({ source: module.id, name: module.name }))
+      status = createPluginStatus(enabledSources)
 
       // Log the resolved configuration so a misconfigured install is
       // diagnosable from the server log alone.
@@ -157,8 +163,7 @@ export function createPlugin (
             app,
             client: source,
             contributors,
-            poiTypes: ensurePoiTypes(poiTypes, requiredTypes),
-            status
+            poiTypes: ensurePoiTypes(poiTypes, requiredTypes)
           })
           app.debug(`Crow's Nest position monitor driving ${contributors.length} position-driven output(s)`)
         } catch (error) {
@@ -167,12 +172,12 @@ export function createPlugin (
           // "Ready" status that would mask dead safety alarms.
           monitorFailed = true
           app.error(`Cannot start the position monitor: ${String(error)}`)
+          // A monitor-startup failure is not a data-source outage, so it is
+          // surfaced as a plugin error rather than recorded against a source
+          // row in the per-source status snapshot.
           app.setPluginError(
             'Position monitor failed to start; proximity and route-hazard alarms are not running'
           )
-          // Record the failure so the status snapshot the panel polls reflects
-          // that the position-driven alarms are not running.
-          status.recordError(`Position monitor failed to start: ${String(error)}`)
         }
       }
 

@@ -77,7 +77,7 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
       // A load that resolves after close belongs to the stopped run; do not
       // record it onto a later run's status.
       if (!closed) {
-        status.recordDetailSuccess()
+        status.recordDetailSuccess(ACTIVE_CAPTAIN_SOURCE_ID)
       }
     },
     onLoadError: (error) => {
@@ -93,10 +93,10 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
       // A 404 is the API answering normally: the point of interest does not
       // exist. That is not a reachability failure.
       if (error instanceof HttpError && error.status === HTTP_NOT_FOUND) {
-        status.recordDetailSuccess()
+        status.recordDetailSuccess(ACTIVE_CAPTAIN_SOURCE_ID)
       } else {
         const message = `Detail request failed: ${String(error)}`
-        status.recordError(message)
+        status.recordError(ACTIVE_CAPTAIN_SOURCE_ID, message)
         app.setPluginError(message)
       }
     }

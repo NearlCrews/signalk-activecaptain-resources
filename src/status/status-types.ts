@@ -15,7 +15,7 @@ export interface StatusError {
   message: string
 }
 
-/** The most recent successful list fetch from the ActiveCaptain API. */
+/** The most recent successful list fetch from a POI source. */
 export interface LastListFetch {
   /** ISO-8601 timestamp of the fetch. */
   at: string
@@ -23,15 +23,25 @@ export interface LastListFetch {
   poiCount: number
 }
 
-/** A point-in-time view of the plugin's health, served to the config panel. */
-export interface StatusSnapshot {
+/** Health of one enabled POI data source. */
+export interface SourceStatus {
+  /** Source slug, e.g. `activecaptain`. */
+  source: string
+  /** Human-readable source name. */
+  name: string
   /**
-   * Whether the last ActiveCaptain request succeeded. Null until the plugin
-   * has made its first request. Derived passively, with no extra API traffic.
+   * Whether the source's last request succeeded. Null until the source has
+   * made its first request. Derived passively, with no extra API traffic.
    */
   apiReachable: boolean | null
-  /** The most recent successful list fetch, or null if none has happened. */
+  /** The source's most recent successful list fetch, or null if none has happened. */
   lastListFetch: LastListFetch | null
+}
+
+/** A point-in-time view of the plugin's health, served to the config panel. */
+export interface StatusSnapshot {
+  /** Health of each enabled POI source, in registration order. */
+  sources: SourceStatus[]
   /** Number of point-of-interest detail entries currently cached. */
   cachedPoiCount: number
   /** The most recent errors, newest first, capped at a small fixed count. */

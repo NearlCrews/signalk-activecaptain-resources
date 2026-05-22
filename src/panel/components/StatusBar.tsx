@@ -1,11 +1,12 @@
 /**
- * Live status bar: an ActiveCaptain reachability dot, the cached POI count, the
- * last successful list fetch, and any recent errors. Driven entirely by the
- * StatusSnapshot polled from the plugin.
+ * Live status bar: one reachability row per enabled POI source (name, a
+ * reachability dot, and the last successful list fetch), the cached POI count,
+ * and any recent errors. Driven entirely by the StatusSnapshot polled from the
+ * plugin.
  */
 
 import type * as React from 'react'
-import type { StatusSnapshot } from '../../status/status-types.js'
+import type { SourceStatus, StatusSnapshot } from '../../status/status-types.js'
 import { S } from '../styles.js'
 
 /** Relative-time units, largest first, paired with their length in seconds. */
@@ -46,9 +47,24 @@ function relativeTime (iso: string): string {
 
 /** Map the tri-state apiReachable flag to a status dot style and label. */
 function apiState (reachable: boolean | null): { dot: React.CSSProperties, label: string } {
-  if (reachable === true) return { dot: S.dotOk, label: 'API reachable' }
-  if (reachable === false) return { dot: S.dotError, label: 'API unreachable' }
-  return { dot: S.dotOff, label: 'API not yet contacted' }
+  if (reachable === true) return { dot: S.dotOk, label: 'reachable' }
+  if (reachable === false) return { dot: S.dotError, label: 'unreachable' }
+  return { dot: S.dotOff, label: 'not yet contacted' }
+}
+
+/** One compact reachability row for a single POI source. */
+function SourceRow ({ source }: { source: SourceStatus }): React.ReactElement {
+  const api = apiState(source.apiReachable)
+  const fetched = source.lastListFetch === null
+    ? 'no fetch yet'
+    : `${relativeTime(source.lastListFetch.at)} (${source.lastListFetch.poiCount} POIs)`
+  return (
+    <span style={S.statusApi}>
+      <span style={{ ...S.dot, ...api.dot }} aria-hidden='true' />
+      <span style={S.statValue}>{source.name}</span>
+      <span style={S.statLabel}>{`${api.label}, ${fetched}`}</span>
+    </span>
+  )
 }
 
 interface Props {
@@ -66,26 +82,16 @@ export default function StatusBar ({ status }: Props): React.ReactElement {
     )
   }
 
-  const api = apiState(status.apiReachable)
-  const { lastListFetch, recentErrors } = status
+  const { sources, recentErrors } = status
 
   return (
     <div style={S.statusBar} role='status'>
-      <span style={S.statusApi}>
-        <span style={{ ...S.dot, ...api.dot }} aria-hidden='true' />
-        <span>{api.label}</span>
-      </span>
+      {sources.length === 0
+        ? <span style={S.statLabel}>No POI source is enabled</span>
+        : sources.map((source) => <SourceRow key={source.source} source={source} />)}
       <span>
         <span style={S.statLabel}>Cached POIs</span>
         <span style={S.statValue}>{status.cachedPoiCount}</span>
-      </span>
-      <span>
-        <span style={S.statLabel}>Last fetch</span>
-        <span style={S.statValue}>
-          {lastListFetch === null
-            ? 'none yet'
-            : `${relativeTime(lastListFetch.at)} (${lastListFetch.poiCount} POIs)`}
-        </span>
       </span>
       {recentErrors.length > 0
         ? (

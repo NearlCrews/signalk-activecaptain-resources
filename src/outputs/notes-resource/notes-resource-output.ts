@@ -36,7 +36,7 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
 
 /** Build the resource-provider methods bound to one plugin run's context. */
 function buildMethods (context: OutputContext): ResourceProviderMethods {
-  const { app, config, pois, status } = context
+  const { app, config, pois } = context
   const minimumRating =
     typeof config.minimumRating === 'number' && config.minimumRating > 0
       ? config.minimumRating
@@ -60,12 +60,13 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       try {
         entities = await pois.listPointsOfInterest(bbox, poiTypes)
       } catch (error) {
+        // The aggregate source records each failed source's error onto the
+        // per-source status itself; here the failure is surfaced to the
+        // SignalK plugin UI and rethrown to the resource caller.
         const message = `List request failed: ${String(error)}`
-        status.recordError(message)
         app.setPluginError(message)
         throw error
       }
-      status.recordListFetch(entities.length)
       app.setPluginStatus(`${entities.length} point(s) of interest from the last search`)
 
       entities = filterByRating(entities, minimumRating)

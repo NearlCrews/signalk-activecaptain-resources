@@ -7,8 +7,14 @@ import type { StatusSnapshot } from '../src/status/status-types.js'
 
 /** A representative snapshot for the route handler to serve. */
 const SNAPSHOT: StatusSnapshot = {
-  apiReachable: true,
-  lastListFetch: { at: '2026-01-01T00:00:00.000Z', poiCount: 3 },
+  sources: [
+    {
+      source: 'activecaptain',
+      name: 'Garmin ActiveCaptain',
+      apiReachable: true,
+      lastListFetch: { at: '2026-01-01T00:00:00.000Z', poiCount: 3 }
+    }
+  ],
   cachedPoiCount: 5,
   recentErrors: [],
   startedAt: '2026-01-01T00:00:00.000Z'

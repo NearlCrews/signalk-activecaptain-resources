@@ -57,8 +57,15 @@ function stubModule (id: string, enabled: boolean, source?: PoiSource): InputMod
   }
 }
 
+/** A no-op status recorder, enough for tests that do not inspect status. */
+const silentStatus = {
+  recordListFetch: () => {},
+  recordDetailSuccess: () => {},
+  recordError: () => {}
+}
+
 const context = {
-  app: {}, config: {}, status: { recordError: () => {} }, dataDir: '/tmp'
+  app: {}, config: {}, status: silentStatus, dataDir: '/tmp'
 } as never
 
 test('configSchemaFragments returns every module fragment', () => {
@@ -132,7 +139,11 @@ test('listPointsOfInterest keeps a successful source when another fails', async 
     app: {},
     config: {},
     dataDir: '/tmp',
-    status: { recordError: (message: string) => errors.push(message) }
+    status: {
+      recordListFetch: () => {},
+      recordDetailSuccess: () => {},
+      recordError: (_source: string, message: string) => errors.push(message)
+    }
   } as never
   const source = createInputRegistry([failing, ok]).createSource(failContext)
   const list = await source.listPointsOfInterest(SAMPLE_BBOX, '')
@@ -150,6 +161,32 @@ test('listPointsOfInterest throws when every source fails', async () => {
     source.listPointsOfInterest(SAMPLE_BBOX, ''),
     /Every POI source failed/i
   )
+})
+
+test('listPointsOfInterest records each source list outcome onto the per-source status', async () => {
+  const fetches: Array<{ source: string, count: number }> = []
+  const errors: string[] = []
+  const ok = stubModule('sourceA', true, stubSource('sourceA', {
+    list: async () => [summary('1', 'sourceA'), summary('2', 'sourceA')]
+  }))
+  const failing = stubModule('sourceB', true, stubSource('sourceB', {
+    list: async () => { throw new Error('overpass down') }
+  }))
+  const recordingContext = {
+    app: {},
+    config: {},
+    dataDir: '/tmp',
+    status: {
+      recordListFetch: (source: string, count: number) => fetches.push({ source, count }),
+      recordDetailSuccess: () => {},
+      recordError: (_source: string, message: string) => errors.push(message)
+    }
+  } as never
+  const source = createInputRegistry([ok, failing]).createSource(recordingContext)
+  await source.listPointsOfInterest(SAMPLE_BBOX, '')
+  assert.deepEqual(fetches, [{ source: 'sourceA', count: 2 }], 'the fulfilled source records its fetch')
+  assert.equal(errors.length, 1, 'the rejected source records an error')
+  assert.match(errors[0], /sourceB/)
 })
 
 test('cacheSize sums the cache size of every source', () => {

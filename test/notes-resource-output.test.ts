@@ -93,6 +93,31 @@ function startMethods (overrides: Partial<OutputContext>): Record<string, unknow
   return provider.methods as Record<string, unknown>
 }
 
+/**
+ * Start the output with an app that captures the plugin status and error
+ * messages it sets, so a test can assert on them.
+ */
+function startCapturing (overrides: Partial<OutputContext> = {}): {
+  methods: Record<string, unknown>
+  statusMessages: string[]
+  pluginErrors: string[]
+} {
+  const statusMessages: string[] = []
+  const pluginErrors: string[] = []
+  const provider: { methods?: Record<string, unknown> } = {}
+  const app = {
+    debug: () => {},
+    error: () => {},
+    setPluginStatus: (message: string) => { statusMessages.push(message) },
+    setPluginError: (message: string) => { pluginErrors.push(message) },
+    registerResourceProvider: (r: { methods: Record<string, unknown> }) => {
+      provider.methods = r.methods
+    }
+  }
+  notesResourceOutput.start(contextWith({ app: app as never, ...overrides }))
+  return { methods: provider.methods as Record<string, unknown>, statusMessages, pluginErrors }
+}
+
 test('the output is always enabled', () => {
   assert.equal(notesResourceOutput.isEnabled({} as never), true)
 })
@@ -122,28 +147,19 @@ test('listResources returns {} when the query has no bounding box', async () => 
   assert.deepEqual(result, {})
 })
 
-test('listResources records the list fetch on the status recorder', async () => {
-  let recorded: number | undefined
-  const methods = startMethods({
-    status: {
-      recordListFetch: (count: number) => { recorded = count },
-      recordError: () => {},
-      recordDetailSuccess: () => {}
-    } as never
-  })
+test('listResources reports the result count via setPluginStatus', async () => {
+  const { methods, statusMessages } = startCapturing()
   const listResources = methods.listResources as (q: object) => Promise<Record<string, unknown>>
   await listResources({ bbox: '0,0,1,1' })
-  assert.equal(recorded, 1)
+  assert.equal(statusMessages.length, 1)
+  assert.match(statusMessages[0], /1 point/)
 })
 
-test('listResources records the error and rethrows on a list failure', async () => {
-  let recorded: string | undefined
-  const methods = startMethods({
-    status: {
-      recordListFetch: () => {},
-      recordError: (message: string) => { recorded = message },
-      recordDetailSuccess: () => {}
-    } as never,
+test('listResources surfaces the error and rethrows on a list failure', async () => {
+  // The aggregate POI source records each failed source's error onto the
+  // per-source status itself; the notes output surfaces the failure to the
+  // SignalK plugin UI and rethrows it to the resource caller.
+  const { methods, pluginErrors } = startCapturing({
     pois: {
       id: 'activecaptain',
       listPointsOfInterest: async () => { throw new Error('boom') },
@@ -154,7 +170,7 @@ test('listResources records the error and rethrows on a list failure', async () 
   })
   const listResources = methods.listResources as (q: object) => Promise<Record<string, unknown>>
   await assert.rejects(listResources({ bbox: '0,0,1,1' }), /boom/)
-  assert.match(recorded ?? '', /boom/)
+  assert.match(pluginErrors[0] ?? '', /boom/)
 })
 
 test('getResource returns the built note', async () => {
