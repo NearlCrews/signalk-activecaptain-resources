@@ -33,7 +33,7 @@ as exactly ONE npm package and ONE Signal K plugin.
   the HTTP client, the detail cache, the geometry helpers, the resource-query
   parser, the POI-type selection, the Handlebars rendering, the inlined
   templates, the status recorder and router, and the shared type contracts in
-  `src/types.ts`.
+  `src/shared/types.ts`.
 - **Dependencies.** `axios` is replaced by the native `fetch` API; `moment` by
   the native `Intl` API for relative times; the `@inventivetalent` caches by
   `lru-cache`. The runtime now depends only on `handlebars` and `lru-cache`.

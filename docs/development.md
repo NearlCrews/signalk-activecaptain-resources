@@ -82,7 +82,9 @@ src/                      # TypeScript source
     ├── poi-type-groups.ts # UI metadata: the four POI-type groups and labels
     ├── styles.ts          # Inline style objects
     ├── hooks/             # use-config, use-status
-    └── components/        # StatusBar, PoiTypeGroups, CacheDurationField, FooterBar
+    └── components/        # StatusBar, PoiTypeGroups, CacheDurationField,
+                           #   ProximityAlarmFields, RatingFilterField,
+                           #   RouteHazardScanFields, FooterBar
 test/                     # node:test suites, run through tsx
 dist/                     # Compiled plugin output (generated, not committed)
 public/                   # Webpack Module Federation output for the panel (generated, not committed)
