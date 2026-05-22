@@ -7,9 +7,9 @@
 
 import type * as React from 'react'
 import { useEffect, useState } from 'react'
+import ActiveCaptainPoiTypes from './components/ActiveCaptainPoiTypes.js'
 import CacheDurationField from './components/CacheDurationField.js'
 import FooterBar from './components/FooterBar.js'
-import PoiTypeGroups from './components/PoiTypeGroups.js'
 import ProximityAlarmFields from './components/ProximityAlarmFields.js'
 import RatingFilterField from './components/RatingFilterField.js'
 import RouteHazardScanFields from './components/RouteHazardScanFields.js'
@@ -75,7 +75,7 @@ export default function PluginConfigurationPanel ({ configuration, save }: Props
         value={state.minimumRating ?? DEFAULT_MINIMUM_RATING}
         onChange={(rating) => dispatch({ type: 'setMinimumRating', rating })}
       />
-      <PoiTypeGroups
+      <ActiveCaptainPoiTypes
         config={state}
         onToggle={(flag, enabled) => dispatch({ type: 'setPoiType', flag, enabled })}
         onSetAll={(enabled) => dispatch({ type: 'setAllPoiTypes', enabled })}

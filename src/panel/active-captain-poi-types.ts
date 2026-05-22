@@ -1,26 +1,26 @@
 /**
- * UI metadata for the POI-type section of the configuration panel: the four
- * labeled groups and the human-readable label for each toggle. Every flag is
- * one of the includeX booleans on PluginConfig, so all 13 POI types appear
- * exactly once across the groups.
+ * UI metadata for the ActiveCaptain POI-type section of the configuration
+ * panel: the four labeled groups and the human-readable label for each toggle.
+ * Every flag is one of the includeX booleans on PluginConfig, so all 13
+ * ActiveCaptain POI types appear exactly once across the groups.
  */
 
 import type { PoiTypeFlag } from '../shared/types.js'
 
 /** A single POI-type toggle: its PluginConfig flag and its display label. */
-export interface PoiTypeOption {
+export interface ActiveCaptainPoiTypeOption {
   flag: PoiTypeFlag
   label: string
 }
 
-/** A labeled group of related POI-type toggles. */
-export interface PoiTypeGroup {
+/** A labeled group of related ActiveCaptain POI-type toggles. */
+export interface ActiveCaptainPoiTypeGroup {
   title: string
-  options: readonly PoiTypeOption[]
+  options: readonly ActiveCaptainPoiTypeOption[]
 }
 
-/** The four POI-type groups, in display order. */
-export const POI_TYPE_GROUPS: readonly PoiTypeGroup[] = [
+/** The four ActiveCaptain POI-type groups, in display order. */
+export const ACTIVE_CAPTAIN_POI_TYPE_GROUPS: readonly ActiveCaptainPoiTypeGroup[] = [
   {
     title: 'Berthing and services',
     options: [

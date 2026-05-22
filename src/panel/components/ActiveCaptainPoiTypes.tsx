@@ -1,12 +1,12 @@
 /**
- * The POI-type selector: the 13 toggles laid out in four labeled groups, with
- * All and None bulk buttons. A note appears when nothing is selected, because
- * the plugin then imports every type rather than none.
+ * The ActiveCaptain POI-type selector: the 13 toggles laid out in four labeled
+ * groups, with All and None bulk buttons. A note appears when nothing is
+ * selected, because the plugin then imports every type rather than none.
  */
 
 import type * as React from 'react'
+import { ACTIVE_CAPTAIN_POI_TYPE_GROUPS } from '../active-captain-poi-types.js'
 import type { PluginConfig, PoiTypeFlag } from '../../shared/types.js'
-import { POI_TYPE_GROUPS } from '../poi-type-groups.js'
 import { S } from '../styles.js'
 
 interface Props {
@@ -15,9 +15,9 @@ interface Props {
   onSetAll: (enabled: boolean) => void
 }
 
-/** The grouped POI-type checkboxes shown in the configuration panel. */
-export default function PoiTypeGroups ({ config, onToggle, onSetAll }: Props): React.ReactElement {
-  const anySelected = POI_TYPE_GROUPS.some(
+/** The grouped ActiveCaptain POI-type checkboxes shown in the configuration panel. */
+export default function ActiveCaptainPoiTypes ({ config, onToggle, onSetAll }: Props): React.ReactElement {
+  const anySelected = ACTIVE_CAPTAIN_POI_TYPE_GROUPS.some(
     (group) => group.options.some((option) => config[option.flag] === true)
   )
 
@@ -28,7 +28,7 @@ export default function PoiTypeGroups ({ config, onToggle, onSetAll }: Props): R
         <button type='button' style={S.btnBulk} onClick={() => onSetAll(true)}>All</button>
         <button type='button' style={S.btnBulk} onClick={() => onSetAll(false)}>None</button>
       </div>
-      {POI_TYPE_GROUPS.map((group) => (
+      {ACTIVE_CAPTAIN_POI_TYPE_GROUPS.map((group) => (
         <fieldset key={group.title} style={S.group}>
           <legend style={S.groupTitle}>{group.title}</legend>
           <div style={S.checkboxGrid}>
