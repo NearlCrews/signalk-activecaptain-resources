@@ -45,7 +45,7 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   },
   routeCorridorWidthMeters: {
     type: 'number',
-    title: 'Route corridor width in meters',
+    title: 'Route corridor half-width in meters (a hazard is flagged within this distance either side of the route)',
     default: 500,
     minimum: 1
   }
@@ -91,8 +91,12 @@ export const routeHazardOutput: OutputModule = {
   isEnabled: (config) => config.enableRouteHazardScan === true,
   start: (context: OutputContext): OutputHandle => {
     const corridorWidthMeters = resolveCorridorWidth(context.config.routeCorridorWidthMeters)
-    const courseReader = createCourseReader({ app: context.app })
+    // The alarms are built before the course reader: createCourseReader opens
+    // two Course API delta subscriptions, so if alarm construction were to
+    // throw after that, those subscriptions would be orphaned with no stop()
+    // handle. Constructing the alarms first keeps any throw subscription-free.
     const alarms = createRouteHazardAlarms(context.app)
+    const courseReader = createCourseReader({ app: context.app })
 
     // The route read in buildFetchBox, reused in evaluate within the same tick.
     let tickRoute: RoutePolyline | null = null
