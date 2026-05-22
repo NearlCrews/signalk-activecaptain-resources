@@ -1,16 +1,24 @@
 # Troubleshooting
 
-## No ActiveCaptain POIs appear on the chart
+## No points of interest appear on the chart
 
 - Confirm the plugin is enabled in the Signal K admin UI under Server ->
   Plugin Config.
 - Confirm your Signal K server has a position source (a GPS). The plugin
   serves POIs for the map region the chart plotter asks about; with no
   position, Freeboard-SK has no region to request.
-- Open Freeboard-SK and make sure the ActiveCaptain notes layer is switched on
-  in its layer controls.
-- Pan the chart to an area with known ActiveCaptain coverage. Coverage is
-  uneven; an empty bounding box legitimately returns nothing.
+- Open Freeboard-SK and make sure the `notes` layer is switched on in its
+  layer controls.
+- Confirm at least one data source is enabled in the configuration panel.
+  The ActiveCaptain source is on by default; the OpenSeaMap source is off
+  by default and has to be enabled to import OpenStreetMap marine data.
+  Check the per-source status bar at the top of the panel: an enabled
+  source whose API call has succeeded shows a green tick and a recent
+  fetch time.
+- Pan the chart to an area with known coverage. Coverage is uneven for
+  every source (ActiveCaptain is heavy on the US East Coast and Gulf,
+  OpenSeaMap is heavy in Europe), so an empty bounding box legitimately
+  returns nothing.
 - Enable the plugin's debug log (see below) and watch for
   `Incoming request to list note resources`. If that line never appears, the
   chart plotter is not querying the `notes` resource type at all.
@@ -31,13 +39,21 @@ query.
 
 ## Some POI types never show up
 
-The configuration has 13 POI-type toggles. A type that is switched off is
-excluded from the `poiTypes` string sent to the API, so those POIs are never
-fetched. Check the toggles in the configuration panel.
+The ActiveCaptain card in the configuration panel has 13 POI-type toggles
+(marinas, anchorages, hazards, businesses, boat ramps, bridges, dams,
+ferries, inlets, locks, local knowledge, navigational aids, and airports).
+A type that is switched off is excluded from the `poiTypes` request sent
+to every source, so those POIs are never fetched.
 
-If you switch every POI type off, the plugin imports nothing: with no types
-selected the `poiTypes` string is empty, so there is nothing to request and
-the notes output returns no resources.
+The OpenSeaMap card has four feature-group toggles (hazards, navigational
+aids, harbours, and infrastructure). A group switched off is left out of
+the Overpass query, so those seamark features are never fetched. The
+OpenSeaMap source itself has its own enable toggle; with it off, no
+OpenSeaMap features show up regardless of the group toggles.
+
+If you switch every POI type off in the ActiveCaptain card, the plugin
+imports nothing: with no types selected the request is empty, so the
+notes output returns no resources.
 
 ## The configuration panel does not load
 
@@ -52,12 +68,15 @@ full browser reload of the admin UI so it re-fetches the panel bundle.
 
 ## The status section shows errors or a stale fetch time
 
-The status section reports Garmin API reachability, the cached POI count, the
-last fetch time, and recent errors. Recent errors there are real: they are the
-failures the plugin recorded while talking to the ActiveCaptain API. Common
-causes are a lost internet connection or Cloudflare throttling the community
-API. The plugin retries `429` and `5xx` responses with exponential backoff, so
-transient errors usually clear on the next query.
+The status section reports each enabled source's API reachability and last
+successful fetch time, the total cached POI count, and the most recent
+global errors. Recent errors there are real: they are the failures the
+plugin recorded while talking to a source's API. Common causes are a lost
+internet connection, Cloudflare throttling the ActiveCaptain community API,
+or an overloaded Overpass endpoint. The plugin retries `429` and `5xx`
+responses with exponential backoff and honors `Retry-After`, so transient
+errors usually clear on the next query. A source whose calls keep failing
+shows a red cross in its row; the other enabled sources keep working.
 
 ## Configuration changes do not take effect
 
@@ -69,14 +88,23 @@ to clear the cache immediately.
 
 ## Editing a POI fails
 
-ActiveCaptain resources are read-only. The plugin rejects any attempt to create,
-update, or delete a `notes` resource it provides. To edit a POI, use the
-ActiveCaptain community website; the plugin links each note back to its public
-ActiveCaptain page.
+Every source the plugin imports from is read-only. The plugin rejects any
+attempt to create, update, or delete a `notes` resource it provides. To
+edit a POI, use the upstream site: ActiveCaptain points link back to the
+ActiveCaptain community website, and OpenSeaMap points link back to the
+OpenStreetMap element page.
 
 ## Stale or unexpected POI data
 
 POI detail records are cached for the configured window (default 60 minutes).
-A longer window means less traffic to Garmin but more lag before edits made on
-ActiveCaptain reach your chart. Shorten the caching duration, or restart the
-plugin, if you need fresher data.
+A longer window means less traffic to upstream APIs but more lag before
+edits made on ActiveCaptain or OpenStreetMap reach your chart. Shorten the
+caching duration, or restart the plugin, if you need fresher data.
+
+## Two markers for the same harbour or hazard
+
+When more than one source reports the same physical feature, the plugin
+merges them into one note (see the OpenSeaMap dedupe in `README.md`).
+The default merge radius is 150 meters; widen the "Merge radius" field in
+the OpenSeaMap card if duplicates still appear close together, or tighten
+it if genuinely separate neighbors are being merged.

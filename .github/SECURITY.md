@@ -6,8 +6,8 @@ We actively support the following versions with security updates:
 
 | Version | Supported |
 | ------- | --------- |
-| 0.4.x   | Yes       |
-| < 0.4   | No        |
+| 0.5.x   | Yes       |
+| < 0.5   | No        |
 
 ## Reporting a Vulnerability
 
@@ -65,11 +65,14 @@ npm audit
 
 ## Data Handling
 
-This plugin talks to the unauthenticated Garmin ActiveCaptain community API. It
-sends only bounding-box coordinates and point-of-interest ids; it sends no
-personal data, no credentials, and no Garmin account login. It does not store
-or transmit user identifiers. See [docs/garmin-api.md](../docs/garmin-api.md)
-for the full API research notes.
+This plugin talks to two unauthenticated read-only APIs: the Garmin
+ActiveCaptain community API, and the OpenStreetMap Overpass API the
+OpenSeaMap source queries. Both calls send only bounding-box coordinates
+and point-of-interest ids; the plugin sends no personal data, no
+credentials, no Garmin account login, and no OSM account login. It does not
+store or transmit user identifiers. See
+[docs/garmin-api.md](../docs/garmin-api.md) for the full ActiveCaptain API
+research notes.
 
 ## Signal K Security
 
