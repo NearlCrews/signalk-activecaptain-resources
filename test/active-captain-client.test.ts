@@ -16,6 +16,10 @@ const fastLimits: Partial<RateLimitOptions> = {
 
 const sampleBbox: Bbox = { north: 1, south: 0, east: 1, west: 0 }
 
+/** Sleep for the given number of milliseconds. */
+const delayMs = (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms))
+
 /** Build a JSON Response with the given status and optional headers. */
 function jsonResponse (body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -29,15 +33,15 @@ function jsonResponse (body: unknown, status = 200, headers: Record<string, stri
  * stub records every call so tests can assert on retry behavior.
  */
 async function withMockFetch (
-  handler: (callIndex: number) => Response | Promise<Response>,
+  handler: (callIndex: number, init?: RequestInit) => Response | Promise<Response>,
   fn: (calls: { count: number }) => Promise<void>
 ): Promise<void> {
   const original = globalThis.fetch
   const calls = { count: 0 }
-  globalThis.fetch = (async (): Promise<Response> => {
+  globalThis.fetch = (async (_url: unknown, init?: RequestInit): Promise<Response> => {
     const callIndex = calls.count
     calls.count++
-    return handler(callIndex)
+    return handler(callIndex, init)
   }) as typeof fetch
   try {
     await fn(calls)
@@ -280,4 +284,183 @@ test('a network error is retried and then succeeds', async () => {
       assert.equal(calls.count, 2, 'expected one retry after the network error')
     }
   )
+})
+
+test('a 502 response is retried and then succeeds', async () => {
+  await withMockFetch(
+    callIndex => callIndex === 0
+      ? jsonResponse({ message: 'bad gateway' }, 502)
+      : jsonResponse({ pointsOfInterest: [] }),
+    async calls => {
+      const client = createActiveCaptainClient(silentLog, fastLimits)
+      const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
+      assert.deepEqual(result, [])
+      assert.equal(calls.count, 2, 'expected one retry after the 502')
+    }
+  )
+})
+
+test('a 504 response is retried and then succeeds', async () => {
+  await withMockFetch(
+    callIndex => callIndex === 0
+      ? jsonResponse({ message: 'gateway timeout' }, 504)
+      : jsonResponse({ pointsOfInterest: [] }),
+    async calls => {
+      const client = createActiveCaptainClient(silentLog, fastLimits)
+      const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
+      assert.deepEqual(result, [])
+      assert.equal(calls.count, 2, 'expected one retry after the 504')
+    }
+  )
+})
+
+test('pointOfInterestDetails rejects a detail body missing required fields', async () => {
+  await withMockFetch(
+    // The point-of-interest block is present but carries no poiType, name, or
+    // mapLocation: the fields getResource later dereferences without a guard.
+    () => jsonResponse({ pointOfInterest: { id: 7 } }),
+    async () => {
+      const client = createActiveCaptainClient(silentLog, fastLimits)
+      await assert.rejects(
+        () => client.pointOfInterestDetails('7'),
+        /missing required point-of-interest fields/
+      )
+    }
+  )
+})
+
+test('close() aborts a new request and stops the retry loop', async () => {
+  await withMockFetch(
+    (_callIndex, init) => {
+      // The client closes before the request runs, so the composed signal is
+      // already aborted; mimic the real fetch by rejecting on it.
+      if (init?.signal?.aborted === true) {
+        throw new DOMException('The operation was aborted', 'AbortError')
+      }
+      return jsonResponse({ pointsOfInterest: [] })
+    },
+    async calls => {
+      const client = createActiveCaptainClient(silentLog, fastLimits)
+      client.close()
+      await assert.rejects(() => client.listPointsOfInterest(sampleBbox, 'Marina'))
+      // The aborted close signal stops the retry loop at once: exactly one
+      // fetch, no retries despite the rejection.
+      assert.equal(calls.count, 1, 'expected no retry once the client is closed')
+    }
+  )
+})
+
+test('the request queue spaces request starts by minDelayMs', async () => {
+  const starts: number[] = []
+  await withMockFetch(
+    () => {
+      starts.push(Date.now())
+      return jsonResponse({ pointsOfInterest: [] })
+    },
+    async () => {
+      const client = createActiveCaptainClient(silentLog, {
+        ...fastLimits, maxConcurrency: 1, minDelayMs: 40
+      })
+      await Promise.all([
+        client.listPointsOfInterest(sampleBbox, 'Marina'),
+        client.listPointsOfInterest(sampleBbox, 'Marina'),
+        client.listPointsOfInterest(sampleBbox, 'Marina')
+      ])
+      assert.equal(starts.length, 3)
+      for (let i = 1; i < starts.length; i++) {
+        assert.ok(
+          starts[i] - starts[i - 1] >= 30,
+          `expected ~40ms spacing, got ${starts[i] - starts[i - 1]}ms`
+        )
+      }
+    }
+  )
+})
+
+test('the request queue caps in-flight requests at maxConcurrency', async () => {
+  let active = 0
+  let peak = 0
+  await withMockFetch(
+    async () => {
+      active++
+      peak = Math.max(peak, active)
+      await delayMs(15)
+      active--
+      return jsonResponse({ pointsOfInterest: [] })
+    },
+    async () => {
+      const client = createActiveCaptainClient(silentLog, {
+        ...fastLimits, maxConcurrency: 2, minDelayMs: 0
+      })
+      await Promise.all([
+        client.listPointsOfInterest(sampleBbox, 'Marina'),
+        client.listPointsOfInterest(sampleBbox, 'Marina'),
+        client.listPointsOfInterest(sampleBbox, 'Marina'),
+        client.listPointsOfInterest(sampleBbox, 'Marina'),
+        client.listPointsOfInterest(sampleBbox, 'Marina')
+      ])
+      assert.equal(peak, 2, 'expected at most two requests in flight at once')
+    }
+  )
+})
+
+test('a 429 Retry-After header in seconds is honored before the retry', async () => {
+  const start = Date.now()
+  await withMockFetch(
+    callIndex => callIndex === 0
+      ? jsonResponse({ message: 'slow down' }, 429, { 'Retry-After': '1' })
+      : jsonResponse({ pointsOfInterest: [] }),
+    async calls => {
+      const client = createActiveCaptainClient(silentLog, {
+        minDelayMs: 0, backoffBaseMs: 1, maxBackoffMs: 5000, maxRetries: 2
+      })
+      const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
+      assert.deepEqual(result, [])
+      assert.equal(calls.count, 2)
+    }
+  )
+  // A 1-second Retry-After must delay the retry; backoff alone would be
+  // sub-millisecond with backoffBaseMs 1.
+  assert.ok(Date.now() - start >= 700, 'expected the retry to wait ~1s for Retry-After')
+})
+
+test('a 429 Retry-After header as an HTTP date is honored before the retry', async () => {
+  const start = Date.now()
+  // An HTTP date carries whole-second precision; two seconds ahead leaves a
+  // wait of at least one second once the sub-second part is truncated.
+  const retryAt = new Date(Date.now() + 2000).toUTCString()
+  await withMockFetch(
+    callIndex => callIndex === 0
+      ? jsonResponse({ message: 'slow down' }, 429, { 'Retry-After': retryAt })
+      : jsonResponse({ pointsOfInterest: [] }),
+    async calls => {
+      const client = createActiveCaptainClient(silentLog, {
+        minDelayMs: 0, backoffBaseMs: 1, maxBackoffMs: 5000, maxRetries: 2
+      })
+      const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
+      assert.deepEqual(result, [])
+      assert.equal(calls.count, 2)
+    }
+  )
+  assert.ok(Date.now() - start >= 800, 'expected the retry to wait for the HTTP-date Retry-After')
+})
+
+test('a huge Retry-After value is capped at maxBackoffMs', async () => {
+  const start = Date.now()
+  await withMockFetch(
+    callIndex => callIndex === 0
+      ? jsonResponse({ message: 'slow down' }, 429, { 'Retry-After': '99999' })
+      : jsonResponse({ pointsOfInterest: [] }),
+    async calls => {
+      const client = createActiveCaptainClient(silentLog, {
+        minDelayMs: 0, backoffBaseMs: 1, maxBackoffMs: 30, maxRetries: 2
+      })
+      const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
+      assert.deepEqual(result, [])
+      assert.equal(calls.count, 2)
+    }
+  )
+  // 99999 seconds would stall for over a day if honored literally; the cap
+  // holds the wait down to maxBackoffMs (30ms here).
+  assert.ok(Date.now() - start < 2000, 'expected the huge Retry-After to be capped')
 })

@@ -78,6 +78,23 @@ test('a rejected load rejects and is not cached, so the next get retries', async
   assert.equal(source.callCount(), 2)
 })
 
+test('an entry past its in-memory TTL is reloaded from the source', async () => {
+  const source = createFakeSource()
+  // 0.001 minutes is a 60ms TTL: short enough to expire within the test.
+  const cache = createPoiCache(source, 0.001)
+
+  await cache.get('1')
+  assert.equal(source.callCount(), 1)
+
+  // Wait past the TTL window, then fetch again: the stale entry must trigger a
+  // fresh load rather than serving an expired value.
+  await new Promise(resolve => setTimeout(resolve, 90))
+
+  const reloaded = await cache.get('1')
+  assert.equal(reloaded.pointOfInterest.name, 'POI 1')
+  assert.equal(source.callCount(), 2, 'expected the expired entry to be reloaded')
+})
+
 test('clear empties the cache so the next get reloads', async () => {
   const source = createFakeSource()
   const cache = createPoiCache(source, TTL_MINUTES)
