@@ -31,7 +31,7 @@ import { parseApiDate, renderDescription } from './inputs/active-captain/poi-det
 import { PLUGIN_ID } from './shared/plugin-id.js'
 import { buildPoiTypesString } from './shared/poi-type-selection.js'
 import { filterByRating } from './inputs/active-captain/rating-filter.js'
-import { resolveBbox } from './resourceQuery.js'
+import { resolveBbox } from './outputs/notes-resource/resource-query.js'
 import type { PluginConfig, PoiSummary, Position } from './shared/types.js'
 
 const PLUGIN_NAME = "Crow's Nest"

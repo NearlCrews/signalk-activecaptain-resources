@@ -3,8 +3,8 @@
  * bounding box.
  */
 
-import { positionToBbox } from './geo/position-utilities.js'
-import type { Bbox, Position } from './shared/types.js'
+import { positionToBbox } from '../../geo/position-utilities.js'
+import type { Bbox, Position } from '../../shared/types.js'
 
 /**
  * Normalize a query `position` value into a Position, or null if unusable.

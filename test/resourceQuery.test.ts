@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveBbox, resolvePosition } from '../src/resourceQuery.js'
+import { resolveBbox, resolvePosition } from '../src/outputs/notes-resource/resource-query.js'
 
 test('resolvePosition reads a latitude/longitude object', () => {
   assert.deepEqual(
