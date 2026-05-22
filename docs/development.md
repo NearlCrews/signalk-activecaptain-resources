@@ -73,7 +73,7 @@ src/                      # TypeScript source
 ├── monitoring/           # position-monitor.ts: drives the per-tick scan
 ├── geo/                  # position-utilities.ts: bounding-box and great-circle helpers
 ├── status/               # plugin-status.ts, status-router.ts, status-types.ts
-├── shared/               # types.ts, plugin-id.ts, poi-type-selection.ts
+├── shared/               # types.ts, plugin-id.ts, poi-type-selection.ts, notification-path.ts, time.ts
 └── panel/                # Federated React configuration panel (bundled to public/)
     ├── index.tsx          # Federation entry; re-exports PluginConfigurationPanel
     ├── PluginConfigurationPanel.tsx  # Root panel component

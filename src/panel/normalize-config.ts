@@ -8,7 +8,8 @@ import type { PluginConfig } from '../shared/types.js'
 
 /**
  * Fallback caching duration. Mirrors DEFAULT_CACHING_DURATION_MINUTES in
- * src/index.ts; keep the two in step so the panel and the plugin agree.
+ * src/inputs/active-captain/active-captain-input.ts; keep the two in step so
+ * the panel and the plugin agree.
  */
 export const DEFAULT_CACHE_DURATION_MINUTES = 60
 
@@ -20,21 +21,24 @@ export const MAX_RATING = 5
 
 /**
  * Fallback minimum rating. Mirrors the `minimumRating` schema default in
- * src/index.ts; keep the two in step so the panel and the plugin agree.
+ * src/outputs/notes-resource/notes-resource-output.ts; keep the two in step so
+ * the panel and the plugin agree.
  */
 export const DEFAULT_MINIMUM_RATING = MIN_RATING
 
 /**
  * Fallback proximity-alarm radius, in meters. Mirrors the
- * `proximityAlarmRadiusMeters` schema default in src/index.ts; keep the two in
- * step so the panel and the plugin agree.
+ * `proximityAlarmRadiusMeters` schema default in
+ * src/outputs/proximity-alarm/proximity-alarm-output.ts; keep the two in step
+ * so the panel and the plugin agree.
  */
 export const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
 
 /**
  * Fallback route-corridor half-width, in meters. Mirrors the
- * `routeCorridorWidthMeters` schema default in src/index.ts; keep the two in
- * step so the panel and the plugin agree.
+ * `routeCorridorWidthMeters` schema default in
+ * src/outputs/route-hazard/route-hazard-output.ts; keep the two in step so the
+ * panel and the plugin agree.
  */
 export const DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS = 500
 

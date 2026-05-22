@@ -35,8 +35,9 @@ The configuration has 13 POI-type toggles. A type that is switched off is
 excluded from the `poiTypes` string sent to the API, so those POIs are never
 fetched. Check the toggles in the configuration panel.
 
-If you switch every POI type off, the plugin falls back to requesting all
-types rather than fetching nothing.
+If you switch every POI type off, the plugin imports nothing: with no types
+selected the `poiTypes` string is empty, so there is nothing to request and
+the notes output returns no resources.
 
 ## The configuration panel does not load
 

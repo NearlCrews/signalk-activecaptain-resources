@@ -26,7 +26,7 @@ function fullMarina (): PoiDetails {
   return {
     pointOfInterest: {
       id: 12345,
-      name: 'Test Harbour Marina',
+      name: 'Test Harbor Marina',
       poiType: 'Marina',
       mapLocation: { latitude: 25.7, longitude: -80.2 },
       dateLastModified: THREE_DAYS_AGO.toISOString(),

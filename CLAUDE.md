@@ -78,16 +78,19 @@ self-contained module registered on one line in `src/index.ts`.
   - `monitoring/` - `position-monitor.ts` subscribes to `navigation.position`
     and drives the per-tick scan from the position-driven outputs' scan
     contributors.
-  - `geo/` - `position-utilities.ts`: geo helpers (position to bounding box,
-    great-circle `distanceMeters`, and `unionBbox`).
+  - `geo/` - `position-utilities.ts`: geo helpers (`toPosition` parsing,
+    position to bounding box, great-circle `distanceMeters`, `unionBbox`, and
+    `projectPointOntoLeg` for corridor geometry).
   - `status/` - `plugin-status.ts` (records request outcomes, produces a
     `StatusSnapshot`), `status-router.ts` (admin-gated Express router that
     serves the snapshot), and `status-types.ts` (the `StatusSnapshot` type,
     shared by plugin and panel).
   - `shared/` - `types.ts` (shared type contracts, the single source of truth
     for the data shapes), `plugin-id.ts` (the plugin id, shared by plugin and
-    panel), and `poi-type-selection.ts` (maps the config POI-type toggles to
-    the API `poiTypes` string).
+    panel), `poi-type-selection.ts` (maps the config POI-type toggles to the
+    API `poiTypes` string), `notification-path.ts` (builds path-safe SignalK
+    notification deltas, shared by the alarm outputs), and `time.ts` (the
+    minute-to-millisecond constant shared by the cache and store).
   - `panel/` - federated React configuration panel (`index.tsx`,
     `PluginConfigurationPanel.tsx`, `config-reducer.ts`, `normalize-config.ts`,
     `poi-type-groups.ts`, `styles.ts`, plus `hooks/` and `components/`).
