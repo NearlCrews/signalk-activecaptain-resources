@@ -78,6 +78,18 @@ function isKnown (value: string | undefined): boolean {
 }
 
 /**
+ * True when a numeric section field carries a positive value. The section
+ * partials gate every numeric field line with a Handlebars `{{#if}}`, and
+ * Handlebars treats 0 (like `undefined`) as falsy. So a zero count or a zero
+ * measurement renders no line, and the predicate must agree: a numeric field
+ * counts as present only when it is greater than zero, otherwise a POI whose
+ * only data in a section is a zero value would show an empty section header.
+ */
+function isPositiveNumber (value: number | undefined): boolean {
+  return typeof value === 'number' && value > 0
+}
+
+/**
  * Parse an ActiveCaptain timestamp. The API returns timestamps with no time
  * zone (for example "2025-08-11T18:51:51.442"), which JavaScript would read as
  * local time. ActiveCaptain serves them as UTC, so a zone-less value gets a
@@ -97,14 +109,18 @@ export function parseApiDate (value: unknown): Date {
  * year as 12 of those months, so the two thresholds stay consistent: a delta
  * just under a year never rounds to "12 months".
  */
-const SECONDS_PER_MONTH = 2592000
+const SECONDS_PER_SECOND = 1
+const SECONDS_PER_MINUTE = 60
+const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60
+const SECONDS_PER_DAY = SECONDS_PER_HOUR * 24
+const SECONDS_PER_MONTH = SECONDS_PER_DAY * 30
 const RELATIVE_UNITS: ReadonlyArray<readonly [Intl.RelativeTimeFormatUnit, number]> = [
   ['year', SECONDS_PER_MONTH * 12],
   ['month', SECONDS_PER_MONTH],
-  ['day', 86400],
-  ['hour', 3600],
-  ['minute', 60],
-  ['second', 1]
+  ['day', SECONDS_PER_DAY],
+  ['hour', SECONDS_PER_HOUR],
+  ['minute', SECONDS_PER_MINUTE],
+  ['second', SECONDS_PER_SECOND]
 ]
 
 const relativeTimeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
@@ -206,8 +222,8 @@ export function hasMooring (details: PoiDetails): boolean {
   }
 
   return hasDefiniteAvailability(mooring) ||
-    mooring.transient != null ||
-    mooring.total != null ||
+    isPositiveNumber(mooring.transient) ||
+    isPositiveNumber(mooring.total) ||
     hasNotes(mooring.notes)
 }
 
@@ -220,9 +236,9 @@ export function hasNavigation (details: PoiDetails): boolean {
 
   return hasDefiniteAvailability(navigation) ||
     isKnown(navigation.current) ||
-    navigation.bridgeHeight != null ||
-    navigation.tide != null ||
-    navigation.depthApproach != null ||
+    isPositiveNumber(navigation.bridgeHeight) ||
+    isPositiveNumber(navigation.tide) ||
+    isPositiveNumber(navigation.depthApproach) ||
     hasNotes(navigation.notes)
 }
 

@@ -95,7 +95,10 @@ export function createPoiCache (
   if (store !== undefined) {
     const now = Date.now()
     for (const [id, entry] of store.load()) {
-      const remainingTtl = ttlMs - (now - entry.timestamp)
+      // Clamp to at most ttlMs: a timestamp in the future (backward clock
+      // skew, or a store file copied from another machine) would otherwise
+      // make the entry outlive the configured TTL window.
+      const remainingTtl = Math.min(ttlMs, ttlMs - (now - entry.timestamp))
       if (remainingTtl > 0) {
         cache.set(id, entry.details, { ttl: remainingTtl })
       }

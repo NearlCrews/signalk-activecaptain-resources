@@ -321,7 +321,8 @@ export interface PoiDetails {
  * The PluginConfig keys that toggle a POI type: every `includeX` key. Used to
  * type the POI-type flag table and the config panel. Defined by the `include`
  * prefix so non-toggle settings (the caching duration, the rating filter, the
- * proximity-alarm options) are never mistaken for POI-type flags.
+ * proximity-alarm options, and the route-hazard options) are never mistaken
+ * for POI-type flags.
  */
 export type PoiTypeFlag = Extract<keyof PluginConfig, `include${string}`>
 

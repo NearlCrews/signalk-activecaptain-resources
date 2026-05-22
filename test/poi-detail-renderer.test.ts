@@ -259,11 +259,13 @@ test('hasMooring counts a transient count even when availability is Unknown', ()
   transientOnly.mooring = { hasMoorings: 'Unknown', transient: 8 }
   assert.equal(hasMooring(transientOnly), true)
 
-  // A genuine zero count is real data: a field reported as 0 is present, not
-  // missing, so the section is shown.
+  // A zero count must not count as data: the mooring partial gates the
+  // "{{transient}} transient moorings" line with `{{#if transient}}`, and
+  // Handlebars treats 0 as falsy, so the line is suppressed. The predicate
+  // agrees, otherwise the section would render as a bare empty header.
   const zeroTransient = bareMarina()
   zeroTransient.mooring = { hasMoorings: 'Unknown', transient: 0 }
-  assert.equal(hasMooring(zeroTransient), true)
+  assert.equal(hasMooring(zeroTransient), false)
 })
 
 test('hasNavigation counts a bridge height even when availability is Unknown', () => {
@@ -278,11 +280,26 @@ test('hasNavigation counts a bridge height even when availability is Unknown', (
   bridgeOnly.navigation = { current: 'Unknown', bridgeHeight: 13.5 }
   assert.equal(hasNavigation(bridgeOnly), true)
 
-  // A genuine zero clearance is real data: a bridge height reported as 0 is
-  // present, not missing, so the section is shown.
+  // A zero clearance must not count as data: the navigation partial gates the
+  // "Bridge clearance {{bridgeHeight}}" line with `{{#if bridgeHeight}}`, and
+  // Handlebars treats 0 as falsy, so the line is suppressed. The predicate
+  // agrees, otherwise the section would render as a bare empty header.
   const zeroBridge = bareMarina()
   zeroBridge.navigation = { current: 'Unknown', bridgeHeight: 0 }
-  assert.equal(hasNavigation(zeroBridge), true)
+  assert.equal(hasNavigation(zeroBridge), false)
+})
+
+test('a section whose only numeric data is zero renders no empty header', () => {
+  // Every numeric field line is gated by `{{#if}}`, which Handlebars treats 0
+  // as falsy for, so a zero-only section would otherwise render a lone header
+  // with no content beneath it.
+  const zeroMooring = bareMarina()
+  zeroMooring.mooring = { hasMoorings: 'Unknown', total: 0, transient: 0 }
+  assert.doesNotMatch(renderDescription(zeroMooring), /Mooring/)
+
+  const zeroNav = bareMarina()
+  zeroNav.navigation = { current: 'Unknown', bridgeHeight: 0, tide: 0, depthApproach: 0 }
+  assert.doesNotMatch(renderDescription(zeroNav), /Navigation/)
 })
 
 test('an Unknown capability renders no line, not a misleading cross', () => {

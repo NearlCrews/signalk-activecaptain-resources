@@ -161,29 +161,91 @@ test('a non-404 detail failure records an error and sets the plugin error', asyn
   }
 })
 
-test('an aborted detail fetch records neither a success nor an error', async () => {
+/** Build a client whose detail fetch always rejects with an AbortError. */
+function abortingClient (): ActiveCaptainClient {
+  return fakeClient({
+    pointOfInterestDetails: async (): Promise<PoiDetails> => {
+      const abort = new Error('The operation was aborted')
+      abort.name = 'AbortError'
+      throw abort
+    }
+  }).client
+}
+
+test('an aborted detail fetch after close() records neither a success nor an error', async () => {
   const { dataDir, cleanup } = makeTempDir()
   try {
-    const { client } = fakeClient({
-      pointOfInterestDetails: async (): Promise<PoiDetails> => {
-        const abort = new Error('The operation was aborted')
-        abort.name = 'AbortError'
-        throw abort
-      }
-    })
     const spy = spies()
     const source = createActiveCaptainSource({
-      client,
+      client: abortingClient(),
       cachingDurationMinutes: 60,
       dataDir,
       status: spy.status,
       app: spy.app
     })
+    // close() aborts the previous run's in-flight fetches; that abort is
+    // benign and must not clobber a later run's status.
+    source.close()
     await assert.rejects(source.getDetails('1'))
     assert.equal(spy.calls.detailSuccess, 0)
     assert.equal(spy.calls.recordError, 0)
     assert.equal(spy.calls.setPluginError, 0)
+  } finally {
+    cleanup()
+  }
+})
+
+test('an aborted detail fetch while the source is running is recorded as an error', async () => {
+  const { dataDir, cleanup } = makeTempDir()
+  try {
+    const spy = spies()
+    const source = createActiveCaptainSource({
+      client: abortingClient(),
+      cachingDurationMinutes: 60,
+      dataDir,
+      status: spy.status,
+      app: spy.app
+    })
+    // An abort that is NOT from the plugin's own close() is a genuine failure
+    // and must be surfaced, not silently swallowed.
+    await assert.rejects(source.getDetails('1'))
+    assert.equal(spy.calls.detailSuccess, 0)
+    assert.equal(spy.calls.recordError, 1)
+    assert.equal(spy.calls.setPluginError, 1)
     source.close()
+  } finally {
+    cleanup()
+  }
+})
+
+test('a load that resolves after close() is not persisted to disk', async () => {
+  const { dataDir, cleanup } = makeTempDir()
+  try {
+    const { client, detailCalls } = fakeClient()
+    const source = createActiveCaptainSource({
+      client,
+      cachingDurationMinutes: 60,
+      dataDir,
+      ...spies()
+    })
+    source.close()
+    // The load still resolves, but its run is torn down: nothing reaches the
+    // on-disk store.
+    await source.getDetails('1')
+    assert.equal(detailCalls(), 1)
+
+    // A fresh source over the same directory finds nothing to hydrate, so it
+    // fetches the detail itself rather than serving a stale persisted copy.
+    const { client: freshClient, detailCalls: freshDetailCalls } = fakeClient()
+    const freshSource = createActiveCaptainSource({
+      client: freshClient,
+      cachingDurationMinutes: 60,
+      dataDir,
+      ...spies()
+    })
+    await freshSource.getDetails('1')
+    assert.equal(freshDetailCalls(), 1, 'expected nothing persisted from the closed run')
+    freshSource.close()
   } finally {
     cleanup()
   }
