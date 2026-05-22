@@ -1,0 +1,55 @@
+# Enhancement roadmap
+
+Enhancement opportunities for signalk-activecaptain-resources beyond the
+original scope ("import ActiveCaptain points of interest as `notes` resources
+for chart display"). Produced by a four-expert review on 2026-05-22.
+
+The original plugin is purely pull-driven and read-only. The largest
+opportunities come from making it position-aware and offline-capable.
+
+## Tier 1: position-aware safety (target v1.3.0)
+
+The recommended next release. None of these need a Garmin API key or carry
+terms-of-service exposure.
+
+- **Position subscription and cache pre-warm.** Subscribe to
+  `navigation.position` and pre-fetch points of interest around the vessel
+  into the cache. The enabler for the rest of this tier.
+- **Proximity hazard alarms.** When the vessel nears a Hazard (and optionally
+  a Bridge, Lock, or Inlet), emit a SignalK `notifications.*` delta. Turns a
+  passive chart layer into an active safety tool.
+- **Persistent, offline cache.** Back the in-memory cache with on-disk storage
+  so point-of-interest detail survives restarts and is readable with no
+  connectivity.
+- **Rating filter.** A configurable minimum rating, so low-rated or unreviewed
+  points of interest can be hidden. The bounding-box response already carries
+  the review summary, so this needs no extra requests.
+- **Hazard freshness surfacing.** Prominently flag stale Hazard reports; a
+  stale hazard is a safety signal the crew must see.
+
+## Tier 2: strong, moderate effort
+
+- Route-corridor hazard scan: flag hazards, bridges, and locks along an active
+  Course API route, with distance and ETA.
+- Route-ahead prefetch: warm the cache for points of interest ahead of the
+  vessel while connectivity still exists.
+- "Navigate to this POI": one-tap set the Course API destination.
+- Map preview in the configuration panel.
+- Bridge and lock schedule notifications on approach.
+- Night-vision (red) theme for the panel and the rendered note descriptions.
+- NOAA tide and current cross-reference for the nearest station.
+- CI release automation and SignalK App Store polish (icon, metadata).
+
+## Tier 3: ambitious or gated
+
+- A bundled SignalK webapp for browsing points of interest off the chart
+  plotter.
+- Developer API local mirror: incremental sync and bulk export for a true
+  offline regional dataset. Requires a Garmin developer API key and accepting
+  Garmin's developer terms.
+- Full review list and review photos (developer API only).
+- Contributing reviews and hazard reports back to ActiveCaptain (developer API
+  plus per-user Garmin sign-in).
+- Multi-source marine POI aggregation (OpenSeaMap, USACE lock status, Waterway
+  Guide).
+- React panel component tests.
