@@ -36,10 +36,15 @@ import FooterBar from './components/FooterBar.js'
 import PoiTypeGroups from './components/PoiTypeGroups.js'
 import ProximityAlarmFields from './components/ProximityAlarmFields.js'
 import RatingFilterField from './components/RatingFilterField.js'
+import RouteHazardScanFields from './components/RouteHazardScanFields.js'
 import StatusBar from './components/StatusBar.js'
 import { useConfig } from './hooks/useConfig.js'
 import { useStatus } from './hooks/useStatus.js'
-import { DEFAULT_MINIMUM_RATING, DEFAULT_PROXIMITY_ALARM_RADIUS_METERS } from './normaliseConfig.js'
+import {
+  DEFAULT_MINIMUM_RATING,
+  DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
+  DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+} from './normaliseConfig.js'
 import { S, THEME_STYLE } from './styles.js'
 
 /** How long, in milliseconds, the "Saved" confirmation pill stays visible. */
@@ -104,6 +109,12 @@ export default function PluginConfigurationPanel ({ configuration, save }: Props
         radiusMeters={state.proximityAlarmRadiusMeters ?? DEFAULT_PROXIMITY_ALARM_RADIUS_METERS}
         onToggleEnabled={(enabled) => dispatch({ type: 'setProximityAlarmsEnabled', enabled })}
         onChangeRadius={(meters) => dispatch({ type: 'setProximityAlarmRadius', meters })}
+      />
+      <RouteHazardScanFields
+        enabled={state.enableRouteHazardScan === true}
+        corridorWidthMeters={state.routeCorridorWidthMeters ?? DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS}
+        onToggleEnabled={(enabled) => dispatch({ type: 'setRouteHazardScanEnabled', enabled })}
+        onChangeWidth={(meters) => dispatch({ type: 'setRouteCorridorWidth', meters })}
       />
       <FooterBar
         dirty={dirty}

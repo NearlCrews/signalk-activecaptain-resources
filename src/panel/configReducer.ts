@@ -39,6 +39,8 @@ export type ConfigAction =
   | { type: 'setMinimumRating', rating: number }
   | { type: 'setProximityAlarmsEnabled', enabled: boolean }
   | { type: 'setProximityAlarmRadius', meters: number }
+  | { type: 'setRouteHazardScanEnabled', enabled: boolean }
+  | { type: 'setRouteCorridorWidth', meters: number }
   | { type: 'discard', config: PluginConfig }
 
 /**
@@ -77,5 +79,11 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
     case 'setProximityAlarmRadius':
       if (state.proximityAlarmRadiusMeters === action.meters) return state
       return { ...state, proximityAlarmRadiusMeters: action.meters }
+    case 'setRouteHazardScanEnabled':
+      if (state.enableRouteHazardScan === action.enabled) return state
+      return { ...state, enableRouteHazardScan: action.enabled }
+    case 'setRouteCorridorWidth':
+      if (state.routeCorridorWidthMeters === action.meters) return state
+      return { ...state, routeCorridorWidthMeters: action.meters }
   }
 }

@@ -47,6 +47,59 @@ export interface Bbox {
   west: number
 }
 
+/**
+ * The vessel's active route resolved into a forward-looking polyline, ready for
+ * a route-corridor hazard scan. Produced by `courseReader.getRouteAhead()`.
+ *
+ * The path ahead of the vessel is `[vesselPosition, ...waypoints]`, with
+ * `vesselPosition` dropped when there is no fix. `vesselPosition` is kept
+ * separate from `waypoints` so a consumer can choose whether the first corridor
+ * segment starts at the vessel or at the next route waypoint.
+ */
+export interface RoutePolyline {
+  /** Resource id of the active route, the final path segment of its href. */
+  routeId: string
+  /** Route name reported by the Course API, when one is set. */
+  name?: string
+  /** Vessel position when the route was read, or null when there is no fix. */
+  vesselPosition: Position | null
+  /**
+   * Route waypoints ahead of the vessel, ordered from the next waypoint to the
+   * route end, already adjusted for route direction: a route followed in
+   * reverse is returned in travel order. Never empty.
+   */
+  waypoints: Position[]
+}
+
+/**
+ * A snapshot of the vessel's own navigation data, used to scope a route scan.
+ * Produced by `courseReader.getVesselState()`.
+ */
+export interface VesselState {
+  /** Current position, or null when there is no fix. */
+  position: Position | null
+  /** Speed over ground in metres per second, or null when unavailable. */
+  speedOverGround: number | null
+}
+
+/** A point of interest flagged by the route-corridor scan as lying on or near the route. */
+export interface CorridorPoi {
+  /** The ActiveCaptain point-of-interest id. */
+  id: string
+  /** The point-of-interest type; always one of Hazard, Bridge, or Lock. */
+  type: PoiType
+  /** The point-of-interest name. */
+  name: string
+  /** The point-of-interest location. */
+  position: Position
+  /** Distance, in metres, the vessel must travel along the route to draw level with this point. */
+  alongTrackDistanceMeters: number
+  /** Signed perpendicular distance, in metres, from the point to the route: + right of travel, - left. */
+  crossTrackDistanceMeters: number
+  /** Estimated time, in seconds, until the vessel draws level with the point; absent when no usable speed is known. */
+  etaSeconds?: number
+}
+
 /** Minimal logging surface used by the plugin modules (a subset of the SignalK app). */
 export interface Logger {
   debug: (message: string) => void
@@ -315,6 +368,10 @@ export interface PluginConfig {
   enableProximityAlarms?: boolean
   /** Distance, in metres, within which a hazard raises a proximity alarm. */
   proximityAlarmRadiusMeters?: number
+  /** Scan the active Course API route ahead for hazards, bridges, and locks. */
+  enableRouteHazardScan?: boolean
+  /** Half-width, in metres, of the route corridor a POI must fall within. */
+  routeCorridorWidthMeters?: number
   /** Hide points of interest whose average rating is below this value (0 to 5). */
   minimumRating?: number
 }

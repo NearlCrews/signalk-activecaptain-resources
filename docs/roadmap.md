@@ -30,7 +30,7 @@ terms-of-service exposure.
 ## Tier 2: strong, moderate effort
 
 - Route-corridor hazard scan: flag hazards, bridges, and locks along an active
-  Course API route, with distance and ETA.
+  Course API route, with distance and ETA. Shipped in v1.4.0.
 - Route-ahead prefetch: warm the cache for points of interest ahead of the
   vessel while connectivity still exists.
 - "Navigate to this POI": one-tap set the Course API destination.

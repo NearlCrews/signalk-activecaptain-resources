@@ -56,6 +56,13 @@ export const DEFAULT_MINIMUM_RATING = MIN_RATING
 export const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
 
 /**
+ * Fallback route-corridor half-width, in metres. Mirrors the
+ * `routeCorridorWidthMeters` schema default in src/index.ts; keep the two in
+ * step so the panel and the plugin agree.
+ */
+export const DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS = 500
+
+/**
  * Coerce the admin UI's untyped `configuration` prop into a fully populated
  * PluginConfig. A POI-type flag absent from the stored config defaults to
  * true, matching the plugin schema, so a never-configured plugin shows every
@@ -93,6 +100,17 @@ export function normaliseConfig (configuration: unknown): PluginConfig {
   config.proximityAlarmRadiusMeters = typeof radius === 'number' && Number.isFinite(radius) && radius > 0
     ? radius
     : DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+
+  config.enableRouteHazardScan = raw.enableRouteHazardScan === true
+
+  // A zero or negative width would leave the scan enabled but unable to ever
+  // flag a point of interest, so it is treated as unusable and falls back to
+  // the default.
+  const corridorWidth = raw.routeCorridorWidthMeters
+  config.routeCorridorWidthMeters =
+    typeof corridorWidth === 'number' && Number.isFinite(corridorWidth) && corridorWidth > 0
+      ? corridorWidth
+      : DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
 
   return config
 }

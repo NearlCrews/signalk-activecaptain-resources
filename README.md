@@ -79,6 +79,8 @@ The following options are available:
 | Minimum rating | number | 0 | Hide points of interest whose average rating is below this value (0 to 5; 0 shows everything). |
 | Emit a notification when the vessel nears a hazard | boolean | false | Subscribe to the vessel position and raise a proximity alarm for nearby hazards. |
 | Proximity alarm radius in metres | number | 500 | How close a hazard must be to raise an alarm. |
+| Scan the active route ahead for hazards, bridges, and locks | boolean | false | Read the active Course API route and warn about hazards, bridges, and locks along it. |
+| Route corridor width in metres | number | 500 | How far either side of the route line a point of interest counts as on the route. |
 
 Deselecting every POI type makes the plugin import nothing. A configuration
 created before these toggles existed, which carries none of the toggle
@@ -97,6 +99,27 @@ The feature is off by default.
 
 Point-of-interest detail is cached on disk, so it survives a server restart and
 stays readable when the vessel has no connectivity.
+
+### Route-corridor hazard scan
+
+With "Scan the active route ahead for hazards, bridges, and locks" enabled, and
+the vessel following an active Course API route, the plugin checks the route
+ahead for Hazard, Bridge, and Lock points of interest that lie within the
+corridor width of the route line. For each one it emits a SignalK
+`notifications.navigation.activecaptain.route.*` notification carrying the
+point's along-track distance and, when the speed over ground is known, an ETA.
+The notification is raised once when the point first appears on the route ahead
+and cleared once it is no longer on the route ahead. The feature is off by
+default.
+
+The scan reuses the position monitor's existing tick and its single
+point-of-interest fetch, so it adds no extra API traffic; enabling it alongside
+the proximity hazard alarms shares one fetch per tick. The fetch's bounding box
+is widened to enclose the route ahead, up to a 10 NM look-ahead window that
+slides forward as the vessel advances. A point of interest beyond the
+look-ahead, or beyond the range at which the ActiveCaptain API begins returning
+clustered results, is picked up on a later tick once the vessel has closed the
+distance: a sliding window rather than a single long-range scan.
 
 ## 🎈 Usage <a name="usage"></a>
 

@@ -44,7 +44,13 @@ import { createPoiStore } from './poiStore.js'
 import { createPluginStatus } from './pluginStatus.js'
 import { createStatusRouter } from './statusRouter.js'
 import { createProximityAlarms } from './proximityAlarms.js'
-import { createPositionMonitor, type PositionMonitor } from './positionMonitor.js'
+import { createCourseReader, type CourseReader } from './courseReader.js'
+import { createRouteHazardAlarms } from './routeHazardAlarms.js'
+import {
+  createPositionMonitor,
+  type PositionMonitor,
+  type PositionMonitorConfig
+} from './positionMonitor.js'
 import { parseApiDate, renderDescription } from './handlebarsUtilities.js'
 import { PLUGIN_ID } from './pluginId.js'
 import { buildPoiTypesString } from './poiTypeSelection.js'
@@ -71,8 +77,17 @@ const HTTP_NOT_FOUND = 404
 /** Default proximity-alarm radius, in metres; mirrors the schema default. */
 const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
 
+/** Default route-corridor half-width, in metres; mirrors the schema default. */
+const DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS = 500
+
 /** Lower bound on the hazard-scan radius, so the alarm check always has data. */
 const MIN_SCAN_RADIUS_METERS = 2000
+
+/** POI type the proximity alarms act on; the monitor fetch must include it. */
+const PROXIMITY_POI_TYPES = ['Hazard'] as const
+
+/** POI types the route-corridor scan acts on; the monitor fetch must include them. */
+const ROUTE_SCAN_POI_TYPES = ['Hazard', 'Bridge', 'Lock'] as const
 
 /**
  * OpenAPI description of the plugin's HTTP API. The SignalK server-api docs
@@ -152,15 +167,19 @@ function buildNoteResource (
 }
 
 /**
- * Ensure the POI-types string includes `Hazard`. The position monitor uses it
- * for its hazard-scan fetch, and proximity alarms can only fire on hazards
- * that the fetch actually returned.
+ * Ensure the POI-types string includes every type in `required`. The position
+ * monitor's per-tick fetch uses it, and the proximity alarms and the
+ * route-corridor scan can only act on points of interest the fetch returned.
  */
-function withHazard (poiTypes: string | null): string {
-  if (poiTypes === null || poiTypes === '') {
-    return 'Hazard'
+function ensurePoiTypes (poiTypes: string | null, required: readonly string[]): string {
+  const present = (poiTypes === null || poiTypes === '') ? [] : poiTypes.split(',')
+  const merged = [...present]
+  for (const type of required) {
+    if (!merged.includes(type)) {
+      merged.push(type)
+    }
   }
-  return poiTypes.split(',').includes('Hazard') ? poiTypes : `${poiTypes},Hazard`
+  return merged.join(',')
 }
 
 /** Read a dot-notation property path out of a note object. */
@@ -337,6 +356,17 @@ export = function (app: ServerAPI): Plugin {
           title: 'Proximity alarm radius in metres',
           default: 500,
           minimum: 1
+        },
+        enableRouteHazardScan: {
+          type: 'boolean',
+          title: 'Scan the active route ahead for hazards, bridges, and locks (uses the Course API)',
+          default: false
+        },
+        routeCorridorWidthMeters: {
+          type: 'number',
+          title: 'Route corridor width in metres',
+          default: 500,
+          minimum: 1
         }
       }
     },
@@ -397,28 +427,62 @@ export = function (app: ServerAPI): Plugin {
         minimumRating
       }
 
-      // When proximity alarms are enabled, run the position monitor: it
-      // subscribes to the vessel position, scans for nearby hazards, and
-      // raises a notification when one is within range. A non-positive radius
-      // would disable the alarm silently, so it falls back to the default.
-      // The monitor is an optional extra: if its construction throws, the
-      // failure is logged and the core notes resource provider still starts.
-      if (options.enableProximityAlarms === true) {
+      // Run the position monitor when proximity alarms, the route-corridor
+      // hazard scan, or both are enabled: it subscribes to the vessel
+      // position, lists points of interest as the vessel moves, and feeds the
+      // enabled checks. The monitor is an optional extra: if its construction
+      // throws, the failure is logged and the core notes resource provider
+      // still starts.
+      const proximityEnabled = options.enableProximityAlarms === true
+      const routeScanEnabled = options.enableRouteHazardScan === true
+      if (proximityEnabled || routeScanEnabled) {
+        // A non-positive radius would disable the alarm silently, so it falls
+        // back to the default. The radius also sizes the scan box, so it is
+        // resolved even when only the route scan is on.
         const radiusMeters =
           typeof options.proximityAlarmRadiusMeters === 'number' && options.proximityAlarmRadiusMeters > 0
             ? options.proximityAlarmRadiusMeters
             : DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+        // The route scan also needs Bridge and Lock; its type list includes
+        // Hazard, so it covers the proximity alarms when both are enabled.
+        const requiredPoiTypes = routeScanEnabled ? ROUTE_SCAN_POI_TYPES : PROXIMITY_POI_TYPES
+        // The Course API reader holds a delta subscription. The monitor stops
+        // it on teardown, but a kept reference lets the catch below stop it
+        // when the monitor itself fails to construct, so it does not leak.
+        let courseReader: CourseReader | undefined
         try {
-          runtime.monitor = createPositionMonitor({
+          const monitorConfig: PositionMonitorConfig = {
             app,
             client,
-            alarms: createProximityAlarms(app, radiusMeters),
-            poiTypes: withHazard(poiTypes),
+            poiTypes: ensurePoiTypes(poiTypes, requiredPoiTypes),
             scanRadiusMeters: Math.max(radiusMeters * 3, MIN_SCAN_RADIUS_METERS)
-          })
-          app.debug(`Proximity alarms enabled, radius ${radiusMeters}m`)
+          }
+          if (proximityEnabled) {
+            monitorConfig.alarms = createProximityAlarms(app, radiusMeters)
+          }
+          if (routeScanEnabled) {
+            // A non-positive corridor width would leave the scan unable to
+            // ever flag a point of interest, so it falls back to the default.
+            const corridorWidthMeters =
+              typeof options.routeCorridorWidthMeters === 'number' && options.routeCorridorWidthMeters > 0
+                ? options.routeCorridorWidthMeters
+                : DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+            courseReader = createCourseReader({ app })
+            monitorConfig.routeScan = {
+              courseReader,
+              alarms: createRouteHazardAlarms(app),
+              corridorWidthMeters
+            }
+          }
+          runtime.monitor = createPositionMonitor(monitorConfig)
+          app.debug(
+            `Position monitor started (proximity alarms: ${proximityEnabled}, route scan: ${routeScanEnabled})`
+          )
         } catch (error) {
-          app.error(`Cannot start the proximity-alarm position monitor: ${String(error)}`)
+          // The monitor was not created, so it cannot stop the reader: do it
+          // here. stop() is idempotent, so this is safe even if it ran.
+          courseReader?.stop()
+          app.error(`Cannot start the position monitor: ${String(error)}`)
         }
       }
 

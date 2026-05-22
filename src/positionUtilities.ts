@@ -168,3 +168,80 @@ export function positionToBbox (position: Position, distanceMeters: number): Bbo
     west: northWest.longitude
   }
 }
+
+/**
+ * Initial great-circle bearing from `a` to `b`, in radians.
+ *
+ * Zero is due north and the angle increases clockwise, matching the compass
+ * convention `projectPosition` uses. This is the forward azimuth as the path
+ * leaves `a`; on a great circle the bearing changes along the path, so it is
+ * only correct at the start point.
+ */
+function initialBearingRad (a: Position, b: Position): number {
+  const latitudeA = toRadians(a.latitude)
+  const latitudeB = toRadians(b.latitude)
+  const deltaLongitude = toRadians(b.longitude - a.longitude)
+
+  const y = Math.sin(deltaLongitude) * Math.cos(latitudeB)
+  const x =
+    Math.cos(latitudeA) * Math.sin(latitudeB) -
+    Math.sin(latitudeA) * Math.cos(latitudeB) * Math.cos(deltaLongitude)
+  return Math.atan2(y, x)
+}
+
+/**
+ * The projection of a point onto a great-circle leg.
+ *
+ * `crossTrackMeters` is the signed perpendicular distance from the point to
+ * the leg's great circle: positive when the point lies to the right of the
+ * leg in the direction of travel, negative to the left. `alongTrackMeters` is
+ * the distance from the leg's start point to the foot of that perpendicular,
+ * measured along the leg; it is negative when the foot lies behind the start
+ * and exceeds the leg length when the foot lies beyond the end.
+ */
+export interface TrackProjection {
+  crossTrackMeters: number
+  alongTrackMeters: number
+}
+
+/**
+ * Project a point onto a great-circle leg.
+ *
+ * Uses the standard cross-track and along-track distance formulae on a
+ * spherical Earth. The leg is the great-circle segment from `start` to `end`.
+ * The caller decides whether the point is inside a corridor by comparing the
+ * returned distances against the corridor width and the leg length.
+ *
+ * A zero-length leg (`start` equal to `end`) has no defined direction; the
+ * caller should skip such a leg rather than rely on this result.
+ *
+ * @param start - The leg's start point.
+ * @param end - The leg's end point.
+ * @param point - The point to project onto the leg.
+ * @returns The signed cross-track and along-track distances, in metres.
+ */
+export function projectPointOntoLeg (start: Position, end: Position, point: Position): TrackProjection {
+  const radiusMeters = EARTH_RADIUS_KM * 1000
+  const angularDistanceToPoint = distanceMeters(start, point) / radiusMeters
+  const bearingToPoint = initialBearingRad(start, point)
+  const bearingToEnd = initialBearingRad(start, end)
+
+  // Clamp before asin: floating-point error can push the product a hair past
+  // the [-1, 1] range, and Math.asin of an out-of-range value is NaN.
+  const crossTrackAngular = Math.asin(
+    Math.min(1, Math.max(-1, Math.sin(angularDistanceToPoint) * Math.sin(bearingToPoint - bearingToEnd)))
+  )
+
+  // The along-track angle is acos(cos(d13) / cos(dxt)). Math.acos yields a
+  // value in [0, pi], so it is always non-negative. The sign is recovered
+  // from the bearing delta: a point more than 90 degrees off the leg bearing
+  // lies behind the start, so its along-track distance is negative.
+  const alongTrackRatio = Math.cos(angularDistanceToPoint) / Math.cos(crossTrackAngular)
+  const alongTrackAngular = Math.acos(Math.min(1, Math.max(-1, alongTrackRatio)))
+  const directionSign = Math.cos(bearingToPoint - bearingToEnd) >= 0 ? 1 : -1
+
+  return {
+    crossTrackMeters: crossTrackAngular * radiusMeters,
+    alongTrackMeters: directionSign * alongTrackAngular * radiusMeters
+  }
+}

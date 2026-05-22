@@ -24,7 +24,7 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { positionToBbox } from '../src/positionUtilities.js'
+import { positionToBbox, projectPointOntoLeg } from '../src/positionUtilities.js'
 import type { Position } from '../src/types.js'
 
 /** Assert that two numbers are within `epsilon` of each other. */
@@ -123,4 +123,61 @@ test('positionToBbox returns a zero-size box for a zero distance', () => {
   assertClose(bbox.south, centre.latitude, 1e-9, 'south collapses onto the centre')
   assertClose(bbox.east, centre.longitude, 1e-9, 'east collapses onto the centre')
   assertClose(bbox.west, centre.longitude, 1e-9, 'west collapses onto the centre')
+})
+
+// An eastward leg one degree of longitude long, on the equator. Its great
+// circle is the equator itself, so a point's cross-track distance is just its
+// latitude offset, which makes the expected values easy to reason about. One
+// degree of arc on the sphere this module uses is about 111194.9 metres.
+const EQUATOR_LEG_START: Position = { latitude: 0, longitude: 0 }
+const EQUATOR_LEG_END: Position = { latitude: 0, longitude: 1 }
+const ONE_DEGREE_ARC_METERS = 111194.9
+
+test('projectPointOntoLeg projects a point lying on the leg', () => {
+  const projection = projectPointOntoLeg(EQUATOR_LEG_START, EQUATOR_LEG_END, { latitude: 0, longitude: 0.5 })
+
+  assertClose(projection.crossTrackMeters, 0, 1e-3, 'a point on the leg has no cross-track offset')
+  assertClose(projection.alongTrackMeters, ONE_DEGREE_ARC_METERS / 2, 1, 'along-track is half the leg length')
+})
+
+test('projectPointOntoLeg returns zero for a point at the leg start', () => {
+  const projection = projectPointOntoLeg(EQUATOR_LEG_START, EQUATOR_LEG_END, EQUATOR_LEG_START)
+
+  assertClose(projection.crossTrackMeters, 0, 1e-6, 'the start point has no cross-track offset')
+  assertClose(projection.alongTrackMeters, 0, 1e-6, 'the start point has no along-track distance')
+})
+
+test('projectPointOntoLeg reports a negative along-track distance behind the leg start', () => {
+  const projection = projectPointOntoLeg(EQUATOR_LEG_START, EQUATOR_LEG_END, { latitude: 0, longitude: -0.5 })
+
+  assertClose(projection.crossTrackMeters, 0, 1e-3, 'a point on the leg line has no cross-track offset')
+  assert.ok(projection.alongTrackMeters < 0, 'a point behind the start has a negative along-track distance')
+  assertClose(projection.alongTrackMeters, -ONE_DEGREE_ARC_METERS / 2, 1, 'along-track magnitude is half the leg length')
+})
+
+test('projectPointOntoLeg reports an along-track distance beyond the leg end', () => {
+  const projection = projectPointOntoLeg(EQUATOR_LEG_START, EQUATOR_LEG_END, { latitude: 0, longitude: 1.5 })
+
+  assertClose(projection.crossTrackMeters, 0, 1e-3, 'a point on the leg line has no cross-track offset')
+  assert.ok(
+    projection.alongTrackMeters > ONE_DEGREE_ARC_METERS,
+    'a point past the end has an along-track distance beyond the leg length'
+  )
+})
+
+test('projectPointOntoLeg signs the cross-track offset by side of travel', () => {
+  // The leg runs due east, so a point to the north is on the left and a point
+  // to the south is on the right of the direction of travel.
+  const north = projectPointOntoLeg(EQUATOR_LEG_START, EQUATOR_LEG_END, { latitude: 0.05, longitude: 0.5 })
+  const south = projectPointOntoLeg(EQUATOR_LEG_START, EQUATOR_LEG_END, { latitude: -0.05, longitude: 0.5 })
+
+  assert.ok(north.crossTrackMeters < 0, 'a point left of the eastward leg has a negative cross-track offset')
+  assert.ok(south.crossTrackMeters > 0, 'a point right of the eastward leg has a positive cross-track offset')
+  assertClose(
+    Math.abs(north.crossTrackMeters),
+    ONE_DEGREE_ARC_METERS * 0.05,
+    5,
+    'cross-track magnitude matches the 0.05 degree latitude offset'
+  )
+  assertClose(north.crossTrackMeters, -south.crossTrackMeters, 5, 'the two offsets mirror each other')
 })

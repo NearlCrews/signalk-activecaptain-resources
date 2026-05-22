@@ -1,0 +1,219 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2024 Paul Willems <paul.willems@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { createRouteHazardAlarms, type RouteAlarmApp } from '../src/routeHazardAlarms.js'
+import type { CorridorPoi, PoiType } from '../src/types.js'
+
+/** Shape of the notification value the alarms emit on a route path. */
+interface CapturedNotification {
+  path: string
+  value: { state: string, method: string[], message: string, timestamp: string }
+}
+
+/** A mock RouteAlarmApp that records every notification delta `handleMessage` sees. */
+function createMockApp (): { app: RouteAlarmApp, captured: CapturedNotification[] } {
+  const captured: CapturedNotification[] = []
+  const app: RouteAlarmApp = {
+    handleMessage: (_id, delta) => {
+      const update = delta.updates?.[0]
+      if (update !== undefined && 'values' in update) {
+        for (const pathValue of update.values) {
+          captured.push({
+            path: String(pathValue.path),
+            value: pathValue.value as CapturedNotification['value']
+          })
+        }
+      }
+    },
+    debug: () => {}
+  }
+  return { app, captured }
+}
+
+/** Build a flagged corridor POI with sensible defaults for the optional fields. */
+function corridorPoi (
+  id: string,
+  type: PoiType,
+  name: string,
+  alongTrackDistanceMeters: number,
+  etaSeconds?: number
+): CorridorPoi {
+  return {
+    id,
+    type,
+    name,
+    position: { latitude: 0, longitude: 0 },
+    alongTrackDistanceMeters,
+    crossTrackDistanceMeters: 0,
+    etaSeconds
+  }
+}
+
+test('raises a warn notification when a POI first appears on the route', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+
+  alarms.evaluate([corridorPoi('h1', 'Hazard', 'Submerged rock', 800, 600)])
+
+  assert.equal(captured.length, 1)
+  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.route.h1')
+  assert.equal(captured[0].value.state, 'warn')
+  assert.deepEqual(captured[0].value.method, ['visual'])
+  assert.ok(captured[0].value.message.includes('Submerged rock'), 'message names the POI')
+  assert.ok(captured[0].value.message.includes('Hazard'), 'message names the POI type')
+  assert.ok(captured[0].value.message.includes('800 m'), 'message reports the along-track distance')
+  assert.ok(captured[0].value.message.includes('ETA 10 min'), 'message reports the ETA')
+  assert.ok(captured[0].value.timestamp.length > 0, 'a timestamp is present')
+})
+
+test('omits the ETA when the corridor POI carries no etaSeconds', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+
+  alarms.evaluate([corridorPoi('b1', 'Bridge', 'Old swing bridge', 1500)])
+
+  assert.equal(captured.length, 1)
+  assert.ok(captured[0].value.message.includes('Bridge'), 'message names the POI type')
+  assert.ok(!captured[0].value.message.includes('ETA'), 'no ETA when speed is unavailable')
+})
+
+test('formats an along-track distance of a kilometre or more in km', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+
+  alarms.evaluate([corridorPoi('l1', 'Lock', 'Canal lock', 3400)])
+
+  assert.ok(captured[0].value.message.includes('3.4 km'), 'a long distance is shown in km')
+})
+
+test('does not re-fire while a POI stays on the route ahead', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+  const pois = [corridorPoi('h1', 'Hazard', 'Rock', 800)]
+
+  alarms.evaluate(pois)
+  alarms.evaluate(pois)
+  alarms.evaluate(pois)
+
+  assert.equal(captured.length, 1, 'the alarm is raised exactly once on appearance')
+  assert.equal(captured[0].value.state, 'warn')
+})
+
+test('refreshes the notification when the along-track distance or ETA changes', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+
+  alarms.evaluate([corridorPoi('h1', 'Hazard', 'Rock', 1800, 600)])
+  // The vessel has closed on the hazard: same POI, a shorter distance and ETA.
+  alarms.evaluate([corridorPoi('h1', 'Hazard', 'Rock', 900, 300)])
+
+  assert.equal(captured.length, 2, 'the notification is re-emitted with the updated figures')
+  assert.equal(captured[1].value.state, 'warn')
+  assert.ok(captured[1].value.message.includes('900 m'), 'the refreshed message carries the new distance')
+  assert.ok(captured[1].value.message.includes('ETA 5 min'), 'the refreshed message carries the new ETA')
+})
+
+test('clears the alarm exactly once when the POI drops off the route ahead', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+  const hazard = corridorPoi('h1', 'Hazard', 'Rock', 800)
+
+  alarms.evaluate([hazard])
+  // The vessel passed the hazard, so the scan no longer flags it.
+  alarms.evaluate([])
+  alarms.evaluate([])
+
+  assert.equal(captured.length, 2, 'one warn on appearance, one clear on departure')
+  assert.equal(captured[0].value.state, 'warn')
+  assert.equal(captured[1].value.state, 'normal')
+  assert.equal(captured[1].path, 'notifications.navigation.activecaptain.route.h1')
+  assert.ok(captured[1].value.message.includes('Rock'), 'the clear message names the POI')
+})
+
+test('re-arms a POI after it drops off and reappears on the route', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+  const hazard = corridorPoi('h1', 'Hazard', 'Rock', 800)
+
+  alarms.evaluate([hazard])
+  alarms.evaluate([])
+  alarms.evaluate([hazard])
+
+  assert.deepEqual(
+    captured.map(entry => entry.value.state),
+    ['warn', 'normal', 'warn']
+  )
+})
+
+test('tracks several corridor POIs independently', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+  const first = corridorPoi('a', 'Hazard', 'Rock', 500)
+  const second = corridorPoi('b', 'Lock', 'Lock', 1200)
+
+  // First pass: only `a` is flagged.
+  alarms.evaluate([first])
+  // Second pass: `b` is now flagged and `a` has been passed.
+  alarms.evaluate([second])
+
+  assert.equal(captured.length, 3)
+  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.route.a')
+  assert.equal(captured[0].value.state, 'warn')
+  const secondPass = captured.slice(1)
+  const bWarn = secondPass.find(entry => entry.path.endsWith('.b'))
+  const aClear = secondPass.find(entry => entry.path.endsWith('.a'))
+  assert.equal(bWarn?.value.state, 'warn')
+  assert.equal(aClear?.value.state, 'normal')
+})
+
+test('sanitises a POI id that carries path-breaking characters', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+
+  alarms.evaluate([corridorPoi('a.b/c', 'Hazard', 'Rock', 800)])
+
+  assert.equal(captured[0].path, 'notifications.navigation.activecaptain.route.a_b_c')
+})
+
+test('clearAll clears every active route alarm exactly once', () => {
+  const { app, captured } = createMockApp()
+  const alarms = createRouteHazardAlarms(app)
+
+  alarms.evaluate([
+    corridorPoi('h1', 'Hazard', 'Rock one', 500),
+    corridorPoi('h2', 'Bridge', 'Bridge two', 900)
+  ])
+  assert.equal(captured.length, 2, 'two alarms raised')
+
+  alarms.clearAll()
+  const clears = captured.slice(2)
+  assert.equal(clears.length, 2, 'both alarms cleared')
+  assert.ok(clears.every(entry => entry.value.state === 'normal'))
+
+  // A second clearAll has nothing left to clear.
+  alarms.clearAll()
+  assert.equal(captured.length, 4)
+})

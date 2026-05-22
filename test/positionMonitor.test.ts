@@ -32,7 +32,9 @@ import {
   type PositionStream
 } from '../src/positionMonitor.js'
 import type { ProximityAlarms } from '../src/proximityAlarms.js'
-import type { Bbox, PoiSummary, Position } from '../src/types.js'
+import type { CourseReader } from '../src/courseReader.js'
+import { createRouteHazardAlarms, type RouteAlarmApp } from '../src/routeHazardAlarms.js'
+import type { Bbox, PoiSummary, Position, RoutePolyline } from '../src/types.js'
 
 /** Resolve once the pending microtasks (an awaited hazard scan) have drained. */
 const flush = (): Promise<void> =>
@@ -412,4 +414,287 @@ test('a hazard scan that resolves after stop does not evaluate the alarms', asyn
 
   assert.equal(mockClient.calls.length, 1, 'the hazard-scan request was issued')
   assert.equal(mockAlarms.evaluations.length, 0, 'a late response does not evaluate after stop')
+})
+
+// --- Route-corridor hazard scan integration -------------------------------
+// These exercise the monitor wired to the real route-corridor scan and the
+// real route hazard alarms, with only the Course API reader stubbed.
+
+/** A captured route notification. */
+interface CapturedRouteNotification {
+  path: string
+  state: string
+  message: string
+}
+
+/** A RouteAlarmApp that records every route notification delta it is handed. */
+function createRouteAlarmRecorder (): {
+  app: RouteAlarmApp
+  captured: CapturedRouteNotification[]
+} {
+  const captured: CapturedRouteNotification[] = []
+  const app: RouteAlarmApp = {
+    handleMessage: (_id, delta) => {
+      const update = delta.updates?.[0]
+      if (update !== undefined && 'values' in update) {
+        for (const pathValue of update.values) {
+          const value = pathValue.value as { state: string, message: string }
+          captured.push({
+            path: String(pathValue.path),
+            state: value.state,
+            message: value.message
+          })
+        }
+      }
+    },
+    debug: () => {}
+  }
+  return { app, captured }
+}
+
+/** A stub CourseReader returning a fixed route and speed over ground. */
+function createMockCourseReader (
+  route: RoutePolyline | null,
+  speedOverGround: number | null
+): { reader: CourseReader, routeCalls: () => number, stopCalls: () => number } {
+  let routeCalls = 0
+  let stopCalls = 0
+  const reader: CourseReader = {
+    getRouteAhead: () => {
+      routeCalls += 1
+      return route
+    },
+    getVesselState: () => ({
+      position: route?.vesselPosition ?? null,
+      speedOverGround
+    }),
+    stop: () => { stopCalls += 1 }
+  }
+  return { reader, routeCalls: () => routeCalls, stopCalls: () => stopCalls }
+}
+
+/** A route running due north from the origin, with two waypoints. */
+const ROUTE: RoutePolyline = {
+  routeId: 'r1',
+  name: 'Test route',
+  vesselPosition: { latitude: 0, longitude: 0 },
+  waypoints: [
+    { latitude: 0.05, longitude: 0 },
+    { latitude: 0.1, longitude: 0 }
+  ]
+}
+
+/** A Hazard sitting on the route line, roughly 2.2 km along the first leg. */
+const ON_ROUTE_HAZARD: PoiSummary = {
+  id: 'r-haz',
+  type: 'Hazard',
+  position: { latitude: 0.02, longitude: 0 },
+  name: 'Mid-channel rock'
+}
+
+test('runs the route-corridor scan and raises a route notification for a POI on the route', async () => {
+  const mockApp = createMockApp()
+  const mockClient = createMockClient()
+  mockClient.setPois([ON_ROUTE_HAZARD])
+  const course = createMockCourseReader(ROUTE, 5)
+  const recorder = createRouteAlarmRecorder()
+
+  const monitor = createPositionMonitor({
+    app: mockApp.app,
+    client: mockClient.client,
+    poiTypes: 'Hazard,Bridge,Lock',
+    scanRadiusMeters: 1000,
+    routeScan: {
+      courseReader: course.reader,
+      alarms: createRouteHazardAlarms(recorder.app),
+      corridorWidthMeters: 500
+    },
+    now: createClock().now
+  })
+
+  mockApp.emit({ latitude: 0, longitude: 0 })
+  await flush()
+
+  assert.equal(course.routeCalls(), 1, 'the active route is read for the tick')
+  assert.equal(mockClient.calls.length, 1, 'a single list request serves the tick')
+  assert.equal(recorder.captured.length, 1, 'the on-route hazard raises one notification')
+  assert.equal(recorder.captured[0].path, 'notifications.navigation.activecaptain.route.r-haz')
+  assert.equal(recorder.captured[0].state, 'warn')
+  assert.ok(recorder.captured[0].message.includes('Mid-channel rock'), 'message names the hazard')
+
+  monitor.stop()
+})
+
+test('widens the fetch bounding box to enclose the route ahead', async () => {
+  const mockApp = createMockApp()
+  const mockClient = createMockClient()
+  mockClient.setPois([ON_ROUTE_HAZARD])
+  const course = createMockCourseReader(ROUTE, 5)
+  const recorder = createRouteAlarmRecorder()
+
+  const monitor = createPositionMonitor({
+    app: mockApp.app,
+    client: mockClient.client,
+    poiTypes: 'Hazard,Bridge,Lock',
+    scanRadiusMeters: 1000,
+    routeScan: {
+      courseReader: course.reader,
+      alarms: createRouteHazardAlarms(recorder.app),
+      corridorWidthMeters: 500
+    },
+    now: createClock().now
+  })
+
+  mockApp.emit({ latitude: 0, longitude: 0 })
+  await flush()
+
+  // The 1000 m vessel scan box around the origin is tiny; the route runs
+  // north to latitude 0.1, so the widened box must reach the far waypoint.
+  assert.equal(mockClient.calls.length, 1)
+  assert.ok(
+    mockClient.calls[0].bbox.north >= 0.1,
+    'the fetch box is widened to enclose the route ahead'
+  )
+
+  monitor.stop()
+})
+
+test('skips the list request when no route is active and proximity alarms are off', async () => {
+  const mockApp = createMockApp()
+  const mockClient = createMockClient()
+  const course = createMockCourseReader(null, 5)
+  const recorder = createRouteAlarmRecorder()
+
+  const monitor = createPositionMonitor({
+    app: mockApp.app,
+    client: mockClient.client,
+    poiTypes: 'Hazard,Bridge,Lock',
+    scanRadiusMeters: 1000,
+    routeScan: {
+      courseReader: course.reader,
+      alarms: createRouteHazardAlarms(recorder.app),
+      corridorWidthMeters: 500
+    },
+    now: createClock().now
+  })
+
+  mockApp.emit({ latitude: 0, longitude: 0 })
+  await flush()
+
+  assert.equal(course.routeCalls(), 1, 'the route is still read')
+  assert.equal(mockClient.calls.length, 0, 'no list request is spent when there is nothing to scan')
+  assert.equal(recorder.captured.length, 0, 'no route notification is raised')
+
+  monitor.stop()
+})
+
+test('evaluates both the proximity alarms and the route scan on one tick', async () => {
+  const mockApp = createMockApp()
+  const mockClient = createMockClient()
+  mockClient.setPois([ON_ROUTE_HAZARD])
+  const mockAlarms = createMockAlarms()
+  const course = createMockCourseReader(ROUTE, 5)
+  const recorder = createRouteAlarmRecorder()
+
+  const monitor = createPositionMonitor({
+    app: mockApp.app,
+    client: mockClient.client,
+    alarms: mockAlarms.alarms,
+    poiTypes: 'Hazard,Bridge,Lock',
+    scanRadiusMeters: 1000,
+    routeScan: {
+      courseReader: course.reader,
+      alarms: createRouteHazardAlarms(recorder.app),
+      corridorWidthMeters: 500
+    },
+    now: createClock().now
+  })
+
+  mockApp.emit({ latitude: 0, longitude: 0 })
+  await flush()
+
+  assert.equal(mockClient.calls.length, 1, 'one list request serves both checks')
+  assert.equal(mockAlarms.evaluations.length, 1, 'the proximity alarms are evaluated')
+  assert.equal(recorder.captured.length, 1, 'the route scan is evaluated')
+
+  monitor.stop()
+})
+
+test('stop() clears outstanding route alarms', async () => {
+  const mockApp = createMockApp()
+  const mockClient = createMockClient()
+  mockClient.setPois([ON_ROUTE_HAZARD])
+  const course = createMockCourseReader(ROUTE, 5)
+  const recorder = createRouteAlarmRecorder()
+
+  const monitor = createPositionMonitor({
+    app: mockApp.app,
+    client: mockClient.client,
+    poiTypes: 'Hazard,Bridge,Lock',
+    scanRadiusMeters: 1000,
+    routeScan: {
+      courseReader: course.reader,
+      alarms: createRouteHazardAlarms(recorder.app),
+      corridorWidthMeters: 500
+    },
+    now: createClock().now
+  })
+
+  mockApp.emit({ latitude: 0, longitude: 0 })
+  await flush()
+  assert.equal(recorder.captured.length, 1, 'a route alarm is raised')
+
+  monitor.stop()
+  const clears = recorder.captured.slice(1)
+  assert.equal(clears.length, 1, 'the outstanding route alarm is cleared on stop')
+  assert.equal(clears[0].state, 'normal')
+  assert.equal(course.stopCalls(), 1, 'the Course API reader is stopped')
+})
+
+test('clears outstanding route alarms when the active route is deactivated mid-passage', async () => {
+  const mockApp = createMockApp()
+  const mockClient = createMockClient()
+  mockClient.setPois([ON_ROUTE_HAZARD])
+  const recorder = createRouteAlarmRecorder()
+  const clock = createClock()
+
+  // A course reader whose active route is cleared partway through the passage,
+  // as happens when the crew reaches the destination or cancels navigation.
+  let activeRoute: RoutePolyline | null = ROUTE
+  const reader: CourseReader = {
+    getRouteAhead: () => activeRoute,
+    getVesselState: () => ({ position: activeRoute?.vesselPosition ?? null, speedOverGround: 5 }),
+    stop: () => {}
+  }
+
+  const monitor = createPositionMonitor({
+    app: mockApp.app,
+    client: mockClient.client,
+    poiTypes: 'Hazard,Bridge,Lock',
+    scanRadiusMeters: 1000,
+    routeScan: {
+      courseReader: reader,
+      alarms: createRouteHazardAlarms(recorder.app),
+      corridorWidthMeters: 500
+    },
+    minIntervalMs: 60_000,
+    now: clock.now
+  })
+
+  mockApp.emit({ latitude: 0, longitude: 0 })
+  await flush()
+  assert.equal(recorder.captured.length, 1, 'the on-route hazard raises a warn')
+  assert.equal(recorder.captured[0].state, 'warn')
+
+  // The route is deactivated; a later tick must still clear the stale alarm.
+  activeRoute = null
+  clock.advance(120_000)
+  mockApp.emit({ latitude: 0.05, longitude: 0 })
+  await flush()
+
+  assert.equal(recorder.captured.length, 2, 'the stale route alarm is cleared once the route is gone')
+  assert.equal(recorder.captured[1].state, 'normal')
+  assert.equal(recorder.captured[1].path, 'notifications.navigation.activecaptain.route.r-haz')
+
+  monitor.stop()
 })

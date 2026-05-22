@@ -42,10 +42,18 @@ In practice:
   - `positionUtilities.ts` - geo helpers: position to bounding box, and the
     great-circle `distanceMeters`.
   - `positionMonitor.ts` - subscribes to `navigation.position`, scans for
-    nearby hazards as the vessel moves, and drives the proximity-alarm
-    evaluation.
+    nearby hazards as the vessel moves, and drives the proximity-alarm and
+    route-corridor evaluations.
   - `proximityAlarms.ts` - emits SignalK hazard notifications, with hysteresis,
     when the vessel is near a Hazard point of interest.
+  - `courseReader.ts` - reads the vessel's active route from the SignalK
+    Course API and exposes it as an ordered list of waypoint positions ahead
+    of the vessel.
+  - `routeCorridor.ts` - pure geometry: given the active route and a set of
+    points of interest, flags the Hazard, Bridge, and Lock points within the
+    corridor, with along-track distance and ETA.
+  - `routeHazardAlarms.ts` - emits SignalK route notifications, raised once and
+    cleared once, for the points of interest flagged on the route ahead.
   - `resourceQuery.ts` - parses an incoming Signal K resource query into a
     bounding box and position (`resolveBbox`, `resolvePosition`).
   - `poiTypeSelection.ts` - maps the config POI-type toggles to the API

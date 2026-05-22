@@ -1,5 +1,33 @@
 ## Change Log
 
+<a id="v140"></a>
+
+### v1.4.0 (2026/05/22) - route-corridor hazard scan
+
+**The plugin can now scan the active route ahead and warn about hazards,
+bridges, and locks along it.**
+
+#### Route-corridor hazard scan
+
+- A new opt-in option, "Scan the active route ahead for hazards, bridges, and
+  locks", reads the vessel's active route from the Signal K Course API. As the
+  vessel moves, the plugin checks the route ahead for Hazard, Bridge, and Lock
+  points of interest that lie within the configured corridor width of the
+  route line, and emits a Signal K
+  `notifications.navigation.activecaptain.route.*` notification for each one.
+- Each notification carries the point of interest's along-track distance and,
+  when the speed over ground is known, an ETA. It is raised once when the
+  point first appears on the route ahead and cleared once it is no longer on
+  the route ahead, so the warning does not chatter.
+- The corridor width is configurable; the feature is off by default.
+- The scan reuses the position monitor's existing tick and its single
+  point-of-interest fetch, so it adds no extra API traffic. The fetch's
+  bounding box is widened to enclose the route ahead, up to a 10 NM
+  look-ahead window that slides forward as the vessel advances. A point of
+  interest beyond the look-ahead, or beyond the distance at which the
+  ActiveCaptain API starts returning clustered results, is picked up on a
+  later tick as the window slides forward.
+
 <a id="v130"></a>
 
 ### v1.3.0 (2026/05/22) - position-aware safety
