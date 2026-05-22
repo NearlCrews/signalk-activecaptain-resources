@@ -52,7 +52,7 @@ const COURSE_ACTIVE_ROUTE_PATH = 'navigation.courseGreatCircle.activeRoute.href'
  * destination has advanced along the route, or the route has been set or
  * cleared.
  */
-const COURSE_NEXT_POINT_PATH = 'navigation.courseGreatCircle.nextPoint.value.position'
+const COURSE_NEXT_POINT_PATH = 'navigation.courseGreatCircle.nextPoint.position'
 
 /** The SignalK resource type that holds route waypoint geometry. */
 const ROUTE_RESOURCE_TYPE = 'routes'
@@ -294,6 +294,12 @@ export function createCourseReader (config: CourseReaderConfig): CourseReader {
     // Order the coordinates in travel direction. A route followed in reverse
     // is stored start-to-end but traversed end-to-start, so the array is
     // reversed first; `pointIndex` then indexes into this travel-order array.
+    //
+    // `pointIndex` is a travel-order index: this is verified against the
+    // SignalK server's Course API, whose `getRoutePoint` resolves a reverse
+    // route's point as `coordinates[length - (index + 1)]`, i.e. index 0 is
+    // the last stored coordinate, which is the first point in travel order.
+    // Reversing the array and then slicing by `pointIndex` matches that.
     const travelOrder = activeRoute.reverse === true
       ? [...coordinates].reverse()
       : coordinates

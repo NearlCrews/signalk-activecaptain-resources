@@ -424,7 +424,7 @@ test('the reader subscribes to the v1 Course API route paths', () => {
 
   assert.deepEqual(subscribedPaths(), [
     'navigation.courseGreatCircle.activeRoute.href',
-    'navigation.courseGreatCircle.nextPoint.value.position'
+    'navigation.courseGreatCircle.nextPoint.position'
   ])
   reader.stop()
 })
