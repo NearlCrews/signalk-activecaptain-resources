@@ -1,0 +1,274 @@
+/**
+ * Shared HTTP-client plumbing for the plugin's POI-source clients.
+ *
+ * The ActiveCaptain and Overpass clients both need the same machinery: a
+ * concurrency-limited, throttled request queue, retry with exponential backoff
+ * that honors HTTP 429 and 503 Retry-After headers, and a close() that aborts
+ * in-flight work and stops the retry loop. That machinery lives here once;
+ * each client supplies its own base URL, headers, request body, response
+ * parsing, per-request timeout, and rate-limit defaults.
+ */
+
+import type { Logger } from '../shared/types.js'
+
+/** Tunable rate-limit knobs. All optional at the call site; defaults fill gaps. */
+export interface RateLimitOptions {
+  /** Maximum number of in-flight requests at once. */
+  maxConcurrency: number
+  /** Minimum spacing, in milliseconds, between request starts. */
+  minDelayMs: number
+  /** Base delay for exponential backoff, in milliseconds. */
+  backoffBaseMs: number
+  /** Upper bound for a single backoff wait, in milliseconds. */
+  maxBackoffMs: number
+  /** Maximum retry attempts after the first try, for 429, 502, 503, and 504 responses. */
+  maxRetries: number
+}
+
+/** HTTP status that signals the caller is being rate limited. */
+const HTTP_TOO_MANY_REQUESTS = 429
+
+/** HTTP status for an upstream gateway error. */
+const HTTP_BAD_GATEWAY = 502
+
+/** HTTP status for a temporarily unavailable service. */
+const HTTP_SERVICE_UNAVAILABLE = 503
+
+/** HTTP status for an upstream gateway timeout. */
+const HTTP_GATEWAY_TIMEOUT = 504
+
+/**
+ * HTTP statuses worth retrying: rate limiting and transient gateway errors.
+ * Other 4xx responses (notably 404) are permanent and are never retried.
+ */
+const RETRYABLE_STATUSES = new Set<number>([
+  HTTP_TOO_MANY_REQUESTS, HTTP_BAD_GATEWAY, HTTP_SERVICE_UNAVAILABLE, HTTP_GATEWAY_TIMEOUT
+])
+
+const delay = (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms))
+
+/**
+ * A concurrency-limited, throttled task queue. It caps the number of in-flight
+ * tasks and enforces a minimum spacing between task starts.
+ */
+class RequestQueue {
+  private active = 0
+  private nextAllowedStart = 0
+  private readonly waiting: Array<() => void> = []
+
+  constructor (
+    private readonly maxConcurrency: number,
+    private readonly minDelayMs: number
+  ) {}
+
+  async run<T> (task: () => Promise<T>): Promise<T> {
+    await this.acquire()
+    try {
+      return await task()
+    } finally {
+      this.release()
+    }
+  }
+
+  private acquire (): Promise<void> {
+    return new Promise(resolve => {
+      this.waiting.push(resolve)
+      this.pump()
+    })
+  }
+
+  private pump (): void {
+    if (this.active >= this.maxConcurrency) {
+      return
+    }
+    const next = this.waiting.shift()
+    if (next === undefined) {
+      return
+    }
+    this.active++
+    const now = Date.now()
+    const wait = Math.max(0, this.nextAllowedStart - now)
+    this.nextAllowedStart = now + wait + this.minDelayMs
+    setTimeout(next, wait)
+  }
+
+  private release (): void {
+    this.active--
+    this.pump()
+  }
+}
+
+/**
+ * Parse a Retry-After header into a millisecond delay. The header may be an
+ * integer count of seconds or an HTTP date. Returns undefined when absent or
+ * unparseable.
+ */
+function parseRetryAfter (headerValue: string | null): number | undefined {
+  if (headerValue == null || headerValue.trim() === '') {
+    return undefined
+  }
+  const seconds = Number(headerValue)
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000)
+  }
+  const dateMs = Date.parse(headerValue)
+  if (Number.isFinite(dateMs)) {
+    return Math.max(0, dateMs - Date.now())
+  }
+  return undefined
+}
+
+/** Exponential backoff with full jitter for the given zero-based attempt. */
+function backoffDelay (attempt: number, baseMs: number, maxMs: number): number {
+  const ceiling = Math.min(maxMs, baseMs * 2 ** attempt)
+  return Math.random() * ceiling
+}
+
+/**
+ * Error thrown when an HTTP response is not ok. The `status` lets callers tell
+ * a transient failure from a permanent one, for example a 404 for an entity
+ * that no longer exists.
+ */
+export class HttpError extends Error {
+  readonly status: number
+
+  constructor (message: string, status: number) {
+    super(message)
+    this.name = 'HttpError'
+    this.status = status
+  }
+}
+
+/**
+ * Reject when a response is not ok, releasing its socket first since the body
+ * of a failed response is never read. `errorPrefix` is suffixed with the HTTP
+ * status and status text.
+ */
+export async function assertResponseOk (response: Response, errorPrefix: string): Promise<void> {
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new HttpError(`${errorPrefix}: ${response.status} ${response.statusText}`, response.status)
+  }
+}
+
+/** Configuration for {@link createHttpClient}. */
+export interface HttpClientConfig {
+  /**
+   * Diagnostic label used in retry log lines, e.g. `"ActiveCaptain"` or
+   * `"Overpass"`. Logged as `${label} request to ${url} returned ...`.
+   */
+  label: string
+  /**
+   * Per-request HTTP timeout, in milliseconds. The queue slot is held across
+   * retries and their backoff waits, not freed when one attempt times out, so
+   * a hung upstream costs at most one queue slot for the full retry sequence
+   * before the request fails.
+   */
+  requestTimeoutMs: number
+  /** Default rate-limit knobs; per-call options override individual fields. */
+  defaults: RateLimitOptions
+}
+
+/** A rate-limited HTTP client that retries on 429, 502, 503, 504, and network errors. */
+export interface HttpClient {
+  /**
+   * Run one request through the queue, retrying with exponential backoff that
+   * honors Retry-After on 429 and 503. Resolves with the final Response;
+   * non-ok responses are returned to the caller, which typically routes them
+   * through {@link assertResponseOk}.
+   */
+  fetch: (url: string, init: RequestInit) => Promise<Response>
+  /**
+   * Abort any in-flight requests and stop retrying. Call this from
+   * plugin.stop so a late response cannot record onto a later run's state.
+   */
+  close: () => void
+}
+
+/**
+ * Build a rate-limited HTTP client.
+ *
+ * @param log     Logging surface used for retry diagnostics.
+ * @param config  Per-client identity, timeout, and rate-limit defaults.
+ * @param options Optional rate-limit overrides; fields not set fall back to
+ *                {@link HttpClientConfig.defaults}.
+ */
+export function createHttpClient (
+  log: Logger,
+  config: HttpClientConfig,
+  options: Partial<RateLimitOptions> = {}
+): HttpClient {
+  const limits: RateLimitOptions = {
+    maxConcurrency: options.maxConcurrency ?? config.defaults.maxConcurrency,
+    minDelayMs: options.minDelayMs ?? config.defaults.minDelayMs,
+    backoffBaseMs: options.backoffBaseMs ?? config.defaults.backoffBaseMs,
+    maxBackoffMs: options.maxBackoffMs ?? config.defaults.maxBackoffMs,
+    maxRetries: options.maxRetries ?? config.defaults.maxRetries
+  }
+
+  const queue = new RequestQueue(limits.maxConcurrency, limits.minDelayMs)
+
+  // Aborted by close(): cancels in-flight fetches and stops further retries so
+  // a response cannot land after the plugin has stopped.
+  const closeController = new AbortController()
+
+  async function fetchWithRetry (url: string, init: RequestInit): Promise<Response> {
+    let attempt = 0
+    for (;;) {
+      try {
+        const response = await fetch(url, {
+          ...init,
+          signal: AbortSignal.any([
+            AbortSignal.timeout(config.requestTimeoutMs),
+            closeController.signal
+          ])
+        })
+
+        if (!RETRYABLE_STATUSES.has(response.status) || attempt >= limits.maxRetries) {
+          return response
+        }
+
+        const honorsRetryAfter =
+          response.status === HTTP_TOO_MANY_REQUESTS ||
+          response.status === HTTP_SERVICE_UNAVAILABLE
+        const retryAfter = honorsRetryAfter
+          ? parseRetryAfter(response.headers.get('retry-after'))
+          : undefined
+        // A Retry-After header is honored but still capped: an upstream (or a
+        // misbehaving edge) sending a huge value must not stall the request,
+        // and its queue slot, for minutes or longer.
+        const wait = Math.min(
+          retryAfter ?? backoffDelay(attempt, limits.backoffBaseMs, limits.maxBackoffMs),
+          limits.maxBackoffMs
+        )
+        log.debug(
+          `${config.label} request to ${url} returned ${response.status}, ` +
+          `retrying in ${Math.round(wait)}ms (attempt ${attempt + 1}/${limits.maxRetries})`
+        )
+        // Release the socket: the retried response body is never read.
+        await response.body?.cancel()
+        await delay(wait)
+        attempt++
+      } catch (error) {
+        // Do not retry once the client is closed, and do not retry past the
+        // configured limit.
+        if (closeController.signal.aborted || attempt >= limits.maxRetries) {
+          throw error
+        }
+        const wait = backoffDelay(attempt, limits.backoffBaseMs, limits.maxBackoffMs)
+        log.debug(
+          `${config.label} request to ${url} failed (${String(error)}), ` +
+          `retrying in ${Math.round(wait)}ms (attempt ${attempt + 1}/${limits.maxRetries})`
+        )
+        await delay(wait)
+        attempt++
+      }
+    }
+  }
+
+  return {
+    fetch: (url, init) => queue.run(() => fetchWithRetry(url, init)),
+    close: () => { closeController.abort() }
+  }
+}
