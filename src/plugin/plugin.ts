@@ -16,7 +16,6 @@ import { assemblePluginSchema } from './plugin-config.js'
 import { createPositionMonitor } from '../monitoring/position-monitor.js'
 import type { PositionMonitor } from '../monitoring/position-monitor.js'
 import { createPluginStatus } from '../status/plugin-status.js'
-import type { PluginStatus } from '../status/plugin-status.js'
 import { createStatusRouter } from '../status/status-router.js'
 import { buildPoiTypesString, ensurePoiTypes } from '../shared/poi-type-selection.js'
 import { PLUGIN_ID } from '../shared/plugin-id.js'
@@ -44,7 +43,8 @@ const OPEN_API = {
             description: 'The current status snapshot.',
             content: { 'application/json': { schema: { type: 'object' } } }
           },
-          401: { description: 'The caller is not an authenticated administrator.' }
+          401: { description: 'The caller is not authenticated.' },
+          403: { description: 'The caller is authenticated but is not an administrator.' }
         }
       }
     }
@@ -65,19 +65,42 @@ export function createPlugin (
   outputs: OutputRegistry
 ): Plugin {
   let runtime: Runtime | undefined
-  let status: PluginStatus = createPluginStatus()
+  let status = createPluginStatus()
 
-  /** Tear the current runtime down. Idempotent. */
+  /**
+   * Tear the current runtime down. Idempotent.
+   *
+   * Every stop is wrapped so one output's failing `stop()` cannot abort the
+   * teardown and leak the remaining handles or skip `source.close()`. The
+   * runtime reference is cleared first, so a throw can never leave a
+   * half-stopped runtime behind for a later call.
+   */
   function teardown (): void {
     if (runtime === undefined) {
       return
     }
-    runtime.monitor?.stop()
-    for (const handle of runtime.handles) {
-      handle.stop()
-    }
-    runtime.source.close()
+    const { source, handles, monitor } = runtime
     runtime = undefined
+
+    if (monitor !== undefined) {
+      try {
+        monitor.stop()
+      } catch (error) {
+        app.error(`Cannot stop the position monitor: ${String(error)}`)
+      }
+    }
+    for (const handle of handles) {
+      try {
+        handle.stop()
+      } catch (error) {
+        app.error(`Cannot stop an output: ${String(error)}`)
+      }
+    }
+    try {
+      source.close()
+    } catch (error) {
+      app.error(`Cannot close the POI source: ${String(error)}`)
+    }
   }
 
   return {
@@ -98,6 +121,14 @@ export function createPlugin (
       // clean error history.
       status = createPluginStatus()
 
+      // Log the resolved configuration so a misconfigured install is
+      // diagnosable from the server log alone.
+      const poiTypes = buildPoiTypesString(config)
+      app.debug(
+        `Crow's Nest starting: caching duration ${config.cachingDurationMinutes} minutes, ` +
+        `POI types ${poiTypes ?? '(none selected)'}`
+      )
+
       const source = inputs.createSource({
         app,
         config,
@@ -109,10 +140,16 @@ export function createPlugin (
       const handles = outputs.startEnabled(outputContext)
       runtime = { source, handles }
 
+      const startedOutputIds = outputs.modules
+        .filter((module) => module.isEnabled(config))
+        .map((module) => module.id)
+      app.debug(`Crow's Nest started outputs: ${startedOutputIds.join(', ') || '(none)'}`)
+
       // Build the shared position monitor from the outputs' scan contributors.
       const contributors: PositionScanContributor[] = handles
         .map((handle) => handle.positionScan)
         .filter((scan): scan is PositionScanContributor => scan !== undefined)
+      let monitorFailed = false
       if (contributors.length > 0) {
         const requiredTypes = [...new Set(contributors.flatMap((c) => [...c.poiTypes]))]
         try {
@@ -120,14 +157,26 @@ export function createPlugin (
             app,
             client: source,
             contributors,
-            poiTypes: ensurePoiTypes(buildPoiTypesString(config), requiredTypes)
+            poiTypes: ensurePoiTypes(poiTypes, requiredTypes)
           })
+          app.debug(`Crow's Nest position monitor driving ${contributors.length} position-driven output(s)`)
         } catch (error) {
+          // The position-driven outputs are started but, without the monitor,
+          // never driven. Surface a plugin error rather than reporting a bland
+          // "Ready" status that would mask dead safety alarms.
+          monitorFailed = true
           app.error(`Cannot start the position monitor: ${String(error)}`)
+          app.setPluginError(
+            'Position monitor failed to start; proximity and route-hazard alarms are not running'
+          )
         }
       }
 
-      app.setPluginStatus('Ready, waiting for resource requests')
+      // Only report a healthy status when nothing failed. On a monitor failure
+      // the plugin error set above must stand.
+      if (!monitorFailed) {
+        app.setPluginStatus('Ready, waiting for resource requests')
+      }
     },
 
     stop: (): void => {

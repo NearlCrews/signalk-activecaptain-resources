@@ -33,6 +33,7 @@
  */
 
 import type { CourseInfo, NormalizedDelta, Path } from '@signalk/server-api'
+import { toPosition } from '../../geo/position-utilities.js'
 import type { Position, RoutePolyline, VesselState } from '../../shared/types.js'
 
 /** The `vessels.self` path the reader uses for the vessel position. */
@@ -115,25 +116,6 @@ export interface CourseReader {
    * cached route. Idempotent.
    */
   stop: () => void
-}
-
-/**
- * Narrow an unknown value into a `Position`, or return `null` when it is not a
- * usable latitude/longitude pair. A position value can briefly be null (no
- * fix), so this guards rather than trusting the shape.
- */
-function toPosition (value: unknown): Position | null {
-  if (value === null || typeof value !== 'object') {
-    return null
-  }
-  const { latitude, longitude } = value as Record<string, unknown>
-  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-    return null
-  }
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return null
-  }
-  return { latitude, longitude }
 }
 
 /** Return a finite number unchanged, or `null` for anything else. */

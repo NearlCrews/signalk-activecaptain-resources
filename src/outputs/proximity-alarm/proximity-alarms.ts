@@ -25,6 +25,7 @@
 
 import type { Delta, Path, SourceRef, Timestamp } from '@signalk/server-api'
 import { PLUGIN_ID } from '../../shared/plugin-id.js'
+import { sanitizePoiId } from '../../shared/notification-path.js'
 import { distanceMeters } from '../../geo/position-utilities.js'
 import type { PoiSummary, Position } from '../../shared/types.js'
 
@@ -41,16 +42,6 @@ const HAZARD_POI_TYPE = 'Hazard'
  * the boundary.
  */
 const EXIT_RADIUS_FACTOR = 1.2
-
-/**
- * Make a POI id safe to embed in a dot-delimited SignalK path. ActiveCaptain
- * ids are numeric, but `evaluate` is a public entry point: a stray `.` would
- * silently fork the notification onto a different path, so any character
- * outside `[A-Za-z0-9_-]` is replaced.
- */
-function sanitizePoiId (poiId: string): string {
-  return poiId.replace(/[^A-Za-z0-9_-]/g, '_')
-}
 
 /**
  * The slice of the SignalK app the alarms need. The real `ServerAPI` satisfies

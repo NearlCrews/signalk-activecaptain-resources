@@ -20,7 +20,7 @@
  */
 
 import type { NormalizedDelta, Path } from '@signalk/server-api'
-import { distanceMeters, unionBbox } from '../geo/position-utilities.js'
+import { distanceMeters, toPosition, unionBbox } from '../geo/position-utilities.js'
 import type { PositionScanContributor } from '../outputs/output.js'
 import type { Bbox, PoiSummary, Position } from '../shared/types.js'
 
@@ -89,25 +89,6 @@ export interface PositionMonitor {
    * its `OutputHandle.stop`.
    */
   stop: () => void
-}
-
-/**
- * Narrow an unknown delta value into a `Position`, or return null when it is
- * not a usable latitude/longitude pair. A position delta can briefly carry a
- * null value (no fix), so this guards rather than trusting the shape.
- */
-function toPosition (value: unknown): Position | null {
-  if (value === null || typeof value !== 'object') {
-    return null
-  }
-  const { latitude, longitude } = value as Record<string, unknown>
-  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-    return null
-  }
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return null
-  }
-  return { latitude, longitude }
 }
 
 /**

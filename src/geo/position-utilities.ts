@@ -43,6 +43,27 @@ function normalizeLongitude (longitude: number): number {
 }
 
 /**
+ * Narrow an unknown value into a `Position`, or return `null` when it is not a
+ * usable latitude/longitude pair. A position value can briefly be null (no
+ * fix), so this guards rather than trusting the shape. Shared by the position
+ * monitor and the course reader, both of which read positions off SignalK
+ * deltas and the data model.
+ */
+export function toPosition (value: unknown): Position | null {
+  if (value === null || typeof value !== 'object') {
+    return null
+  }
+  const { latitude, longitude } = value as Record<string, unknown>
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return null
+  }
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null
+  }
+  return { latitude, longitude }
+}
+
+/**
  * Project a position along a great-circle path.
  *
  * Given a start point, an initial compass bearing, and a distance, this
@@ -127,6 +148,13 @@ export function distanceMeters (a: Position, b: Position): number {
  * `[west, north, east, south]` and indexed the input position as
  * `[longitude, latitude]`. This typed version takes a `Position` object and
  * returns a `Bbox` object instead.
+ *
+ * Known limitation: this function is not antimeridian-aware. When the search
+ * circle straddles +/-180 degrees longitude the projected `west` edge ends up
+ * numerically greater than the `east` edge, so a downstream consumer that
+ * assumes `west <= east` builds the wrong (inside-out) box. This affects only
+ * vessels operating right at the 180 degree meridian; a correct fix would have
+ * to split the box in two, which is deliberately out of scope here.
  *
  * @param position - The center of the bounding box.
  * @param distanceMeters - Search radius in meters that the box must enclose.
@@ -223,7 +251,16 @@ export function projectPointOntoLeg (start: Position, end: Position, point: Posi
   }
 }
 
-/** The smallest bounding box that encloses both inputs. */
+/**
+ * The smallest bounding box that encloses both inputs.
+ *
+ * Known limitation: this function is not antimeridian-aware. It takes the
+ * min/max of each edge, so two boxes on opposite sides of the +/-180 degree
+ * meridian union into one box spanning the long way around the globe instead
+ * of the short way across the meridian. This affects only vessels operating
+ * right at the 180 degree meridian; a correct fix would have to detect the
+ * wrap and is deliberately out of scope here.
+ */
 export function unionBbox (a: Bbox, b: Bbox): Bbox {
   return {
     north: Math.max(a.north, b.north),

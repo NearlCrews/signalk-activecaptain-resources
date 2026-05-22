@@ -24,6 +24,7 @@
 
 import type { Delta, Path, SourceRef, Timestamp } from '@signalk/server-api'
 import { PLUGIN_ID } from '../../shared/plugin-id.js'
+import { sanitizePoiId } from '../../shared/notification-path.js'
 import type { CorridorPoi } from '../../shared/types.js'
 
 /** Path prefix for the per-point route notification, completed with the POI id. */
@@ -37,16 +38,6 @@ const SECONDS_PER_MINUTE = 60
 
 /** Minutes in an hour, used to format an ETA that runs past the hour. */
 const MINUTES_PER_HOUR = 60
-
-/**
- * Make a POI id safe to embed in a dot-delimited SignalK path. ActiveCaptain
- * ids are numeric, but `evaluate` is a public entry point: a stray `.` would
- * silently fork the notification onto a different path, so any character
- * outside `[A-Za-z0-9_-]` is replaced.
- */
-function sanitizePoiId (poiId: string): string {
-  return poiId.replace(/[^A-Za-z0-9_-]/g, '_')
-}
 
 /**
  * Format an along-track distance for the notification message: whole meters

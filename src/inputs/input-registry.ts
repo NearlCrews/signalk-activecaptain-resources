@@ -34,6 +34,17 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
       if (enabled.length === 0) {
         throw new Error('Cannot build a POI source: no input is enabled')
       }
+      if (enabled.length > 1) {
+        // Multi-source aggregation is the deferred seam this registry exists
+        // for. Until it lands, only the first enabled input is used: warn
+        // loudly so a misconfiguration that enables several inputs is visible
+        // in the server log rather than failing silently.
+        const ids = enabled.map((module) => module.id).join(', ')
+        context.app.error(
+          `Multiple inputs are enabled (${ids}); using "${enabled[0].id}" only. ` +
+          'Multi-source aggregation is not yet implemented.'
+        )
+      }
       // One source today. Multi-source aggregation is deferred (see the spec).
       return enabled[0].createSource(context)
     }

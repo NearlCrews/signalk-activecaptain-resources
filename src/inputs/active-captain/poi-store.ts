@@ -13,6 +13,7 @@
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { MS_PER_MINUTE } from '../../shared/time.js'
 import type { PoiDetails } from '../../shared/types.js'
 
 /** Name of the JSON file the store persists to inside the data directory. */
@@ -20,9 +21,6 @@ const STORE_FILE_NAME = 'poi-cache.json'
 
 /** On-disk format version, bumped if the file layout ever changes. */
 const STORE_VERSION = 1
-
-/** Number of milliseconds in one minute. */
-const MS_PER_MINUTE = 60_000
 
 /** A point-of-interest detail entry as held in the store, with its age. */
 export interface StoredPoi {

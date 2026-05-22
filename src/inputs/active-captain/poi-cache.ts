@@ -14,13 +14,11 @@
 
 import { LRUCache } from 'lru-cache'
 import type { PoiStore } from './poi-store.js'
+import { MS_PER_MINUTE } from '../../shared/time.js'
 import type { PoiDetails } from '../../shared/types.js'
 
 /** Hard ceiling on cached entries, guarding memory use on long sessions. */
 const MAX_CACHE_ENTRIES = 5000
-
-/** Number of milliseconds in one minute. */
-const MS_PER_MINUTE = 60_000
 
 /** The slice of the ActiveCaptain client this cache depends on. */
 export interface PoiDetailsSource {
