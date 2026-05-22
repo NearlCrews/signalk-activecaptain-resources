@@ -14,7 +14,7 @@
 
 import { LRUCache } from 'lru-cache'
 import type { PoiStore } from './poiStore.js'
-import type { PoiDetails } from './types.js'
+import type { PoiDetails } from './shared/types.js'
 
 /** Hard ceiling on cached entries, guarding memory use on long sessions. */
 const MAX_CACHE_ENTRIES = 5000

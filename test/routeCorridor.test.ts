@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { scanRouteCorridor } from '../src/routeCorridor.js'
-import type { PoiSummary, PoiType, Position, RoutePolyline } from '../src/types.js'
+import type { PoiSummary, PoiType, Position, RoutePolyline } from '../src/shared/types.js'
 
 /** Assert that two numbers are within `epsilon` of each other. */
 function assertClose (actual: number, expected: number, epsilon: number, message: string): void {

@@ -5,7 +5,7 @@
  */
 
 import { POI_TYPE_FLAGS } from '../poiTypeSelection.js'
-import type { PluginConfig, PoiTypeFlag } from '../types.js'
+import type { PluginConfig, PoiTypeFlag } from '../shared/types.js'
 
 /** Actions the panel dispatches to mutate its working configuration. */
 export type ConfigAction =

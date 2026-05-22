@@ -4,7 +4,7 @@
  */
 
 import { POI_TYPE_FLAGS } from '../poiTypeSelection.js'
-import type { PluginConfig } from '../types.js'
+import type { PluginConfig } from '../shared/types.js'
 
 /**
  * Fallback caching duration. Mirrors DEFAULT_CACHING_DURATION_MINUTES in

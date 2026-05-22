@@ -5,7 +5,7 @@
  * exactly once across the groups.
  */
 
-import type { PoiTypeFlag } from '../types.js'
+import type { PoiTypeFlag } from '../shared/types.js'
 
 /** A single POI-type toggle: its PluginConfig flag and its display label. */
 export interface PoiTypeOption {

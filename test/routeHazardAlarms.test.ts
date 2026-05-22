@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRouteHazardAlarms, type RouteAlarmApp } from '../src/routeHazardAlarms.js'
-import type { CorridorPoi, PoiType } from '../src/types.js'
+import type { CorridorPoi, PoiType } from '../src/shared/types.js'
 
 /** Shape of the notification value the alarms emit on a route path. */
 interface CapturedNotification {

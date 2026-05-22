@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createPoiCache, type PoiDetailsSource } from '../src/poiCache.js'
 import { createPoiStore } from '../src/poiStore.js'
-import type { PoiDetails } from '../src/types.js'
+import type { PoiDetails } from '../src/shared/types.js'
 
 /** Generous cache lifetime so entries never expire mid-test. */
 const TTL_MINUTES = 60

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createActiveCaptainClient, type RateLimitOptions } from '../src/activeCaptainClient.js'
-import type { Bbox } from '../src/types.js'
+import type { Bbox } from '../src/shared/types.js'
 
 /** A logger that discards output, keeping test runs quiet. */
 const silentLog = { debug: (): void => {}, error: (): void => {} }

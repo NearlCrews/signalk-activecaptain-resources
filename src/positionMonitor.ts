@@ -21,11 +21,11 @@
 
 import type { NormalizedDelta, Path } from '@signalk/server-api'
 import type { CourseReader } from './courseReader.js'
-import { distanceMeters, positionToBbox } from './positionUtilities.js'
+import { distanceMeters, positionToBbox } from './geo/position-utilities.js'
 import type { ProximityAlarms } from './proximityAlarms.js'
 import { scanRouteCorridor } from './routeCorridor.js'
 import type { RouteHazardAlarms } from './routeHazardAlarms.js'
-import type { Bbox, CorridorPoi, PoiSummary, Position, RoutePolyline } from './types.js'
+import type { Bbox, CorridorPoi, PoiSummary, Position, RoutePolyline } from './shared/types.js'
 
 /** The `vessels.self` path the monitor subscribes to. */
 const SELF_POSITION_PATH = 'navigation.position'

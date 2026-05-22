@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createProximityAlarms, type AlarmApp } from '../src/proximityAlarms.js'
-import type { PoiSummary, PoiType, Position } from '../src/types.js'
+import type { PoiSummary, PoiType, Position } from '../src/shared/types.js'
 
 /** Shape of the notification value the alarms emit on the hazard path. */
 interface CapturedNotification {

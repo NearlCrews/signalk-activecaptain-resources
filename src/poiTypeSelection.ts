@@ -4,7 +4,7 @@
  * expects.
  */
 
-import type { PluginConfig, PoiType, PoiTypeFlag } from './types.js'
+import type { PluginConfig, PoiType, PoiTypeFlag } from './shared/types.js'
 
 /**
  * Every selectable POI type, paired with the config flag that enables it. When

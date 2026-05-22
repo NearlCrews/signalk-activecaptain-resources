@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { positionToBbox, projectPointOntoLeg } from '../src/positionUtilities.js'
-import type { Position } from '../src/types.js'
+import { positionToBbox, projectPointOntoLeg } from '../src/geo/position-utilities.js'
+import type { Position } from '../src/shared/types.js'
 
 /** Assert that two numbers are within `epsilon` of each other. */
 function assertClose (actual: number, expected: number, epsilon: number, message: string): void {

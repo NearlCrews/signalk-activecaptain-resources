@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { filterByRating } from '../src/ratingFilter.js'
-import type { PoiSummary } from '../src/types.js'
+import type { PoiSummary } from '../src/shared/types.js'
 
 /** Build a PoiSummary with the given id and optional rating. */
 function poi (id: string, rating?: number): PoiSummary {

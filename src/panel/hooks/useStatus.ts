@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { PLUGIN_ID } from '../../pluginId.js'
+import { PLUGIN_ID } from '../../shared/plugin-id.js'
 import type { StatusSnapshot } from '../../statusTypes.js'
 
 /** The admin-gated status endpoint the plugin exposes through registerWithRouter. */

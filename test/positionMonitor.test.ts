@@ -10,7 +10,7 @@ import {
 import type { ProximityAlarms } from '../src/proximityAlarms.js'
 import type { CourseReader } from '../src/courseReader.js'
 import { createRouteHazardAlarms, type RouteAlarmApp } from '../src/routeHazardAlarms.js'
-import type { Bbox, PoiSummary, Position, RoutePolyline } from '../src/types.js'
+import type { Bbox, PoiSummary, Position, RoutePolyline } from '../src/shared/types.js'
 
 /** Resolve once the pending microtasks (an awaited hazard scan) have drained. */
 const flush = (): Promise<void> =>

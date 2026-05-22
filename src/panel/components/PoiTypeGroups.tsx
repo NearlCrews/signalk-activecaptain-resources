@@ -5,7 +5,7 @@
  */
 
 import type * as React from 'react'
-import type { PluginConfig, PoiTypeFlag } from '../../types.js'
+import type { PluginConfig, PoiTypeFlag } from '../../shared/types.js'
 import { POI_TYPE_GROUPS } from '../poiTypeGroups.js'
 import { S } from '../styles.js'
 

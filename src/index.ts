@@ -28,11 +28,11 @@ import {
   type PositionMonitorConfig
 } from './positionMonitor.js'
 import { parseApiDate, renderDescription } from './handlebarsUtilities.js'
-import { PLUGIN_ID } from './pluginId.js'
+import { PLUGIN_ID } from './shared/plugin-id.js'
 import { buildPoiTypesString } from './poiTypeSelection.js'
 import { filterByRating } from './ratingFilter.js'
 import { resolveBbox } from './resourceQuery.js'
-import type { PluginConfig, PoiSummary, Position } from './types.js'
+import type { PluginConfig, PoiSummary, Position } from './shared/types.js'
 
 const PLUGIN_NAME = "Crow's Nest"
 const PLUGIN_DESCRIPTION =

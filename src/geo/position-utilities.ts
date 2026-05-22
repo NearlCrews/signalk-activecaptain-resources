@@ -11,7 +11,7 @@
  * module supports the `position` plus `distance` form the chart plotter sends.
  */
 
-import type { Position, Bbox } from './types.js'
+import type { Position, Bbox } from '../shared/types.js'
 
 /** Mean radius of the Earth in kilometers, used for great-circle estimates. */
 const EARTH_RADIUS_KM = 6371
