@@ -158,6 +158,14 @@ export interface PoiSummary {
   rating?: number
   /** Number of reviews behind the rating. */
   reviewCount?: number
+  /**
+   * Chart-plotter icon hint, mapped to a Freeboard `:sk-${icon}` glyph. When
+   * omitted the notes output falls back to the POI type lowercased, which is
+   * what every ActiveCaptain POI uses. A source sets this explicitly when its
+   * `PoiType` does not correspond to a Freeboard glyph: OpenSeaMap navaids
+   * collapse to `Navigational` (no glyph) and ride `real-aton` instead.
+   */
+  skIcon?: string
 }
 
 /**
@@ -183,6 +191,11 @@ export interface PoiDetailView {
   description?: string
   /** ISO-8601 UTC last-modified time, omitted when unknown. */
   timestamp?: string
+  /**
+   * Chart-plotter icon hint, mapped to a Freeboard `:sk-${icon}` glyph. See
+   * the matching {@link PoiSummary.skIcon} field for the contract.
+   */
+  skIcon?: string
 }
 
 /** Identity and location block present in every summary response. */

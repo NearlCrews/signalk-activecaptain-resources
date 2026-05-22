@@ -56,7 +56,10 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
         resources[entity.id] = buildNoteResource({
           name: entity.name,
           position: { ...entity.position },
-          skIcon: entity.type.toLowerCase(),
+          // A source can override the default icon when its `PoiType` does not
+          // correspond to a Freeboard glyph; ActiveCaptain rides the type
+          // fallback, OpenSeaMap navaids set `real-aton` explicitly.
+          skIcon: entity.skIcon ?? entity.type.toLowerCase(),
           url: entity.url,
           source: entity.source,
           attribution: entity.attribution,
@@ -74,7 +77,8 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       const note = buildNoteResource({
         name: view.name,
         position: { ...view.position },
-        skIcon: view.type.toLowerCase(),
+        // Same source-overrides-default rule as the list path above.
+        skIcon: view.skIcon ?? view.type.toLowerCase(),
         url: view.url,
         source: view.source,
         attribution: view.attribution,

@@ -112,13 +112,15 @@ test('the multi-source path lists and routes resources across both sources', asy
       const { listResources, getResource } = startMultiSource(dataDir)
 
       // listResources unions both sources, prefixing each id with its source.
+      // OSM ids use the URL-safe underscore form so a `/` inside the id does
+      // not split the SignalK `/resources/notes/<id>` route.
       const resources = await listResources({ bbox: '0,0,1,1' })
       const ids = Object.keys(resources).sort()
-      assert.deepEqual(ids, ['activecaptain-123', 'openseamap-node/555'],
-        'every id carries its source prefix')
+      assert.deepEqual(ids, ['activecaptain-123', 'openseamap-node_555'],
+        'every id carries its source prefix and the OSM id uses the underscore form')
 
       // getResource of an openseamap- id routes to the OpenSeaMap source.
-      const osmNote = await getResource('openseamap-node/555')
+      const osmNote = await getResource('openseamap-node_555')
       assert.equal(osmNote.name, 'OSM Harbour')
       assert.equal((osmNote.properties as Record<string, unknown>).source, 'openseamap')
 

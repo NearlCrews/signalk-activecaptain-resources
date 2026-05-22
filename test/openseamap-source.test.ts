@@ -55,7 +55,7 @@ test('listPointsOfInterest maps elements to source-tagged summaries', async () =
   assert.equal(source.id, 'openseamap')
   assert.deepEqual(list, [
     {
-      id: 'node/123',
+      id: 'node_123',
       type: 'Hazard',
       position: { latitude: 50, longitude: 1 },
       name: 'Big Rock',
@@ -64,7 +64,7 @@ test('listPointsOfInterest maps elements to source-tagged summaries', async () =
       attribution: '© OpenStreetMap contributors (ODbL)'
     },
     {
-      id: 'way/456',
+      id: 'way_456',
       type: 'Marina',
       position: { latitude: 51, longitude: 2 },
       name: 'Unnamed marina',
@@ -76,11 +76,38 @@ test('listPointsOfInterest maps elements to source-tagged summaries', async () =
   source.close()
 })
 
+test('a navaid element rides the real-aton skIcon override', async () => {
+  const lightNode: OverpassElement = {
+    type: 'node',
+    id: 777,
+    tags: { 'seamark:type': 'light_major', name: 'Pendeen Lighthouse' },
+    position: { latitude: 50, longitude: -5 }
+  }
+  const { client } = fakeClient({
+    listPointsOfInterest: async () => [lightNode],
+    getById: async () => lightNode
+  })
+  const source = createOpenSeaMapSource({ client, seamarkGroups: ['navaids'], status: silentStatus() })
+  const list = await source.listPointsOfInterest(sampleBbox, '')
+  assert.equal(list[0].type, 'Navigational')
+  assert.equal(list[0].skIcon, 'real-aton', 'a navaid summary carries the real-aton icon')
+  const view = await source.getDetails('node_777')
+  assert.equal(view.skIcon, 'real-aton', 'the detail view carries the same override')
+  source.close()
+})
+
+test('a non-navaid element carries no explicit skIcon so the output falls back to the type', async () => {
+  const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'], status: silentStatus() })
+  const list = await source.listPointsOfInterest(sampleBbox, '')
+  assert.equal(list[0].skIcon, undefined, 'a hazard summary leaves skIcon undefined')
+  source.close()
+})
+
 test('getDetails serves a listed element from cache without a by-id query', async () => {
   const { client, getByIdCalls } = fakeClient()
   const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status: silentStatus() })
   await source.listPointsOfInterest(sampleBbox, '')
-  const view = await source.getDetails('node/123')
+  const view = await source.getDetails('node_123')
   assert.equal(view.name, 'Big Rock')
   assert.equal(view.type, 'Hazard')
   assert.equal(view.source, 'openseamap')
@@ -93,12 +120,23 @@ test('getDetails serves a listed element from cache without a by-id query', asyn
   source.close()
 })
 
-test('getDetails queries the client by id on a cache miss', async () => {
-  const { client, getByIdCalls } = fakeClient()
+test('getDetails queries the client by id on a cache miss with the slash form', async () => {
+  const seenIds: string[] = []
+  const { client } = fakeClient({
+    getById: async (typedId: string) => {
+      seenIds.push(typedId)
+      return {
+        type: 'node',
+        id: 123,
+        tags: { 'seamark:type': 'rock', name: 'Big Rock' },
+        position: { latitude: 50, longitude: 1 }
+      }
+    }
+  })
   const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status: silentStatus() })
-  const view = await source.getDetails('node/123')
+  const view = await source.getDetails('node_123')
   assert.equal(view.name, 'Big Rock')
-  assert.equal(getByIdCalls(), 1, 'a cache miss falls through to a by-id query')
+  assert.deepEqual(seenIds, ['node/123'], 'the underscore id is translated back to the slash form for Overpass')
   source.close()
 })
 
@@ -107,7 +145,7 @@ test('getDetails rejects when the element no longer exists', async () => {
     getById: async (): Promise<OverpassElement | undefined> => undefined
   })
   const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status: silentStatus() })
-  await assert.rejects(() => source.getDetails('node/999'), /No OpenSeaMap element found/)
+  await assert.rejects(() => source.getDetails('node_999'), /No OpenSeaMap element found/)
   source.close()
 })
 

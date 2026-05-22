@@ -31,8 +31,16 @@ export const OPENSEAMAP_SOURCE_ID = 'openseamap'
  */
 export const OPENSEAMAP_ATTRIBUTION = '© OpenStreetMap contributors (ODbL)'
 
-/** Prefix of an OpenStreetMap element page, completed with the typed id. */
+/** Prefix of an OpenStreetMap element page, completed with `type/id`. */
 const OSM_ELEMENT_URL_PREFIX = 'https://www.openstreetmap.org/'
+
+/**
+ * Freeboard glyph used for every OpenSeaMap navaid. The `PoiType` for lights,
+ * buoys, beacons, and landmarks collapses to `Navigational`, for which
+ * Freeboard ships no `:sk-navigational` SVG; `real-aton` is the closest
+ * navigational aid glyph the Freeboard SVG set provides.
+ */
+const NAVAID_SK_ICON = 'real-aton'
 
 /** Dependencies for {@link createOpenSeaMapSource}. */
 export interface OpenSeaMapSourceConfig {
@@ -48,9 +56,32 @@ export interface OpenSeaMapSourceConfig {
   status: PluginStatus
 }
 
-/** The typed OSM id for an element, e.g. `node/123`. */
-function typedId (element: OverpassElement): string {
-  return `${element.type}/${element.id}`
+/**
+ * Internal id for an element, e.g. `node_123`. The slash form (`node/123`)
+ * cannot be used: SignalK serves resources at `/resources/notes/<id>`, so a
+ * `/` inside the id silently splits the path and the resource 404s. The
+ * underscore is URL-safe and the alarm path sanitizer already accepts it.
+ */
+function elementId (element: OverpassElement): string {
+  return `${element.type}_${element.id}`
+}
+
+/** OSM element page URL, built from the original slash form OSM expects. */
+function elementOsmUrl (element: OverpassElement): string {
+  return `${OSM_ELEMENT_URL_PREFIX}${element.type}/${element.id}`
+}
+
+/**
+ * Translate a registry-side id (`node_123`) back to the slash form
+ * (`node/123`) the Overpass client's `getById` parses. A raw OSM numeric id
+ * never contains an underscore, so splitting on the FIRST underscore is exact.
+ */
+function toOverpassTypedId (id: string): string {
+  const underscore = id.indexOf('_')
+  if (underscore <= 0) {
+    return id
+  }
+  return `${id.slice(0, underscore)}/${id.slice(underscore + 1)}`
 }
 
 /** A display name for an element: its `name` tag, or a type-derived fallback. */
@@ -83,31 +114,31 @@ function renderDescription (element: OverpassElement): string {
 
 /** Build the source-agnostic detail view for an element. */
 function toDetailView (element: OverpassElement): PoiDetailView {
-  const id = typedId(element)
   const type = elementPoiType(element.tags)
   return {
     name: elementName(element, type),
     position: { ...element.position },
     type,
-    url: `${OSM_ELEMENT_URL_PREFIX}${id}`,
+    url: elementOsmUrl(element),
     source: OPENSEAMAP_SOURCE_ID,
     attribution: OPENSEAMAP_ATTRIBUTION,
-    description: appendAttribution(renderDescription(element), OPENSEAMAP_ATTRIBUTION)
+    description: appendAttribution(renderDescription(element), OPENSEAMAP_ATTRIBUTION),
+    ...(type === 'Navigational' && { skIcon: NAVAID_SK_ICON })
   }
 }
 
 /** Build the list summary for an element. */
 function toSummary (element: OverpassElement): PoiSummary {
-  const id = typedId(element)
   const type = elementPoiType(element.tags)
   return {
-    id,
+    id: elementId(element),
     type,
     position: { ...element.position },
     name: elementName(element, type),
     source: OPENSEAMAP_SOURCE_ID,
-    url: `${OSM_ELEMENT_URL_PREFIX}${id}`,
-    attribution: OPENSEAMAP_ATTRIBUTION
+    url: elementOsmUrl(element),
+    attribution: OPENSEAMAP_ATTRIBUTION,
+    ...(type === 'Navigational' && { skIcon: NAVAID_SK_ICON })
   }
 }
 
@@ -133,13 +164,15 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
     listPointsOfInterest: async (bbox: Bbox): Promise<PoiSummary[]> => {
       const elements = await client.listPointsOfInterest(bbox, regex)
       return elements.map((element) => {
-        cache.set(typedId(element), element)
+        cache.set(elementId(element), element)
         return toSummary(element)
       })
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
       try {
-        const element = cache.get(id) ?? await client.getById(id)
+        // The cache key matches the registry-side underscore id; on a miss the
+        // Overpass client is queried with the slash form it parses.
+        const element = cache.get(id) ?? await client.getById(toOverpassTypedId(id))
         if (element === undefined) {
           throw new Error(`No OpenSeaMap element found for "${id}"`)
         }
