@@ -1,16 +1,11 @@
 /**
- * Number input for the cachingDurationMinutes setting. It holds a raw-text
- * draft while the user edits, so the field can be cleared mid-edit instead of
- * snapping back to a number on every keystroke, and commits a clamped, whole
- * number of minutes.
+ * Number input for the cachingDurationMinutes setting. A thin wrapper around
+ * NumberField that fixes the label, hint, and integer-with-floor-of-1 commit
+ * behavior the cache duration needs.
  */
 
 import type * as React from 'react'
-import { useState } from 'react'
-import { S } from '../styles.js'
-
-/** Stable id linking the visible label to its input. */
-const FIELD_ID = 'ac-cache-duration'
+import NumberField from './NumberField.js'
 
 /** Smallest cache duration the plugin accepts: it requires a positive value. */
 const MIN_MINUTES = 1
@@ -22,36 +17,15 @@ interface Props {
 
 /** The cache-duration field shown in the configuration panel. */
 export default function CacheDurationField ({ value, onChange }: Props): React.ReactElement {
-  const [draft, setDraft] = useState<string | null>(null)
-
-  const commit = (raw: string): void => {
-    if (raw.trim() === '') {
-      onChange(MIN_MINUTES)
-      return
-    }
-    const parsed = Number(raw)
-    onChange(Number.isFinite(parsed) ? Math.max(MIN_MINUTES, Math.trunc(parsed)) : MIN_MINUTES)
-  }
-
   return (
-    <div style={S.fieldRow}>
-      <label htmlFor={FIELD_ID} style={S.label}>Cache duration (minutes)</label>
-      <input
-        id={FIELD_ID}
-        type='number'
-        min={MIN_MINUTES}
-        style={S.input}
-        value={draft ?? String(value)}
-        onChange={(e) => {
-          setDraft(e.target.value)
-          commit(e.target.value)
-        }}
-        onBlur={() => setDraft(null)}
-      />
-      <p style={S.hint}>
-        How long imported ActiveCaptain data is cached. Longer means less data
-        traffic, shorter means fresher data.
-      </p>
-    </div>
+    <NumberField
+      id='ac-cache-duration'
+      label='Cache duration (minutes)'
+      hint='How long imported ActiveCaptain data is cached. Longer means less data traffic, shorter means fresher data.'
+      value={value}
+      onChange={onChange}
+      min={MIN_MINUTES}
+      integer
+    />
   )
 }

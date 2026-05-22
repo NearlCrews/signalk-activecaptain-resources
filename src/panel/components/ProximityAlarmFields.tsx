@@ -1,17 +1,11 @@
 /**
  * The proximity hazard alarm controls: an opt-in toggle and the alarm radius.
- * The radius input holds a raw-text draft while the user edits, so the field
- * can be cleared mid-edit instead of snapping back to a number on every
- * keystroke, and commits a clamped, whole number of meters. It is disabled
- * while alarms are off, because the radius then has no effect.
+ * Built on the shared `AlarmFieldset` layout; only the labels, ids, and the
+ * radius minimum are specific to this alarm.
  */
 
 import type * as React from 'react'
-import { useState } from 'react'
-import { S } from '../styles.js'
-
-/** Stable id linking the visible label to the radius input. */
-const RADIUS_FIELD_ID = 'ac-proximity-alarm-radius'
+import AlarmFieldset from './AlarmFieldset.js'
 
 /**
  * Smallest alarm radius the plugin accepts. A zero radius would leave the
@@ -34,59 +28,20 @@ export default function ProximityAlarmFields ({
   onToggleEnabled,
   onChangeRadius
 }: Props): React.ReactElement {
-  const [draft, setDraft] = useState<string | null>(null)
-
-  const commit = (raw: string): void => {
-    if (raw.trim() === '') {
-      onChangeRadius(MIN_RADIUS_METERS)
-      return
-    }
-    const parsed = Number(raw)
-    onChangeRadius(Number.isFinite(parsed)
-      ? Math.max(MIN_RADIUS_METERS, Math.trunc(parsed))
-      : MIN_RADIUS_METERS)
-  }
-
   return (
-    <section style={S.groupsSection}>
-      <fieldset style={S.group}>
-        <legend style={S.groupTitle}>Proximity hazard alarms</legend>
-        <label style={S.checkboxRow}>
-          <input
-            type='checkbox'
-            style={S.checkbox}
-            checked={enabled}
-            onChange={(e) => onToggleEnabled(e.target.checked)}
-          />
-          Emit an alarm when the vessel nears a hazard
-        </label>
-        <p style={S.hint}>
-          When enabled, the plugin subscribes to the vessel position, scans for
-          nearby hazards, and raises a Signal K notification for each hazard
-          within the alarm radius.
-        </p>
-        <div style={S.labelledInputRow}>
-          <label htmlFor={RADIUS_FIELD_ID} style={S.label}>Alarm radius (meters)</label>
-          <input
-            id={RADIUS_FIELD_ID}
-            type='number'
-            min={MIN_RADIUS_METERS}
-            step={50}
-            style={S.input}
-            disabled={!enabled}
-            value={draft ?? String(radiusMeters)}
-            onChange={(e) => {
-              setDraft(e.target.value)
-              commit(e.target.value)
-            }}
-            onBlur={() => setDraft(null)}
-          />
-          <p style={S.hint}>
-            A hazard closer than this distance to the vessel raises a proximity
-            alarm.
-          </p>
-        </div>
-      </fieldset>
-    </section>
+    <AlarmFieldset
+      title='Proximity hazard alarms'
+      numberFieldId='ac-proximity-alarm-radius'
+      toggleLabel='Emit an alarm when the vessel nears a hazard'
+      toggleHint='When enabled, the plugin subscribes to the vessel position, scans for nearby hazards, and raises a Signal K notification for each hazard within the alarm radius.'
+      enabled={enabled}
+      onToggleEnabled={onToggleEnabled}
+      numberLabel='Alarm radius (meters)'
+      numberHint='A hazard closer than this distance to the vessel raises a proximity alarm.'
+      numberMin={MIN_RADIUS_METERS}
+      numberStep={50}
+      numberValue={radiusMeters}
+      onChangeNumber={onChangeRadius}
+    />
   )
 }
