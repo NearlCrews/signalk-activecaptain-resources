@@ -22,8 +22,8 @@
  * alarm's `'alarm'`.
  */
 
-import type { Delta } from '@signalk/server-api'
 import { emitNotification, type NotificationValue } from '../../shared/notification-path.js'
+import { createNotificationTracker, type NotificationTrackerApp } from '../../shared/notification-tracker.js'
 import type { CorridorPoi } from '../../shared/types.js'
 
 /** Path prefix for the per-point route notification, completed with the POI id. */
@@ -66,13 +66,9 @@ function formatEta (seconds: number): string {
 /**
  * The slice of the SignalK app the alarms need. The real `ServerAPI` satisfies
  * this structurally, so the plugin entrypoint passes `app` directly; tests
- * pass a small stub. `handleMessage` is narrowed to the two-argument form (the
- * optional `skVersion` argument is unused: the notification path is v1).
+ * pass a small stub.
  */
-export interface RouteAlarmApp {
-  handleMessage: (id: string, delta: Partial<Delta>) => void
-  debug: (message: string) => void
-}
+export type RouteAlarmApp = NotificationTrackerApp
 
 /** Public surface of the route-corridor hazard alarms. */
 export interface RouteHazardAlarms {
@@ -90,26 +86,26 @@ export interface RouteHazardAlarms {
 }
 
 /**
- * The notification value emitted on a route-corridor path: the shared
- * `NotificationValue` shape narrowed to the two states this output raises.
- */
-type RouteNotificationValue = NotificationValue & { state: 'warn' | 'normal' }
-
-/**
  * Create a route-corridor hazard alarm evaluator.
  *
  * @param app The SignalK app, used to emit notification deltas.
  */
 export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms {
-  // Points of interest currently in the alarm state, keyed by POI id. The
-  // value keeps the display name (for the clear message) and the last message
-  // emitted, so the notification can be refreshed when the distance or ETA
-  // changes without raising a fresh alarm.
-  const active = new Map<string, { name: string, message: string }>()
-
-  function emit (poiId: string, value: RouteNotificationValue): void {
-    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
-  }
+  // The tracker owns the active set and the clear half. Each entry keeps the
+  // display name (for the clear message) and the last message emitted, so the
+  // notification can be refreshed when the distance or ETA changes without
+  // raising a fresh alarm.
+  const tracker = createNotificationTracker<{ name: string, message: string }>({
+    app,
+    pathPrefix: NOTIFICATION_PATH_PREFIX,
+    buildClearValue: ({ name }) => ({
+      state: 'normal',
+      method: [],
+      message: `"${name}" is no longer on the route ahead`,
+      timestamp: new Date().toISOString()
+    }),
+    describeClear: (poiId, { name }) => `Route hazard alarm cleared for ${poiId} ("${name}")`
+  })
 
   /** Build the notification message for a flagged point: type, name, distance, and ETA. */
   function buildMessage (poi: CorridorPoi): string {
@@ -122,23 +118,13 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
 
   /** Emit a `warn` notification for a flagged point with the given message. */
   function emitWarn (poiId: string, message: string): void {
-    emit(poiId, {
+    const value: NotificationValue = {
       state: 'warn',
       method: ['visual'],
       message,
       timestamp: new Date().toISOString()
-    })
-  }
-
-  function clear (poiId: string, name: string): void {
-    emit(poiId, {
-      state: 'normal',
-      method: [],
-      message: `"${name}" is no longer on the route ahead`,
-      timestamp: new Date().toISOString()
-    })
-    active.delete(poiId)
-    app.debug(`Route hazard alarm cleared for ${poiId} ("${name}")`)
+    }
+    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
   }
 
   function evaluate (corridorPois: CorridorPoi[]): void {
@@ -155,32 +141,25 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
     // stale over a long approach to the point.
     for (const poi of flagged.values()) {
       const message = buildMessage(poi)
-      const existing = active.get(poi.id)
+      const existing = tracker.get(poi.id)
       if (existing === undefined) {
         emitWarn(poi.id, message)
-        active.set(poi.id, { name: poi.name, message })
+        tracker.set(poi.id, { name: poi.name, message })
         app.debug(`Route hazard alarm raised for ${poi.type} ${poi.id} ("${poi.name}")`)
       } else if (existing.message !== message) {
         emitWarn(poi.id, message)
-        active.set(poi.id, { name: poi.name, message })
+        tracker.set(poi.id, { name: poi.name, message })
       }
     }
 
     // Exit: an alarming point that is no longer flagged. Snapshot the entries
-    // first, since clear() mutates the map being iterated.
-    for (const [poiId, entry] of [...active]) {
+    // first, since clear() mutates the active set as it iterates.
+    for (const [poiId] of [...tracker.entries()]) {
       if (!flagged.has(poiId)) {
-        clear(poiId, entry.name)
+        tracker.clear(poiId)
       }
     }
   }
 
-  function clearAll (): void {
-    // Snapshot first: clear() deletes from the map as it goes.
-    for (const [poiId, entry] of [...active]) {
-      clear(poiId, entry.name)
-    }
-  }
-
-  return { evaluate, clearAll }
+  return { evaluate, clearAll: tracker.clearAll }
 }

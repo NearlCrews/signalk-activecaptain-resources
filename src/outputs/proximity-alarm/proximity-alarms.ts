@@ -23,16 +23,14 @@
  * advisory's `'warn'`.
  */
 
-import type { Delta } from '@signalk/server-api'
 import { emitNotification, type NotificationValue } from '../../shared/notification-path.js'
+import { createNotificationTracker, type NotificationTrackerApp } from '../../shared/notification-tracker.js'
 import { distanceMeters } from '../../geo/position-utilities.js'
+import { PROXIMITY_ALARM_POI_TYPE } from './poi-types.js'
 import type { PoiSummary, Position } from '../../shared/types.js'
 
 /** Path prefix for the per-hazard notification, completed with the POI id. */
 const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.crowsNest.hazard.'
-
-/** The POI type that raises a proximity alarm. Other types are out of scope. */
-const HAZARD_POI_TYPE = 'Hazard'
 
 /**
  * Hysteresis margin: an active alarm clears only once the hazard is this
@@ -45,13 +43,9 @@ const EXIT_RADIUS_FACTOR = 1.2
 /**
  * The slice of the SignalK app the alarms need. The real `ServerAPI` satisfies
  * this structurally, so the plugin entrypoint passes `app` directly; tests
- * pass a small stub. `handleMessage` is narrowed to the two-argument form (the
- * optional `skVersion` argument is unused: the notification path is v1).
+ * pass a small stub.
  */
-export interface AlarmApp {
-  handleMessage: (id: string, delta: Partial<Delta>) => void
-  debug: (message: string) => void
-}
+export type AlarmApp = NotificationTrackerApp
 
 /** Public surface of the proximity alarms. */
 export interface ProximityAlarms {
@@ -69,47 +63,37 @@ export interface ProximityAlarms {
 }
 
 /**
- * The notification value emitted on the hazard path: the shared
- * `NotificationValue` shape narrowed to the two states this output raises.
- */
-type HazardNotificationValue = NotificationValue & { state: 'alarm' | 'normal' }
-
-/**
  * Create a proximity-alarm evaluator.
  *
  * @param app          The SignalK app, used to emit notification deltas.
  * @param radiusMeters Hazards within this distance of the vessel raise an alarm.
  */
 export function createProximityAlarms (app: AlarmApp, radiusMeters: number): ProximityAlarms {
-  // Hazards currently in the alarm state, keyed by POI id, with the value the
-  // hazard name. A hazard is added on entry and removed on exit, so an alarm
-  // is raised and cleared exactly once per crossing of the radius boundary.
-  const active = new Map<string, string>()
-
-  function emit (poiId: string, value: HazardNotificationValue): void {
-    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
-  }
-
-  function raise (poiId: string, name: string, distance: number): void {
-    emit(poiId, {
-      state: 'alarm',
-      method: ['visual', 'sound'],
-      message: `Hazard "${name}" is ${Math.round(distance)} m away`,
-      timestamp: new Date().toISOString()
-    })
-    active.set(poiId, name)
-    app.debug(`Proximity alarm raised for hazard ${poiId} ("${name}") at ${Math.round(distance)} m`)
-  }
-
-  function clear (poiId: string, name: string): void {
-    emit(poiId, {
+  // The tracker owns the active set and the clear half: a hazard is added on
+  // entry and removed on exit, so an alarm is raised and cleared exactly once
+  // per crossing of the radius boundary.
+  const tracker = createNotificationTracker<{ name: string }>({
+    app,
+    pathPrefix: NOTIFICATION_PATH_PREFIX,
+    buildClearValue: ({ name }) => ({
       state: 'normal',
       method: [],
       message: `Hazard "${name}" is no longer nearby`,
       timestamp: new Date().toISOString()
-    })
-    active.delete(poiId)
-    app.debug(`Proximity alarm cleared for hazard ${poiId} ("${name}")`)
+    }),
+    describeClear: (poiId, { name }) => `Proximity alarm cleared for hazard ${poiId} ("${name}")`
+  })
+
+  function raise (poiId: string, name: string, distance: number): void {
+    const value: NotificationValue = {
+      state: 'alarm',
+      method: ['visual', 'sound'],
+      message: `Hazard "${name}" is ${Math.round(distance)} m away`,
+      timestamp: new Date().toISOString()
+    }
+    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
+    tracker.set(poiId, { name })
+    app.debug(`Proximity alarm raised for hazard ${poiId} ("${name}") at ${Math.round(distance)} m`)
   }
 
   const exitRadiusMeters = radiusMeters * EXIT_RADIUS_FACTOR
@@ -121,7 +105,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
     // clear radius, which is the hysteresis band.
     const inAlarm = new Map<string, { name: string, distance: number }>()
     for (const poi of pois) {
-      if (poi.type !== HAZARD_POI_TYPE) {
+      if (poi.type !== PROXIMITY_ALARM_POI_TYPE) {
         continue
       }
       const distance = distanceMeters(vesselPosition, poi.position)
@@ -131,7 +115,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
         app.debug(`Proximity alarm skipped hazard ${poi.id}: non-finite distance`)
         continue
       }
-      const threshold = active.has(poi.id) ? exitRadiusMeters : radiusMeters
+      const threshold = tracker.has(poi.id) ? exitRadiusMeters : radiusMeters
       if (distance <= threshold) {
         inAlarm.set(poi.id, { name: poi.name, distance })
       }
@@ -139,26 +123,19 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
 
     // Entry: a hazard now in alarm that was not already alarming.
     for (const [poiId, { name, distance }] of inAlarm) {
-      if (!active.has(poiId)) {
+      if (!tracker.has(poiId)) {
         raise(poiId, name, distance)
       }
     }
 
     // Exit: an alarming hazard that has left the clear radius. Snapshot the
-    // entries first, since clear() mutates the map being iterated.
-    for (const [poiId, name] of [...active]) {
+    // entries first, since clear() mutates the active set as it iterates.
+    for (const [poiId] of [...tracker.entries()]) {
       if (!inAlarm.has(poiId)) {
-        clear(poiId, name)
+        tracker.clear(poiId)
       }
     }
   }
 
-  function clearAll (): void {
-    // Snapshot first: clear() deletes from the map as it goes.
-    for (const [poiId, name] of [...active]) {
-      clear(poiId, name)
-    }
-  }
-
-  return { evaluate, clearAll }
+  return { evaluate, clearAll: tracker.clearAll }
 }

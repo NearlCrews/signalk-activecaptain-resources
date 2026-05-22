@@ -9,6 +9,7 @@
  */
 
 import { createProximityAlarms } from './proximity-alarms.js'
+import { PROXIMITY_ALARM_POI_TYPES } from './poi-types.js'
 import type { OutputContext, OutputHandle, OutputModule, PositionScanContributor } from '../output.js'
 import { positionToBbox } from '../../geo/position-utilities.js'
 
@@ -17,9 +18,6 @@ const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
 
 /** Lower bound on the hazard-scan radius, so the alarm check always has data. */
 const MIN_SCAN_RADIUS_METERS = 2000
-
-/** POI type the proximity alarms act on. */
-const PROXIMITY_POI_TYPES = ['Hazard'] as const
 
 /** The proximity-alarm config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
@@ -55,7 +53,7 @@ export const proximityAlarmOutput: OutputModule = {
     const alarms = createProximityAlarms(context.app, radiusMeters)
 
     const positionScan: PositionScanContributor = {
-      poiTypes: PROXIMITY_POI_TYPES,
+      poiTypes: PROXIMITY_ALARM_POI_TYPES,
       buildFetchBox: (tickPosition) => positionToBbox(tickPosition, scanRadiusMeters),
       evaluate: (vesselPosition, pois) => { alarms.evaluate(vesselPosition, pois) }
     }
