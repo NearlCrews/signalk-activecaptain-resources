@@ -192,6 +192,73 @@ export const S: Record<string, CSSProperties> = {
     marginTop: 12
   },
 
+  // Data-source accordion cards.
+  sourceCard: {
+    background: 'var(--ac-surface)',
+    border: '1px solid var(--ac-border)',
+    borderRadius: 10,
+    marginBottom: 10
+  },
+  sourceCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 14px'
+  },
+  sourceCardToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    textAlign: 'left',
+    color: 'var(--ac-text)',
+    font: 'inherit'
+  },
+  sourceCardName: { fontSize: 14, fontWeight: 600, color: 'var(--ac-text)', flexShrink: 0 },
+  sourceCardSummary: {
+    fontSize: 12,
+    color: 'var(--ac-text-muted)',
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  sourceCardChevron: { fontSize: 11, color: 'var(--ac-text-faint)', flexShrink: 0 },
+  sourceCardBody: {
+    padding: '14px 14px 4px',
+    borderTop: '1px solid var(--ac-border)'
+  },
+
+  // Panel section heading (Data sources, Alerts).
+  sectionHeading: {
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: 'var(--ac-text-faint)',
+    margin: '20px 0 10px'
+  },
+
+  // Wide text input, for values such as a URL.
+  inputWide: {
+    padding: '6px 10px',
+    borderRadius: 6,
+    border: '1px solid var(--ac-border)',
+    background: 'var(--ac-surface)',
+    color: 'var(--ac-text)',
+    fontSize: 13,
+    width: '100%',
+    maxWidth: 440,
+    boxSizing: 'border-box'
+  },
+
   // Footer.
   footer: {
     display: 'flex',
