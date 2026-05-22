@@ -57,6 +57,18 @@ function stubModule (id: string, enabled: boolean, source?: PoiSource): InputMod
   }
 }
 
+/** A non-base stub module with dedupe turned on, suitable for dedupe tests. */
+function dedupingModule (id: string, source: PoiSource): InputModule {
+  return {
+    id,
+    name: id,
+    configSchema: {},
+    isEnabled: () => true,
+    isDedupeEnabled: () => true,
+    createSource: () => source
+  }
+}
+
 /** A no-op status recorder, enough for tests that do not inspect status. */
 const silentStatus = {
   recordListFetch: () => {},
@@ -194,6 +206,41 @@ test('cacheSize sums the cache size of every source', () => {
   const b = stubModule('sourceB', true, stubSource('sourceB', { cache: 4 }))
   const source = createInputRegistry([a, b]).createSource(context)
   assert.equal(source.cacheSize(), 7)
+})
+
+test('listPointsOfInterest passes openSeaMapDedupeRadiusMeters through to the dedupe pass', async () => {
+  // A base POI and a non-base POI ~20 m apart. With the registry's default
+  // dedupe radius (150 m) they merge into one. With a tight 5 m radius they
+  // do not, proving the configured radius reached dedupeAgainstBase.
+  const NEAR_M = 0.00018 // ~20 m of latitude
+  const baseAt = (latitude: number): PoiSummary => ({
+    ...summary('1', 'activecaptain'),
+    position: { latitude, longitude: 0 }
+  })
+  const otherAt = (latitude: number): PoiSummary => ({
+    ...summary('node/9', 'other'),
+    position: { latitude, longitude: 0 }
+  })
+  const base = stubModule('activecaptain', true, stubSource('activecaptain', {
+    list: async () => [baseAt(10)]
+  }))
+  const other = dedupingModule('other', stubSource('other', {
+    list: async () => [otherAt(10 + NEAR_M)]
+  }))
+
+  const wide = createInputRegistry([base, other]).createSource(context)
+  const wideList = await wide.listPointsOfInterest(SAMPLE_BBOX, '')
+  assert.equal(wideList.length, 1, 'at the default 150 m radius the dup merges into the base')
+
+  const tightContext = {
+    app: {},
+    config: { openSeaMapDedupeRadiusMeters: 5 },
+    status: silentStatus,
+    dataDir: '/tmp'
+  } as never
+  const tight = createInputRegistry([base, other]).createSource(tightContext)
+  const tightList = await tight.listPointsOfInterest(SAMPLE_BBOX, '')
+  assert.equal(tightList.length, 2, 'at a 5 m radius the same dup is kept separate')
 })
 
 test('close closes every source', () => {

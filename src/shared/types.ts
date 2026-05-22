@@ -397,4 +397,6 @@ export interface PluginConfig {
   openSeaMapSeamarkGroups?: string[]
   /** Merge OpenSeaMap points of interest that duplicate an ActiveCaptain marker. */
   openSeaMapDedupe?: boolean
+  /** Merge radius, in meters, for OpenSeaMap dedupe against the ActiveCaptain base. */
+  openSeaMapDedupeRadiusMeters?: number
 }

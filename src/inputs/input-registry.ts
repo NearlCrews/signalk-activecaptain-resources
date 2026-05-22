@@ -9,7 +9,7 @@
  */
 
 import type { InputContext, InputModule, PoiSource } from './poi-source.js'
-import { BASE_SOURCE_ID, dedupeAgainstBase } from './dedupe-pois.js'
+import { BASE_SOURCE_ID, DEFAULT_DEDUPE_RADIUS_METERS, dedupeAgainstBase } from './dedupe-pois.js'
 import type { PoiSummary } from '../shared/types.js'
 
 /** Public surface of the input registry. */
@@ -49,6 +49,11 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
           }
         }
       }
+      // Source ids in registration order, aligned with `sources.values()` for
+      // index-based zipping with Promise.allSettled results.
+      const sourceIds = [...sources.keys()]
+      const dedupeRadiusMeters =
+        context.config.openSeaMapDedupeRadiusMeters ?? DEFAULT_DEDUPE_RADIUS_METERS
       return {
         id: 'aggregate',
         listPointsOfInterest: async (bbox, poiTypes) => {
@@ -61,7 +66,7 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
           // recording: a fulfilled source records its own list fetch, a
           // rejected source records its own error.
           results.forEach((result, index) => {
-            const sourceId = [...sources.keys()][index]
+            const sourceId = sourceIds[index]
             if (result.status === 'fulfilled') {
               anyOk = true
               context.status.recordListFetch(sourceId, result.value.length)
@@ -78,7 +83,9 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
           }
           // Merge each dedupe-enabled source's duplicates into the base layer,
           // so a feature reported by several sources is one corroborated note.
-          return dedupeSources.size > 0 ? dedupeAgainstBase(merged, dedupeSources) : merged
+          return dedupeSources.size > 0
+            ? dedupeAgainstBase(merged, dedupeSources, dedupeRadiusMeters)
+            : merged
         },
         getDetails: async (id) => {
           // Split on the FIRST hyphen only: a raw id (an OSM id such as

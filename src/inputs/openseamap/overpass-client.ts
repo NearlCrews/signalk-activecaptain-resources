@@ -23,7 +23,10 @@
 import { assertResponseOk, createHttpClient, type RateLimitOptions } from '../http-client.js'
 import type { Bbox, Logger, Position } from '../../shared/types.js'
 
-export { HttpError } from '../http-client.js'
+// No OpenSeaMap consumer inspects the HTTP status of a failed request: a
+// not-found element is returned by Overpass as an empty result, not a 404. So
+// `HttpError` is intentionally NOT re-exported here. `RateLimitOptions` is
+// re-exported because the test suite imports it for fast-retry overrides.
 export type { RateLimitOptions } from '../http-client.js'
 
 /** OSM element types the Overpass API addresses. */

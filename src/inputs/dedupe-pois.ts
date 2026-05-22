@@ -18,8 +18,15 @@ import type { PoiSummary } from '../shared/types.js'
 /** The fixed base source. Non-base POIs dedupe against ActiveCaptain POIs. */
 export const BASE_SOURCE_ID = 'activecaptain'
 
-/** Default merge radius, in meters, when a caller does not specify one. */
-export const DEFAULT_DEDUPE_RADIUS_METERS = 50
+/**
+ * Default merge radius, in meters, when a caller does not specify one. Real
+ * ActiveCaptain-vs-OpenSeaMap placements of the same physical feature are
+ * routinely 80 to 250 meters apart, so the default is wide enough to catch
+ * those without merging genuinely separate neighbors. A caller (typically the
+ * input registry, reading the user's `openSeaMapDedupeRadiusMeters` setting)
+ * can tighten or loosen this.
+ */
+export const DEFAULT_DEDUPE_RADIUS_METERS = 150
 
 /** Meters per degree of latitude, used to project positions for the grid. */
 const METERS_PER_DEGREE = 111320
@@ -69,18 +76,19 @@ export function dedupeAgainstBase (
   const meanLatRad =
     (pois.reduce((sum, poi) => sum + poi.position.latitude, 0) / pois.length) * Math.PI / 180
   const lonScale = METERS_PER_DEGREE * Math.cos(meanLatRad)
-  const cellKey = (poi: PoiSummary): string => {
-    const x = Math.floor((poi.position.longitude * lonScale) / radiusMeters)
-    const y = Math.floor((poi.position.latitude * METERS_PER_DEGREE) / radiusMeters)
-    return `${x},${y}`
-  }
+  /** Project a POI to its grid cell on the shared scale. */
+  const cellCoords = (poi: PoiSummary): [number, number] => [
+    Math.floor((poi.position.longitude * lonScale) / radiusMeters),
+    Math.floor((poi.position.latitude * METERS_PER_DEGREE) / radiusMeters)
+  ]
 
   // Bucket the base POIs by grid cell, and seed each one's corroboration with
   // its own source and attribution.
   const grid = new Map<string, PoiSummary[]>()
   const corroboration = new Map<PoiSummary, Corroboration>()
   for (const base of basePois) {
-    const key = cellKey(base)
+    const [x, y] = cellCoords(base)
+    const key = `${x},${y}`
     const bucket = grid.get(key)
     if (bucket === undefined) {
       grid.set(key, [base])
@@ -92,8 +100,7 @@ export function dedupeAgainstBase (
 
   /** Find a base POI of the same type within radiusMeters of `poi`. */
   function baseMatch (poi: PoiSummary): PoiSummary | undefined {
-    const x = Math.floor((poi.position.longitude * lonScale) / radiusMeters)
-    const y = Math.floor((poi.position.latitude * METERS_PER_DEGREE) / radiusMeters)
+    const [x, y] = cellCoords(poi)
     for (let dx = -1; dx <= 1; dx += 1) {
       for (let dy = -1; dy <= 1; dy += 1) {
         const bucket = grid.get(`${x + dx},${y + dy}`)
@@ -137,9 +144,11 @@ export function dedupeAgainstBase (
   }
 
   // Emit the base POIs (always survivors) with their final corroboration, then
-  // the surviving non-base POIs.
+  // the surviving non-base POIs. Every base POI was seeded in the loop above,
+  // so corroboration.get(base) is always defined; the non-null assertion is
+  // safe and documents that invariant.
   const baseSurvivors = basePois.map((base): PoiSummary => {
-    const merged = corroboration.get(base) ?? { slugs: [base.source], attributions: [base.attribution] }
+    const merged = corroboration.get(base) as Corroboration
     return { ...base, sources: merged.slugs, attribution: merged.attributions.join('; ') }
   })
   return [...baseSurvivors, ...survivors]

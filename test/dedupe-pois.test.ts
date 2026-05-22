@@ -18,7 +18,7 @@ function poi (
   }
 }
 
-/** A latitude offset of about 20 m: well within the default 50 m radius. */
+/** A latitude offset of about 20 m: well within the default 150 m radius. */
 const NEAR = 0.00018
 /** A latitude offset of about 5 km: well outside the merge radius. */
 const FAR = 0.045
@@ -85,11 +85,13 @@ test('with no base POI present every POI passes through unmerged', () => {
   assert.equal(result.length, 2, 'with no base layer there is nothing to merge against')
 })
 
-test('dedupeAgainstBase defaults to a 50 m merge radius', () => {
+test('dedupeAgainstBase defaults to a 150 m merge radius', () => {
   const base = poi('1', BASE_SOURCE_ID, 'Marina', 10, 20)
-  const osm = poi('node/9', 'openseamap', 'Marina', 10 + NEAR, 20)
+  // A ~110 m gap is inside the new 150 m default but outside the old 50 m one;
+  // a hit here proves the default bump took effect.
+  const osm = poi('node/9', 'openseamap', 'Marina', 10 + 0.001, 20)
   const result = dedupeAgainstBase([base, osm], new Set(['openseamap']))
-  assert.equal(result.length, 1, 'a ~20 m gap is within the default radius')
+  assert.equal(result.length, 1, 'a ~110 m gap is within the default 150 m radius')
 })
 
 test('a base POI with no co-located duplicate keeps just its own source', () => {

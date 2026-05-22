@@ -2,9 +2,20 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createOpenSeaMapSource } from '../src/inputs/openseamap/openseamap-source.js'
 import type { OverpassClient, OverpassElement } from '../src/inputs/openseamap/overpass-client.js'
+import type { PluginStatus } from '../src/status/plugin-status.js'
 import type { Bbox } from '../src/shared/types.js'
 
 const sampleBbox: Bbox = { north: 1, south: 0, east: 1, west: 0 }
+
+/** A no-op status recorder, used by source tests that do not inspect status. */
+function silentStatus (): PluginStatus {
+  return {
+    recordListFetch: () => {},
+    recordDetailSuccess: () => {},
+    recordError: () => {},
+    snapshot: () => ({}) as never
+  }
+}
 
 const rockNode: OverpassElement = {
   type: 'node',
@@ -39,7 +50,7 @@ function fakeClient (overrides: Partial<OverpassClient> = {}): {
 }
 
 test('listPointsOfInterest maps elements to source-tagged summaries', async () => {
-  const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'] })
+  const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'], status: silentStatus() })
   const list = await source.listPointsOfInterest(sampleBbox, '')
   assert.equal(source.id, 'openseamap')
   assert.deepEqual(list, [
@@ -67,7 +78,7 @@ test('listPointsOfInterest maps elements to source-tagged summaries', async () =
 
 test('getDetails serves a listed element from cache without a by-id query', async () => {
   const { client, getByIdCalls } = fakeClient()
-  const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'] })
+  const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status: silentStatus() })
   await source.listPointsOfInterest(sampleBbox, '')
   const view = await source.getDetails('node/123')
   assert.equal(view.name, 'Big Rock')
@@ -84,7 +95,7 @@ test('getDetails serves a listed element from cache without a by-id query', asyn
 
 test('getDetails queries the client by id on a cache miss', async () => {
   const { client, getByIdCalls } = fakeClient()
-  const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'] })
+  const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status: silentStatus() })
   const view = await source.getDetails('node/123')
   assert.equal(view.name, 'Big Rock')
   assert.equal(getByIdCalls(), 1, 'a cache miss falls through to a by-id query')
@@ -95,15 +106,47 @@ test('getDetails rejects when the element no longer exists', async () => {
   const { client } = fakeClient({
     getById: async (): Promise<OverpassElement | undefined> => undefined
   })
-  const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'] })
+  const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status: silentStatus() })
   await assert.rejects(() => source.getDetails('node/999'), /No OpenSeaMap element found/)
   source.close()
 })
 
 test('cacheSize reflects the elements stashed from a list query', async () => {
-  const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'] })
+  const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'], status: silentStatus() })
   assert.equal(source.cacheSize(), 0)
   await source.listPointsOfInterest(sampleBbox, '')
   assert.equal(source.cacheSize(), 2)
+  source.close()
+})
+
+test('getDetails records a per-source detail success on the status recorder', async () => {
+  const successes: string[] = []
+  const status: PluginStatus = {
+    ...silentStatus(),
+    recordDetailSuccess: (source) => successes.push(source)
+  }
+  const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'], status })
+  await source.listPointsOfInterest(sampleBbox, '')
+  await source.getDetails('node/123')
+  assert.deepEqual(successes, ['openseamap'])
+  source.close()
+})
+
+test('getDetails records a per-source detail error when the client rejects', async () => {
+  const errors: Array<{ source: string, message: string }> = []
+  const status: PluginStatus = {
+    ...silentStatus(),
+    recordError: (source, message) => errors.push({ source, message })
+  }
+  const { client } = fakeClient({
+    getById: async (): Promise<OverpassElement | undefined> => {
+      throw new Error('overpass down')
+    }
+  })
+  const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status })
+  await assert.rejects(() => source.getDetails('node/999'))
+  assert.equal(errors.length, 1)
+  assert.equal(errors[0].source, 'openseamap')
+  assert.match(errors[0].message, /overpass down/)
   source.close()
 })

@@ -10,11 +10,35 @@ test('isEnabled tracks the openSeaMapEnabled toggle', () => {
   assert.equal(openSeaMapInput.isEnabled({ openSeaMapEnabled: true } as PluginConfig), true)
 })
 
-test('the config fragment carries the enable, endpoint, seamark-group, and dedupe keys', () => {
+test('the config fragment carries the enable, endpoint, seamark-group, dedupe, and radius keys', () => {
   const keys = Object.keys(openSeaMapInput.configSchema)
   assert.deepEqual(keys, [
-    'openSeaMapEnabled', 'openSeaMapEndpoint', 'openSeaMapSeamarkGroups', 'openSeaMapDedupe'
+    'openSeaMapEnabled',
+    'openSeaMapEndpoint',
+    'openSeaMapSeamarkGroups',
+    'openSeaMapDedupe',
+    'openSeaMapDedupeRadiusMeters'
   ])
+})
+
+test('the seamark-groups schema enum and default are derived from the shared id list', () => {
+  const field = openSeaMapInput.configSchema.openSeaMapSeamarkGroups as {
+    items: { enum: string[] }
+    default: string[]
+  }
+  assert.deepEqual(field.items.enum, ['hazards', 'navaids', 'harbours', 'infrastructure'])
+  assert.deepEqual(field.default, ['hazards', 'navaids', 'harbours', 'infrastructure'])
+})
+
+test('the dedupe-radius schema field defaults to 150 m and enforces a positive minimum', () => {
+  const field = openSeaMapInput.configSchema.openSeaMapDedupeRadiusMeters as {
+    type: string
+    default: number
+    minimum: number
+  }
+  assert.equal(field.type, 'number')
+  assert.equal(field.default, 150)
+  assert.equal(field.minimum, 1)
 })
 
 test('isDedupeEnabled defaults on and only an explicit false turns it off', () => {

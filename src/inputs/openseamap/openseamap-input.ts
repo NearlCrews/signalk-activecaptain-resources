@@ -10,17 +10,15 @@
 
 import { createOverpassClient } from './overpass-client.js'
 import { createOpenSeaMapSource, OPENSEAMAP_SOURCE_ID } from './openseamap-source.js'
-import { SEAMARK_GROUPS } from './seamark-mapping.js'
+import { DEFAULT_DEDUPE_RADIUS_METERS } from '../dedupe-pois.js'
 import type { InputContext, InputModule } from '../poi-source.js'
+import { SEAMARK_GROUP_IDS } from '../../shared/seamark-groups.js'
 import type { PluginConfig } from '../../shared/types.js'
 
 /** Default Overpass interpreter URL when configuration omits one. */
 const DEFAULT_ENDPOINT = 'https://overpass-api.de/api/interpreter'
 
-/** Every seamark group id, the default selection and the only valid values. */
-const ALL_GROUP_IDS = SEAMARK_GROUPS.map((group) => group.id)
-
-/** The enable, endpoint, and seamark-group config fragment. */
+/** The enable, endpoint, seamark-group, dedupe, and radius config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
   openSeaMapEnabled: {
     type: 'boolean',
@@ -35,25 +33,35 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   openSeaMapSeamarkGroups: {
     type: 'array',
     title: 'OpenSeaMap feature groups to import',
-    items: { type: 'string', enum: ['hazards', 'navaids', 'harbours', 'infrastructure'] },
-    default: ['hazards', 'navaids', 'harbours', 'infrastructure']
+    items: { type: 'string', enum: [...SEAMARK_GROUP_IDS] },
+    default: [...SEAMARK_GROUP_IDS]
   },
   openSeaMapDedupe: {
     type: 'boolean',
     title: 'Merge OpenSeaMap points of interest that duplicate an ActiveCaptain marker',
     default: true
+  },
+  openSeaMapDedupeRadiusMeters: {
+    type: 'number',
+    title: 'Merge radius for OpenSeaMap points of interest, in meters',
+    default: DEFAULT_DEDUPE_RADIUS_METERS,
+    minimum: 1
   }
 }
 
 /** Resolve the Overpass endpoint from raw config, applying the default. */
 function resolveEndpoint (raw: unknown): string {
-  return typeof raw === 'string' && raw.trim().length > 0 ? raw : DEFAULT_ENDPOINT
+  if (typeof raw !== 'string') {
+    return DEFAULT_ENDPOINT
+  }
+  const trimmed = raw.trim()
+  return trimmed.length > 0 ? trimmed : DEFAULT_ENDPOINT
 }
 
 /** Resolve the seamark groups from raw config, applying the all-groups default. */
 function resolveSeamarkGroups (raw: unknown): string[] {
   if (!Array.isArray(raw)) {
-    return [...ALL_GROUP_IDS]
+    return [...SEAMARK_GROUP_IDS]
   }
   return raw.filter((group): group is string => typeof group === 'string')
 }
@@ -68,10 +76,11 @@ export const openSeaMapInput: InputModule = {
   // an ActiveCaptain marker. Only an explicit false turns it off.
   isDedupeEnabled: (config: PluginConfig) => config.openSeaMapDedupe !== false,
   createSource: (context: InputContext) => {
-    const { app, config } = context
+    const { app, config, status } = context
     return createOpenSeaMapSource({
       client: createOverpassClient(resolveEndpoint(config.openSeaMapEndpoint), app),
-      seamarkGroups: resolveSeamarkGroups(config.openSeaMapSeamarkGroups)
+      seamarkGroups: resolveSeamarkGroups(config.openSeaMapSeamarkGroups),
+      status
     })
   }
 }

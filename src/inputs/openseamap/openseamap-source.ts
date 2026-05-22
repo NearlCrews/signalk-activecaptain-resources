@@ -19,6 +19,7 @@ import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
 import { MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
 import type { Bbox, PoiDetailView, PoiSummary, PoiType } from '../../shared/types.js'
+import type { PluginStatus } from '../../status/plugin-status.js'
 
 /** The stable id of the OpenSeaMap source. */
 export const OPENSEAMAP_SOURCE_ID = 'openseamap'
@@ -39,6 +40,12 @@ export interface OpenSeaMapSourceConfig {
   client: OverpassClient
   /** The seamark groups to fetch, as configured by the user. */
   seamarkGroups: readonly string[]
+  /**
+   * Status recorder for per-source detail outcomes. Mirrors the ActiveCaptain
+   * source's status wiring so the snapshot reflects OpenSeaMap detail fetches
+   * alongside its list fetches.
+   */
+  status: PluginStatus
 }
 
 /** The typed OSM id for an element, e.g. `node/123`. */
@@ -106,7 +113,7 @@ function toSummary (element: OverpassElement): PoiSummary {
 
 /** Create the OpenSeaMap POI source. */
 export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSource {
-  const { client, seamarkGroups } = config
+  const { client, seamarkGroups, status } = config
 
   // The seamark filter is fixed for the life of the source: the configured
   // groups do not change without a plugin restart.
@@ -118,6 +125,11 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
 
   return {
     id: OPENSEAMAP_SOURCE_ID,
+    // The `PoiSource.listPointsOfInterest` contract takes a comma-separated
+    // `poiTypes` filter, but OpenSeaMap filters by configured seamark groups
+    // instead: the Overpass query is built from `regex`, which the source
+    // closes over. The `poiTypes` argument is therefore intentionally ignored
+    // for this source.
     listPointsOfInterest: async (bbox: Bbox): Promise<PoiSummary[]> => {
       const elements = await client.listPointsOfInterest(bbox, regex)
       return elements.map((element) => {
@@ -126,12 +138,20 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
       })
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
-      const element = cache.get(id) ?? await client.getById(id)
-      if (element === undefined) {
-        throw new Error(`No OpenSeaMap element found for "${id}"`)
+      try {
+        const element = cache.get(id) ?? await client.getById(id)
+        if (element === undefined) {
+          throw new Error(`No OpenSeaMap element found for "${id}"`)
+        }
+        cache.set(id, element)
+        const view = toDetailView(element)
+        status.recordDetailSuccess(OPENSEAMAP_SOURCE_ID)
+        return view
+      } catch (error) {
+        status.recordError(
+          OPENSEAMAP_SOURCE_ID, `Detail request failed: ${String(error)}`)
+        throw error
       }
-      cache.set(id, element)
-      return toDetailView(element)
     },
     cacheSize: () => cache.size,
     close: () => { client.close() }
