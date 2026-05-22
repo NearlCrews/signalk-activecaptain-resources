@@ -37,12 +37,16 @@ test('startEnabled starts only enabled modules', () => {
   assert.equal(handles.length, 1)
 })
 
-test('startEnabled isolates a failing module start', () => {
+test('startEnabled isolates a failing module start and logs it', () => {
+  const errors: string[] = []
   const registry = createOutputRegistry([
     { ...stubModule('a', true, () => {}), start: () => { throw new Error('boom') } },
     stubModule('b', true, () => {})
   ])
   const handles = registry.startEnabled(
-    { app: { error: () => {} }, config: {}, pois: {}, status: {} } as never)
-  assert.equal(handles.length, 1)
+    { app: { error: (message: string) => errors.push(message) }, config: {}, pois: {}, status: {} } as never)
+  assert.equal(handles.length, 1, 'the surviving module still starts')
+  assert.equal(errors.length, 1, 'the failing start is logged via app.error')
+  assert.match(errors[0], /Cannot start output a/, 'the log names the failing module')
+  assert.match(errors[0], /boom/, 'the log carries the underlying error')
 })

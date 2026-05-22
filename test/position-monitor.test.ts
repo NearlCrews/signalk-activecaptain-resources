@@ -228,6 +228,54 @@ test('does not start an overlapping tick while a scan is in flight, then ticks o
   monitor.stop()
 })
 
+test('runs a deferred tick once the in-flight scan resolves', async () => {
+  const mockApp = createMockApp()
+  const scan = createMockContributor(['Hazard'], SCAN_BOX)
+  const clock = createClock()
+
+  // A client whose list request resolves only when the test releases it, so
+  // the deferred-tick path can be exercised deterministically.
+  const calls: Array<{ bbox: Bbox, poiTypes: string }> = []
+  let release: ((pois: PoiSummary[]) => void) | undefined
+  const client: PoiListSource = {
+    listPointsOfInterest: async (bbox, poiTypes) => {
+      calls.push({ bbox, poiTypes })
+      return await new Promise<PoiSummary[]>((resolve) => { release = resolve })
+    }
+  }
+
+  const monitor = createPositionMonitor({
+    app: mockApp.app,
+    client,
+    contributors: [scan.contributor],
+    poiTypes: 'Hazard',
+    minIntervalMs: 60_000,
+    now: clock.now
+  })
+
+  // The first fix starts a scan that is now in flight.
+  mockApp.emit({ latitude: 10, longitude: 20 })
+  await flush()
+  assert.equal(calls.length, 1, 'the first tick starts a scan')
+
+  // A fix arrives mid-scan, past both throttle gates. It cannot start an
+  // overlapping scan, so the monitor defers it.
+  clock.advance(120_000)
+  mockApp.emit({ latitude: 10.05, longitude: 20 })
+  await flush()
+  assert.equal(calls.length, 1, 'the in-flight scan blocks an overlapping request')
+
+  // Resolve the first scan. Its finally block calls maybeTick(), which runs
+  // the deferred tick for the fix that arrived while the scan was in flight.
+  release?.([])
+  await flush()
+  assert.equal(calls.length, 2, 'the deferred tick runs once the in-flight scan resolves')
+  assert.deepEqual(calls[1].bbox, SCAN_BOX, 'the deferred tick issues its own list request')
+  assert.equal(scan.evaluations().length, 1, 'the resolved scan evaluated the contributor')
+
+  monitor.stop()
+})
+
 test('unions every contributor fetch box into one list request', async () => {
   const mockApp = createMockApp()
   const mockClient = createMockClient()
