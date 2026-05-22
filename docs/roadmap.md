@@ -1,6 +1,6 @@
 # Enhancement roadmap
 
-Enhancement opportunities for signalk-activecaptain-resources beyond the
+Enhancement opportunities for signalk-crows-nest beyond the
 original scope ("import ActiveCaptain points of interest as `notes` resources
 for chart display"). Produced by a four-expert review on 2026-05-22.
 

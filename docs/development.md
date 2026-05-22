@@ -9,8 +9,8 @@
 ## Setup
 
 ```bash
-git clone https://github.com/KvotheBloodless/signalk-activecaptain-resources.git
-cd signalk-activecaptain-resources
+git clone https://github.com/NearlCrews/signalk-crows-nest.git
+cd signalk-crows-nest
 npm install
 ```
 

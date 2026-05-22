@@ -1,27 +1,3 @@
-/*
- * MIT License
- *
- * Copyright (c) 2024 Paul Willems <paul.willems@gmail.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 /**
  * SignalK plugin entrypoint.
  *
@@ -58,9 +34,9 @@ import { filterByRating } from './ratingFilter.js'
 import { resolveBbox } from './resourceQuery.js'
 import type { PluginConfig, PoiSummary, Position } from './types.js'
 
-const PLUGIN_NAME = 'Garmin Active Captain Resources'
+const PLUGIN_NAME = "Crow's Nest"
 const PLUGIN_DESCRIPTION =
-  'Provides points of interest from Garmin Active Captain API as SignalK resources'
+  'Imports Garmin ActiveCaptain points of interest as SignalK resources, with proximity and route-corridor hazard alarms'
 
 /** The SignalK resource type this plugin provides. */
 const RESOURCE_TYPE = 'notes'
@@ -97,7 +73,7 @@ const ROUTE_SCAN_POI_TYPES = ['Hazard', 'Bridge', 'Lock'] as const
 const OPEN_API = {
   openapi: '3.0.0',
   info: {
-    title: 'Garmin Active Captain Resources plugin API',
+    title: "Crow's Nest plugin API",
     version: '1.0.0',
     description: 'Internal status API consumed by the plugin configuration panel.'
   },

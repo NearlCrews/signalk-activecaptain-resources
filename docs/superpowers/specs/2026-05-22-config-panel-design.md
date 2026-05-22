@@ -1,4 +1,4 @@
-# Config UI for signalk-activecaptain-resources
+# Config UI for signalk-crows-nest
 
 **Status:** Approved. Ready for implementation.
 
@@ -73,7 +73,7 @@ Existing files that change:
 
 ## 5. Status API
 
-The plugin gains `registerWithRouter`, mounting one endpoint under `/plugins/signalk-activecaptain-resources/`:
+The plugin gains `registerWithRouter`, mounting one endpoint under `/plugins/signalk-crows-nest/`:
 
 ```
 GET /api/status  ->  StatusSnapshot
@@ -91,7 +91,7 @@ export interface StatusSnapshot {
 }
 ```
 
-The endpoint is admin-gated with `app.securityStrategy.addAdminMiddleware('/plugins/signalk-activecaptain-resources/api')`, matching the emitter cannon panel. Plugin routers receive no auth by default; without this gate the endpoint would be reachable by anyone on the admin port. The panel runs inside the admin's authenticated session, so the gate is transparent to legitimate use.
+The endpoint is admin-gated with `app.securityStrategy.addAdminMiddleware('/plugins/signalk-crows-nest/api')`, matching the emitter cannon panel. Plugin routers receive no auth by default; without this gate the endpoint would be reachable by anyone on the admin port. The panel runs inside the admin's authenticated session, so the gate is transparent to legitimate use.
 
 `src/pluginStatus.ts` exposes `createPluginStatus()` returning a `PluginStatus` with `recordListFetch(poiCount)`, `recordDetailSuccess()`, `recordError(message)`, and `snapshot(cachedPoiCount)`. `apiReachable` is derived passively from the last request outcome: no extra Garmin traffic, consistent with the API research in `docs/garmin-api.md`. `index.ts` calls these around the existing `listPointsOfInterest` and `cache.get` calls; the cache reports its own entry count through the new `poiCache.size()`.
 
@@ -109,7 +109,7 @@ PluginConfigurationPanel
 
 State: a single `useReducer` at the panel root over the existing `PluginConfig` shape. The reducer (`configReducer.ts`) is a pure function, exported and unit-tested. Actions: `setCacheDuration`, `setPoiType`, `setAllPoiTypes`, `discard`. Dirty is an identity check against the last-saved snapshot. `save(state)` runs only on an explicit Save click.
 
-`useStatus` polls `GET /plugins/signalk-activecaptain-resources/api/status` every 5 seconds, paused when `document.hidden`, and surfaces a non-fatal error banner if a poll fails.
+`useStatus` polls `GET /plugins/signalk-crows-nest/api/status` every 5 seconds, paused when `document.hidden`, and surfaces a non-fatal error banner if a poll fails.
 
 The four POI-type groups (`poiTypeGroups.ts`):
 

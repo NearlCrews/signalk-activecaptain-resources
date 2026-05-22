@@ -1,6 +1,6 @@
 {
-  "name": "signalk-activecaptain-resources",
-  "version": "1.4.0",
+  "name": "signalk-crows-nest",
+  "version": "0.4.0",
   "description": "Provides points of interest from Garmin Active Captain API as SignalK resources",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,21 +27,26 @@
   ],
   "signalk-plugin-enabled-by-default": false,
   "signalk": {
-    "displayName": "Garmin Active Captain Resources"
+    "displayName": "Crow's Nest"
   },
   "engines": {
     "node": ">=20"
   },
-  "author": "Paul Willems",
+  "author": {
+    "name": "Nearl Crews",
+    "email": "NearlCrews@users.noreply.github.com"
+  },
+  "contributors": [
+    "Paul Willems (original author of signalk-activecaptain-resources)"
+  ],
   "license": "MIT",
-  "homepage": "https://github.com/KvotheBloodless/signalk-activecaptain-resources",
+  "homepage": "https://github.com/NearlCrews/signalk-crows-nest#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KvotheBloodless/signalk-activecaptain-resources.git"
+    "url": "git+https://github.com/NearlCrews/signalk-crows-nest.git"
   },
   "bugs": {
-    "url": "https://github.com/KvotheBloodless/signalk-activecaptain-resources/issues",
-    "email": "paul.willems@gmail.com"
+    "url": "https://github.com/NearlCrews/signalk-crows-nest/issues"
   },
   "dependencies": {
     "handlebars": "^4.7.9",

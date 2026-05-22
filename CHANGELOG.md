@@ -1,8 +1,8 @@
 ## Change Log
 
-<a id="v140"></a>
+<a id="v040"></a>
 
-### v1.4.0 (2026/05/22) - route-corridor hazard scan
+### v0.4.0 (2026/05/22) - route-corridor hazard scan
 
 **The plugin can now scan the active route ahead and warn about hazards,
 bridges, and locks along it.**
@@ -28,9 +28,9 @@ bridges, and locks along it.**
   ActiveCaptain API starts returning clustered results, is picked up on a
   later tick as the window slides forward.
 
-<a id="v130"></a>
+<a id="v030"></a>
 
-### v1.3.0 (2026/05/22) - position-aware safety
+### v0.3.0 (2026/05/22) - position-aware safety
 
 **The plugin gains a position-aware safety feature set: proximity hazard alarms, an offline cache, a rating filter, and stale-hazard warnings.**
 
@@ -63,9 +63,9 @@ bridges, and locks along it.**
 - A Hazard point of interest whose report has not been confirmed in over two
   years now carries a prominent freshness warning in its description.
 
-<a id="v120"></a>
+<a id="v020"></a>
 
-### v1.2.0 (2026/05/21) - TypeScript rewrite, modern toolchain, and a React configuration panel
+### v0.2.0 (2026/05/21) - TypeScript rewrite, modern toolchain, and a React configuration panel
 
 **The plugin has been rewritten in TypeScript, its toolchain modernized, covered with an automated test suite, and given a dedicated React configuration panel.**
 

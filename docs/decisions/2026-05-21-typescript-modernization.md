@@ -1,4 +1,4 @@
-# TypeScript modernization of signalk-activecaptain-resources
+# TypeScript modernization of signalk-crows-nest
 
 **Status:** Accepted. Implemented for v1.2.0.
 

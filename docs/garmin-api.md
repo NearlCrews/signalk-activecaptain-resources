@@ -1,6 +1,6 @@
 # Garmin ActiveCaptain API
 
-Research notes for the `signalk-activecaptain-resources` plugin. Probed on 2026-05-21.
+Research notes for the `signalk-crows-nest` plugin. Probed on 2026-05-21.
 
 This plugin imports points of interest (POIs) from Garmin ActiveCaptain and exposes
 them as Signal K `notes` resources. There are two distinct APIs in play:

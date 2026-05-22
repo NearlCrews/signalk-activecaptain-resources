@@ -20,8 +20,8 @@ discover a security vulnerability, please follow these guidelines.
 
 Instead, please report them via one of these methods:
 
-1. **GitHub Security Advisory**: Use the [GitHub Security Advisory](https://github.com/KvotheBloodless/signalk-activecaptain-resources/security/advisories/new) feature (preferred).
-2. **GitHub Issues**: For non-sensitive security concerns, open an [issue](https://github.com/KvotheBloodless/signalk-activecaptain-resources/issues).
+1. **GitHub Security Advisory**: Use the [GitHub Security Advisory](https://github.com/NearlCrews/signalk-crows-nest/security/advisories/new) feature (preferred).
+2. **GitHub Issues**: For non-sensitive security concerns, open an [issue](https://github.com/NearlCrews/signalk-crows-nest/issues).
 
 ### What to Include
 

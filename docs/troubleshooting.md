@@ -18,11 +18,11 @@
 ## Enabling debug logging
 
 The plugin logs through `app.debug`. Turn it on in the Signal K admin UI under
-Server -> Server Log by adding `signalk-activecaptain-resources` to the debug
+Server -> Server Log by adding `signalk-crows-nest` to the debug
 field, or set the `DEBUG` environment variable before starting the server:
 
 ```bash
-DEBUG=signalk-activecaptain-resources signalk-server
+DEBUG=signalk-crows-nest signalk-server
 ```
 
 With debug on you will see the resolved caching window, the `poiTypes` string,

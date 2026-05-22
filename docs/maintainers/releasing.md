@@ -1,6 +1,6 @@
 # Releasing
 
-Maintainer reference for cutting a release of `signalk-activecaptain-resources`.
+Maintainer reference for cutting a release of `signalk-crows-nest`.
 
 ## Process
 

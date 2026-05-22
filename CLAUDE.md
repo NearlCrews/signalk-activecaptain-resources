@@ -4,7 +4,7 @@ Guidance for Claude Code (and contributors) working in this repository.
 
 ## What this is
 
-`signalk-activecaptain-resources` is a single [Signal K server](https://github.com/SignalK/signalk-server)
+`signalk-crows-nest` is a single [Signal K server](https://github.com/SignalK/signalk-server)
 plugin. It imports points of interest from the Garmin ActiveCaptain API and
 exposes them as Signal K `notes` resources so chart plotters such as
 Freeboard-SK can display them.

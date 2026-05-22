@@ -8,8 +8,8 @@ All contributors, maintainers, and participants are expected to follow it in eve
 
 Reports of unacceptable behavior may be sent to the maintainer via GitHub:
 
-- Open a [private security advisory](https://github.com/KvotheBloodless/signalk-activecaptain-resources/security/advisories/new) (works for any sensitive report, not only security issues), or
-- Contact the maintainer directly through their GitHub profile: [@KvotheBloodless](https://github.com/KvotheBloodless).
+- Open a [private security advisory](https://github.com/NearlCrews/signalk-crows-nest/security/advisories/new) (works for any sensitive report, not only security issues), or
+- Contact the maintainer directly through their GitHub profile: [@NearlCrews](https://github.com/NearlCrews).
 
 All reports will be reviewed and investigated promptly and fairly. The maintainer is obligated to respect the privacy and security of the reporter.
 

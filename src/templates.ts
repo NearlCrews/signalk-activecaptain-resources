@@ -1,33 +1,9 @@
-/*
- * MIT License
- *
- * Copyright (c) 2024 Paul Willems <paul.willems@gmail.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 /**
  * Handlebars template and partial sources for the
- * signalk-activecaptain-resources plugin.
+ * signalk-crows-nest plugin.
  *
  * These were previously loaded at runtime from `.hbs` and `.hbsp` files via a
- * hardcoded `./node_modules/signalk-activecaptain-resources/plugin/...` path.
+ * hardcoded `./node_modules/signalk-crows-nest/plugin/...` path.
  * That path broke whenever the working directory or the install location
  * differed from the assumed layout. The sources are now inlined here as plain
  * string constants so rendering never touches the filesystem.
@@ -87,7 +63,7 @@ export const HEADER_PARTIAL = `<hr/>
 
 /** Footer partial: data attribution and the contribute link. */
 export const FOOTER_PARTIAL = `<hr/>
-<sup>Data sourced from <a href="https://activecaptain.garmin.com/">Garmin Active Captain</a> via the <a href="https://github.com/KvotheBloodless/signalk-activecaptain-resources/">signalk-activecaptain-resources plugin</a>.</sup><br/>
+<sup>Data sourced from <a href="https://activecaptain.garmin.com/">Garmin Active Captain</a> via the <a href="https://github.com/NearlCrews/signalk-crows-nest/">signalk-crows-nest plugin</a>.</sup><br/>
 <sub>Something missing or room for improvement?</sub><br/>
 <sup>You are encouraged to <a href="https://activecaptain.garmin.com/en-US/pois/{{id}}">contribute</a>.</sup><br/>`
 
