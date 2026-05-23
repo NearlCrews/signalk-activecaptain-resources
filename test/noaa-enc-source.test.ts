@@ -189,6 +189,84 @@ test('listPointsOfInterest records a per-layer error when one layer query fails'
   assert.ok(events.some(e => e.startsWith(`error:${NOAA_ENC_SOURCE_ID}`)))
 })
 
+test('listPointsOfInterest rejects when every enabled layer query fails', async () => {
+  // A total upstream outage must surface as a source-level rejection so the
+  // aggregate registry's "any source succeeded" check trips and apiReachable
+  // is NOT flipped to true via recordListFetch(0).
+  const client: FakeClient = {
+    queryLayer: async () => { throw new Error('upstream 500') },
+    queryById: async () => undefined
+  }
+  const { events, status } = fakeStatus()
+  const source = createNoaaEncSource({
+    client: client as never,
+    band: 'coastal',
+    includeWrecks: true,
+    includeObstructions: true,
+    includeRocks: false,
+    status: status as never,
+    getCurrentPosition: () => undefined
+  })
+  await assert.rejects(
+    () => source.listPointsOfInterest({ south: 41, west: -72, north: 43, east: -70 }, ''),
+    /Every enabled NOAA ENC layer query failed/
+  )
+  // Per-layer errors were still recorded; only the aggregate-success path
+  // changes when every layer fails.
+  const errorEvents = events.filter(e => e.startsWith(`error:${NOAA_ENC_SOURCE_ID}`))
+  assert.equal(errorEvents.length, 2, 'each failed layer recorded its own error')
+})
+
+test('getDetails does NOT record detail success on a cache hit (apiReachable stays as-is)', async () => {
+  // A cache hit is not evidence of upstream reachability: a stale
+  // apiReachable=false must not flip to true purely because the user
+  // clicked a previously loaded marker.
+  const client: FakeClient = {
+    queryLayer: async () => ({ features: [namedWreck] }),
+    queryById: async () => namedWreck
+  }
+  const { events, status } = fakeStatus()
+  const source = createNoaaEncSource({
+    client: client as never,
+    band: 'coastal',
+    includeWrecks: true,
+    includeObstructions: false,
+    includeRocks: false,
+    status: status as never,
+    getCurrentPosition: () => undefined
+  })
+  await source.listPointsOfInterest(
+    { south: 41, west: -72, north: 43, east: -70 }, '')
+  events.length = 0
+  await source.getDetails('wreck_12345')
+  assert.equal(
+    events.filter(e => e.startsWith('detail-ok')).length, 0,
+    'a cache hit must not record a detail success'
+  )
+})
+
+test('getDetails records detail success only on a cache miss that hits the upstream', async () => {
+  const client: FakeClient = {
+    queryLayer: async () => ({ features: [] }),
+    queryById: async () => namedWreck
+  }
+  const { events, status } = fakeStatus()
+  const source = createNoaaEncSource({
+    client: client as never,
+    band: 'coastal',
+    includeWrecks: true,
+    includeObstructions: false,
+    includeRocks: false,
+    status: status as never,
+    getCurrentPosition: () => undefined
+  })
+  await source.getDetails('wreck_99999')
+  assert.ok(
+    events.some(e => e === `detail-ok:${NOAA_ENC_SOURCE_ID}`),
+    'a network-fetched detail records a detail success'
+  )
+})
+
 test('getDetails serves from the cache on hit and never re-queries the upstream', async () => {
   let queryByIdCalls = 0
   const client: FakeClient = {

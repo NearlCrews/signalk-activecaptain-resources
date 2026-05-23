@@ -36,6 +36,24 @@ const DEFAULT_BASE_URL = 'https://gis.charttools.noaa.gov'
 /** ArcGIS' per-response cap. The client pages while the upstream signals more. */
 const PAGE_SIZE = 1000
 
+/**
+ * Upper bound on pagination passes per `queryLayer` call. The largest ENC
+ * layer observed live (coastal-band rocks) caps at ~43k features, eight pages
+ * below this bound. A misbehaving server that pins `exceededTransferLimit:
+ * true` forever (a CDN cache regression, a stuck cursor) would otherwise
+ * loop indefinitely and exhaust memory; the bound trips first and rejects
+ * with a clear error so the source records it and the caller backs off.
+ */
+const MAX_PAGES = 200
+
+/**
+ * Per-request timeout in milliseconds. A hung TCP connection (a silently
+ * dropped TLS handshake, a black-hole proxy) would otherwise block the next
+ * scan tick indefinitely. The shared `http-client.ts` already enforces this
+ * for the queued sources; this raw client mirrors the policy.
+ */
+const REQUEST_TIMEOUT_MS = 60_000
+
 export interface EncDirectClient {
   /** Bbox query against one (band, layerKey). Pages internally to completion. */
   queryLayer: (request: QueryRequest) => Promise<{ features: EncFeature[] }>
@@ -83,6 +101,11 @@ function fetchJson (url: string, headers: Record<string, string>): Promise<unkno
           reject(error instanceof Error ? error : new Error(String(error)))
         }
       })
+    })
+    // A silently dropped connection (no FIN, no RST) would otherwise hang
+    // forever; the explicit timeout aborts and rejects the request.
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      req.destroy(new Error(`ENC Direct request timed out after ${REQUEST_TIMEOUT_MS} ms: ${url}`))
     })
     req.on('error', reject)
     req.end()
@@ -135,15 +158,22 @@ export function createEncDirectClient (
       const layerId = LAYER_IDS_BY_BAND[band][layerKey]
       const all: EncFeature[] = []
       let offset = 0
-      while (true) {
+      // Bounded pagination loop: a misbehaving server pinning
+      // exceededTransferLimit forever would otherwise loop indefinitely.
+      for (let page = 0; page < MAX_PAGES; page++) {
         const url = buildBboxUrl(baseUrl, band, layerId, bbox, offset)
         const json = await fetchJson(url, headers) as ArcGisFeatureCollection
-        const page = json.features ?? []
-        for (const feature of page) all.push(feature)
-        if (json.exceededTransferLimit !== true || page.length === 0) break
-        offset += page.length
+        const features = json.features ?? []
+        for (const feature of features) all.push(feature)
+        if (json.exceededTransferLimit !== true || features.length === 0) {
+          return { features: all }
+        }
+        offset += features.length
       }
-      return { features: all }
+      throw new Error(
+        `ENC Direct pagination exceeded ${MAX_PAGES} pages for ${band}/${layerKey}; ` +
+        'the upstream may be pinning exceededTransferLimit incorrectly'
+      )
     },
     async queryById ({ band, layerKey, objectId }) {
       const layerId = LAYER_IDS_BY_BAND[band][layerKey]

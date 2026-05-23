@@ -173,6 +173,12 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
         return []
       }
       const layers = enabledLayers(config)
+      // No enabled layers is a configured-empty list, not a failure: return
+      // empty so the aggregate sees a fulfilled empty result and the source
+      // is correctly reachable.
+      if (layers.length === 0) {
+        return []
+      }
       const results = await Promise.allSettled(
         layers.map(async (layerKey) => {
           const response = await client.queryLayer({ band, layerKey, bbox })
@@ -180,14 +186,18 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
         })
       )
       const summaries: PoiSummary[] = []
+      let anyLayerOk = false
+      let firstRejection: unknown
       for (const result of results) {
         if (result.status === 'rejected') {
           status.recordError(
             NOAA_ENC_SOURCE_ID,
             `Layer query failed: ${String(result.reason)}`
           )
+          if (firstRejection === undefined) firstRejection = result.reason
           continue
         }
+        anyLayerOk = true
         const { layerKey, features } = result.value
         for (const feature of features) {
           const id = summaryId(layerKey, feature)
@@ -195,35 +205,48 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
           summaries.push(toSummary(layerKey, feature))
         }
       }
+      // If every enabled layer rejected, the source itself failed: reject
+      // rather than returning a fulfilled empty result, so the aggregate
+      // registry's "any source succeeded" check trips correctly and
+      // apiReachable is not flipped to true via recordListFetch(0).
+      if (!anyLayerOk) {
+        throw new Error(
+          `Every enabled NOAA ENC layer query failed: ${String(firstRejection)}`
+        )
+      }
       return summaries
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
-      let cached = cache.get(id)
-      if (cached === undefined) {
-        const parsed = parseSummaryId(id)
-        if (parsed === undefined) {
-          throw new Error(`Malformed NOAA ENC id "${id}"`)
-        }
-        try {
-          const feature = await client.queryById({
-            band, layerKey: parsed.layerKey, objectId: parsed.objectId
-          })
-          if (feature === undefined) {
-            throw new Error(`No NOAA ENC feature for "${id}"`)
-          }
-          cached = { layerKey: parsed.layerKey, feature }
-          cache.set(id, cached)
-        } catch (error) {
-          status.recordError(
-            NOAA_ENC_SOURCE_ID,
-            `Detail request failed: ${String(error)}`
-          )
-          throw error
-        }
+      const hit = cache.get(id)
+      if (hit !== undefined) {
+        // A cache hit is not evidence of upstream reachability: a stale
+        // apiReachable=false must not flip to true purely because the user
+        // clicked a previously loaded marker. Only a fresh network request
+        // updates the status row.
+        return toDetailView(hit)
       }
-      const view = toDetailView(cached)
-      status.recordDetailSuccess(NOAA_ENC_SOURCE_ID)
-      return view
+      const parsed = parseSummaryId(id)
+      if (parsed === undefined) {
+        throw new Error(`Malformed NOAA ENC id "${id}"`)
+      }
+      try {
+        const feature = await client.queryById({
+          band, layerKey: parsed.layerKey, objectId: parsed.objectId
+        })
+        if (feature === undefined) {
+          throw new Error(`No NOAA ENC feature for "${id}"`)
+        }
+        const cached = { layerKey: parsed.layerKey, feature }
+        cache.set(id, cached)
+        status.recordDetailSuccess(NOAA_ENC_SOURCE_ID)
+        return toDetailView(cached)
+      } catch (error) {
+        status.recordError(
+          NOAA_ENC_SOURCE_ID,
+          `Detail request failed: ${String(error)}`
+        )
+        throw error
+      }
     },
     cacheSize: () => cache.size,
     close: () => { cache.clear() }
