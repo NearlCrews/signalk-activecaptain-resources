@@ -261,3 +261,39 @@ test('normalizeConfig honors explicit NOAA ENC layer toggles', () => {
   assert.equal(config.noaaEncIncludeObstructions, false)
   assert.equal(config.noaaEncIncludeRocks, true)
 })
+
+test('normalizeConfig defaults every minimum-year filter to 0 (off)', () => {
+  const config = normalizeConfig({})
+  assert.equal(config.openSeaMapMinimumYear, 0)
+  assert.equal(config.uscgLightListMinimumUpdateYear, 0)
+  assert.equal(config.noaaEncMinimumSurveyYear, 0)
+})
+
+test('normalizeConfig accepts a positive integer minimum year and truncates fractions', () => {
+  const config = normalizeConfig({
+    openSeaMapMinimumYear: 2010,
+    uscgLightListMinimumUpdateYear: 2020.7,
+    noaaEncMinimumSurveyYear: 1990
+  })
+  assert.equal(config.openSeaMapMinimumYear, 2010)
+  assert.equal(config.uscgLightListMinimumUpdateYear, 2020, 'fractional values are truncated')
+  assert.equal(config.noaaEncMinimumSurveyYear, 1990)
+})
+
+test('normalizeConfig clamps an out-of-range minimum year', () => {
+  const negative = normalizeConfig({ noaaEncMinimumSurveyYear: -500 })
+  assert.equal(negative.noaaEncMinimumSurveyYear, 0)
+  const farFuture = normalizeConfig({ noaaEncMinimumSurveyYear: 99999 })
+  assert.equal(farFuture.noaaEncMinimumSurveyYear, 9999)
+})
+
+test('normalizeConfig falls back to 0 for non-numeric or non-finite minimum-year', () => {
+  const config = normalizeConfig({
+    openSeaMapMinimumYear: 'not a year',
+    uscgLightListMinimumUpdateYear: Number.POSITIVE_INFINITY,
+    noaaEncMinimumSurveyYear: Number.NaN
+  })
+  assert.equal(config.openSeaMapMinimumYear, 0)
+  assert.equal(config.uscgLightListMinimumUpdateYear, 0)
+  assert.equal(config.noaaEncMinimumSurveyYear, 0)
+})

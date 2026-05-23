@@ -9,9 +9,14 @@
 import type * as React from 'react'
 import type { Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
-import { DEFAULT_NOAA_ENC_SCALE_BAND, NOAA_ENC_SCALE_BANDS } from '../normalize-config.js'
+import {
+  DEFAULT_MINIMUM_YEAR,
+  DEFAULT_NOAA_ENC_SCALE_BAND,
+  NOAA_ENC_SCALE_BANDS
+} from '../normalize-config.js'
 import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
+import MinimumYearField from './MinimumYearField.js'
 
 /** Stable id linking the band selector's visible label to its `<select>`. */
 const BAND_FIELD_ID = 'ac-noaa-enc-scale-band'
@@ -44,6 +49,7 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
   const includeObstructions = state.noaaEncIncludeObstructions !== false
   const includeRocks = state.noaaEncIncludeRocks === true
   const band = state.noaaEncScaleBand ?? DEFAULT_NOAA_ENC_SCALE_BAND
+  const minimumSurveyYear = state.noaaEncMinimumSurveyYear ?? DEFAULT_MINIMUM_YEAR
 
   return (
     <>
@@ -122,6 +128,17 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
           </p>
         </fieldset>
       </section>
+      <MinimumYearField
+        id='ac-noaa-enc-minimum-survey-year'
+        label='Earliest survey year'
+        hint={'Hide features whose hydrographic survey was conducted before ' +
+          'this year. Leave at 0 to import every survey. SORDAT is the ' +
+          'survey date, not the chart refresh date, so a feature surveyed ' +
+          'in 1985 carries that year even though NOAA refreshes the chart ' +
+          'weekly. Features with no recorded survey date are always included.'}
+        value={minimumSurveyYear}
+        onChange={(year) => dispatch({ type: 'setNoaaEncMinimumSurveyYear', year })}
+      />
     </>
   )
 }

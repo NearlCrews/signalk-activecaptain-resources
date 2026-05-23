@@ -31,6 +31,9 @@ export type ConfigAction =
   | { type: 'setNoaaEncIncludeWrecks', enabled: boolean }
   | { type: 'setNoaaEncIncludeObstructions', enabled: boolean }
   | { type: 'setNoaaEncIncludeRocks', enabled: boolean }
+  | { type: 'setOpenSeaMapMinimumYear', year: number }
+  | { type: 'setUscgLightListMinimumUpdateYear', year: number }
+  | { type: 'setNoaaEncMinimumSurveyYear', year: number }
   | { type: 'discard', config: PluginConfig }
 
 /**
@@ -122,5 +125,14 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
     case 'setNoaaEncIncludeRocks':
       if (state.noaaEncIncludeRocks === action.enabled) return state
       return { ...state, noaaEncIncludeRocks: action.enabled }
+    case 'setOpenSeaMapMinimumYear':
+      if (state.openSeaMapMinimumYear === action.year) return state
+      return { ...state, openSeaMapMinimumYear: action.year }
+    case 'setUscgLightListMinimumUpdateYear':
+      if (state.uscgLightListMinimumUpdateYear === action.year) return state
+      return { ...state, uscgLightListMinimumUpdateYear: action.year }
+    case 'setNoaaEncMinimumSurveyYear':
+      if (state.noaaEncMinimumSurveyYear === action.year) return state
+      return { ...state, noaaEncMinimumSurveyYear: action.year }
   }
 }

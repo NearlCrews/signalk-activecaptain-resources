@@ -93,6 +93,7 @@ test('listPointsOfInterest filters by bbox and tags every summary with the sourc
     const source = createUscgLightListSource({
       client: fakeClient(),
       store,
+      minimumUpdateYear: 0,
       status,
       getCurrentPosition: () => undefined
     })
@@ -123,6 +124,7 @@ test('getDetails returns a fully rendered detail view with attribution', async (
     const source = createUscgLightListSource({
       client: fakeClient(),
       store,
+      minimumUpdateYear: 0,
       status,
       getCurrentPosition: () => undefined
     })
@@ -147,6 +149,7 @@ test('getDetails rejects for an unknown id', async () => {
     const source = createUscgLightListSource({
       client: fakeClient(),
       store,
+      minimumUpdateYear: 0,
       status,
       getCurrentPosition: () => undefined
     })
@@ -172,6 +175,7 @@ test('refreshAll skips outbound HTTP when the vessel is outside US waters', asyn
     const source = createUscgLightListSource({
       client,
       store,
+      minimumUpdateYear: 0,
       status,
       // Sydney Harbour, decidedly not US.
       getCurrentPosition: () => ({ latitude: -33.85, longitude: 151.22 })
@@ -200,6 +204,7 @@ test('refreshAll iterates every district page when the vessel is in US waters', 
     const source = createUscgLightListSource({
       client,
       store,
+      minimumUpdateYear: 0,
       status,
       // Boston Harbor.
       getCurrentPosition: () => ({ latitude: 42.36, longitude: -71.05 })
@@ -229,12 +234,113 @@ test('refreshAll records an error status when a district download fails', async 
     const source = createUscgLightListSource({
       client,
       store,
+      minimumUpdateYear: 0,
       status,
       // Boston Harbor.
       getCurrentPosition: () => ({ latitude: 42.36, longitude: -71.05 })
     })
     await source.refreshAll()
     assert.ok(events.some(event => event.startsWith(`error:${USCG_LIGHT_LIST_SOURCE_ID}`)))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('summary carries timestamp when the record has modifiedDate', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    loadOne(store, sampleRecord({ modifiedDate: '2020-06-15T00:00:00.000Z' }))
+    const { status } = fakeStatus()
+    const source = createUscgLightListSource({
+      client: fakeClient(),
+      store,
+      minimumUpdateYear: 0,
+      status,
+      getCurrentPosition: () => undefined
+    })
+    const summaries = await source.listPointsOfInterest(
+      { north: 50, south: 30, east: -60, west: -80 }, '')
+    assert.equal(summaries.length, 1)
+    assert.equal(summaries[0].timestamp, '2020-06-15T00:00:00.000Z')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('summary has no timestamp when the record has no modifiedDate', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    loadOne(store)
+    const { status } = fakeStatus()
+    const source = createUscgLightListSource({
+      client: fakeClient(),
+      store,
+      minimumUpdateYear: 0,
+      status,
+      getCurrentPosition: () => undefined
+    })
+    const summaries = await source.listPointsOfInterest(
+      { north: 50, south: 30, east: -60, west: -80 }, '')
+    assert.equal(summaries[0].timestamp, undefined)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('minimumUpdateYear drops records whose modifiedDate is older than the threshold', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    const oldRecord = sampleRecord({
+      llnr: 100,
+      name: 'Stale Daymark',
+      modifiedDate: '1985-03-21T00:00:00.000Z'
+    })
+    const newRecord = sampleRecord({
+      llnr: 200,
+      name: 'Active Light',
+      modifiedDate: '2022-01-10T00:00:00.000Z'
+    })
+    store.upsertDistrict('D01', 1, [oldRecord, newRecord], {})
+    const { status } = fakeStatus()
+    const source = createUscgLightListSource({
+      client: fakeClient(),
+      store,
+      minimumUpdateYear: 2000,
+      status,
+      getCurrentPosition: () => undefined
+    })
+    const summaries = await source.listPointsOfInterest(
+      { north: 50, south: 30, east: -60, west: -80 }, '')
+    assert.equal(summaries.length, 1, 'only the post-2000 record survives')
+    assert.equal(summaries[0].id, '200')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('an undated record always survives the year filter', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    loadOne(store)
+    const { status } = fakeStatus()
+    const source = createUscgLightListSource({
+      client: fakeClient(),
+      store,
+      minimumUpdateYear: 2050,
+      status,
+      getCurrentPosition: () => undefined
+    })
+    const summaries = await source.listPointsOfInterest(
+      { north: 50, south: 30, east: -60, west: -80 }, '')
+    assert.equal(summaries.length, 1, 'an undated record is always kept')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

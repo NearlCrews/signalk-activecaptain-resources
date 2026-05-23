@@ -21,6 +21,7 @@ import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
 import type { Bbox, PoiDetailView, PoiSummary, Position } from '../../shared/types.js'
 import { isInUsWaters } from '../../shared/us-waters.js'
+import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
 /** Stable id of the USCG Light List source. */
@@ -59,6 +60,12 @@ export interface UscgLightListSourceConfig {
   client: LightListClient
   /** The on-disk store holding the merged index. */
   store: LightListStore
+  /**
+   * Hide records whose `MODIFIED_DATE` year is older than this. `0` (the off
+   * sentinel) disables the filter; records with no modification date are
+   * always included.
+   */
+  minimumUpdateYear: number
   /** Status recorder for per-source outcomes. */
   status: PluginStatus
   /** Returns the most recent vessel position, or undefined when unknown. */
@@ -85,7 +92,7 @@ function recordUrl (volume: number, llnr: number): string {
 export function createUscgLightListSource (
   config: UscgLightListSourceConfig
 ): UscgLightListSource {
-  const { client, store, status, getCurrentPosition } = config
+  const { client, store, minimumUpdateYear, status, getCurrentPosition } = config
 
   async function refreshAll (): Promise<void> {
     const position = getCurrentPosition()
@@ -124,7 +131,7 @@ export function createUscgLightListSource (
           record.position.longitude >= bbox.west &&
           record.position.longitude <= bbox.east
         ) {
-          result.push({
+          const summary: PoiSummary = {
             id: String(record.llnr),
             type: recordPoiType(record),
             position: { ...record.position },
@@ -133,10 +140,21 @@ export function createUscgLightListSource (
             url: recordUrl(record.volume, record.llnr),
             attribution: ATTRIBUTION,
             skIcon: recordSkIcon(record)
-          })
+          }
+          // record.modifiedDate is already ISO-8601 UTC (parsed from epoch ms
+          // by the client), so PoiSummary.timestamp accepts it as-is for the
+          // year-filter helper.
+          if (record.modifiedDate !== undefined) {
+            summary.timestamp = record.modifiedDate
+          }
+          result.push(summary)
         }
       }
-      return result
+      // The year filter runs LAST on the bbox-filtered set so records below
+      // the configured minimum-update-year never reach the aggregate
+      // registry, dedupe, notes output, or alarms. Records with no
+      // modificationdate are always included.
+      return [...filterByMinimumYear(result, minimumUpdateYear)]
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
       const record = store.snapshot().records[id]

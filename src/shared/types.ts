@@ -139,6 +139,15 @@ export interface PoiSummary {
    * hint.
    */
   skIcon?: string
+  /**
+   * ISO-8601 UTC timestamp tagging this entry with its source-specific
+   * "age" (NOAA ENC `SORDAT` survey date, USCG `MODIFIED_DATE`, OSM element
+   * `timestamp`, etc.). Parallel to {@link PoiDetailView.timestamp} so the
+   * shared year-filter helper can act at list time without a detail fetch.
+   * Optional: a source whose wire data carries no date leaves it absent and
+   * the year filter passes the POI through unchanged.
+   */
+  timestamp?: string
 }
 
 /**
@@ -234,4 +243,22 @@ export interface PluginConfig {
   noaaEncIncludeObstructions?: boolean
   /** Include the NOAA ENC underwater-rocks layer in list queries. */
   noaaEncIncludeRocks?: boolean
+  /**
+   * Hide OpenSeaMap features whose OSM element timestamp is older than this
+   * year (1900 to the current year). `0` disables the filter; features
+   * without a timestamp are always included.
+   */
+  openSeaMapMinimumYear?: number
+  /**
+   * Hide USCG Light List records whose `MODIFIED_DATE` is older than this
+   * year. `0` disables the filter; records with no modification date are
+   * always included.
+   */
+  uscgLightListMinimumUpdateYear?: number
+  /**
+   * Hide NOAA ENC features whose `SORDAT` hydrographic survey date is older
+   * than this year. `0` disables the filter; features with no survey date
+   * are always included.
+   */
+  noaaEncMinimumSurveyYear?: number
 }

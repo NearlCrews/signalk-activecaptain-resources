@@ -27,6 +27,16 @@ const DEFAULT_REFRESH_HOURS = 6
 const MIN_REFRESH_HOURS = 1
 const MAX_REFRESH_HOURS = 168
 
+/**
+ * Bounds and default for the optional minimum-update-year filter. `0` is the
+ * off sentinel matching the existing rating-filter convention; `MAX_YEAR` is
+ * a four-digit cap that lets a user pick a future year without any clamp
+ * logic getting in the way.
+ */
+const MIN_UPDATE_YEAR = 0
+const MAX_UPDATE_YEAR = 9999
+const DEFAULT_MINIMUM_UPDATE_YEAR = 0
+
 /** Delay before the first refresh fires after a plugin start, in seconds. */
 const INITIAL_REFRESH_DELAY_SECONDS = 30
 
@@ -53,7 +63,24 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
     default: DEFAULT_REFRESH_HOURS,
     minimum: MIN_REFRESH_HOURS,
     maximum: MAX_REFRESH_HOURS
+  },
+  uscgLightListMinimumUpdateYear: {
+    type: 'number',
+    title: 'Earliest USCG Light List update year (0 to import every record)',
+    default: DEFAULT_MINIMUM_UPDATE_YEAR,
+    minimum: MIN_UPDATE_YEAR,
+    maximum: MAX_UPDATE_YEAR
   }
+}
+
+/** Resolve the minimum update year from raw config, clamping to the allowed range. */
+function resolveMinimumUpdateYear (raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return DEFAULT_MINIMUM_UPDATE_YEAR
+  }
+  if (raw < MIN_UPDATE_YEAR) return MIN_UPDATE_YEAR
+  if (raw > MAX_UPDATE_YEAR) return MAX_UPDATE_YEAR
+  return Math.trunc(raw)
 }
 
 /** Resolve the refresh period from raw config, clamping to the allowed range. */
@@ -90,6 +117,7 @@ export const uscgLightListInput: InputModule = {
     const source: UscgLightListSource = createUscgLightListSource({
       client,
       store,
+      minimumUpdateYear: resolveMinimumUpdateYear(config.uscgLightListMinimumUpdateYear),
       status,
       getCurrentPosition
     })

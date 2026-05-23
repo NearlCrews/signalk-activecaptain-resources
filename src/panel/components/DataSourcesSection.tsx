@@ -38,16 +38,28 @@ function activeCaptainSummary (state: PluginConfig): string {
   return `${types}, ${state.cachingDurationMinutes} min cache`
 }
 
+/**
+ * Append a "since YYYY" tail to a card summary when the user has set the
+ * per-source minimum-year filter to a non-zero value. Keeps the collapsed
+ * row short when the filter is off (the common case).
+ */
+function appendSinceYear (summary: string, year: number | undefined): string {
+  return year !== undefined && year > 0 ? `${summary}, since ${year}` : summary
+}
+
 /** Build the OpenSeaMap card's collapsed one-line summary. */
 function openSeaMapSummary (state: PluginConfig): string {
   const selected = (state.openSeaMapSeamarkGroups ?? []).length
-  return `${selected} of ${SEAMARK_GROUP_REFS.length} feature groups`
+  return appendSinceYear(
+    `${selected} of ${SEAMARK_GROUP_REFS.length} feature groups`,
+    state.openSeaMapMinimumYear
+  )
 }
 
 /** Build the USCG Light List card's collapsed one-line summary. */
 function uscgLightListSummary (state: PluginConfig): string {
   const hours = state.uscgLightListRefreshHours ?? DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS
-  return `${hours} h refresh`
+  return appendSinceYear(`${hours} h refresh`, state.uscgLightListMinimumUpdateYear)
 }
 
 /** Build the NOAA ENC card's collapsed one-line summary. */
@@ -63,7 +75,7 @@ function noaaEncSummary (state: PluginConfig): string {
   if (state.noaaEncIncludeObstructions !== false) layers.push('obstructions')
   if (state.noaaEncIncludeRocks === true) layers.push('rocks')
   const layerList = layers.length === 0 ? 'no layers' : layers.join(', ')
-  return `${label} band, ${layerList}`
+  return appendSinceYear(`${label} band, ${layerList}`, state.noaaEncMinimumSurveyYear)
 }
 
 /** The per-source accordion shown in the configuration panel. */

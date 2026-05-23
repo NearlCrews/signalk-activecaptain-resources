@@ -128,3 +128,56 @@ export function layerPoiType (_layer: EncLayerKey): PoiType {
 export function layerSkIcon (_layer: EncLayerKey): string {
   return 'hazard'
 }
+
+/**
+ * Parse the S-57 `SORDAT` source-date field into its `(year, month, day)`
+ * triple. The wire ships both six-character `YYYYMM` and eight-character
+ * `YYYYMMDD` forms; the renderer needs the original precision (so the popup
+ * does not invent a day), but the year-filter helper needs only the year,
+ * so both consumers route through this parser.
+ *
+ * `day` is left undefined for the six-character form. Anything else (null,
+ * non-string, wrong length, non-numeric digits) returns `undefined`.
+ */
+export function parseSordat (raw: unknown): { year: number, month: number, day?: number } | undefined {
+  if (typeof raw !== 'string') return undefined
+  const trimmed = raw.trim()
+  if (trimmed.length !== 6 && trimmed.length !== 8) return undefined
+  const year = Number.parseInt(trimmed.slice(0, 4), 10)
+  const month = Number.parseInt(trimmed.slice(4, 6), 10)
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return undefined
+  if (trimmed.length === 6) return { year, month }
+  const day = Number.parseInt(trimmed.slice(6, 8), 10)
+  if (!Number.isFinite(day)) return undefined
+  return { year, month, day }
+}
+
+/**
+ * Format the parsed SORDAT for the popup, preserving the precision the wire
+ * sent. Returns `YYYY-MM` for the six-character form and `YYYY-MM-DD` for
+ * the eight-character form, or `undefined` when the input did not parse.
+ */
+export function formatSordatDisplay (raw: unknown): string | undefined {
+  const parts = parseSordat(raw)
+  if (parts === undefined) return undefined
+  const year = String(parts.year).padStart(4, '0')
+  const month = String(parts.month).padStart(2, '0')
+  if (parts.day === undefined) return `${year}-${month}`
+  const day = String(parts.day).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Convert SORDAT to an ISO-8601 UTC timestamp suitable for
+ * {@link PoiSummary.timestamp}. The six-character `YYYYMM` form defaults to
+ * the first of the month. Returns `undefined` when the input did not parse.
+ */
+export function sordatToIsoTimestamp (raw: unknown): string | undefined {
+  const parts = parseSordat(raw)
+  if (parts === undefined) return undefined
+  const day = parts.day ?? 1
+  // `Date.UTC` accepts months 0-indexed; SORDAT months are 1-indexed.
+  const ms = Date.UTC(parts.year, parts.month - 1, day)
+  if (!Number.isFinite(ms)) return undefined
+  return new Date(ms).toISOString()
+}

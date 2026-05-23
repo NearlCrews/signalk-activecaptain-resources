@@ -20,6 +20,7 @@ import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
 import { MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
 import type { Bbox, PoiDetailView, PoiSummary, PoiType } from '../../shared/types.js'
+import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
 /** The stable id of the OpenSeaMap source. */
@@ -41,6 +42,12 @@ export interface OpenSeaMapSourceConfig {
   client: OverpassClient
   /** The seamark groups to fetch, as configured by the user. */
   seamarkGroups: readonly string[]
+  /**
+   * Hide elements whose OSM `timestamp` year is older than this. `0` (the off
+   * sentinel) disables the filter; elements with no timestamp are always
+   * included.
+   */
+  minimumYear: number
   /**
    * Status recorder for per-source detail outcomes. Mirrors the ActiveCaptain
    * source's status wiring so the snapshot reflects OpenSeaMap detail fetches
@@ -85,7 +92,7 @@ function elementName (element: OverpassElement, type: PoiType): string {
 /** Build the source-agnostic detail view for an element. */
 function toDetailView (element: OverpassElement): PoiDetailView {
   const type = elementPoiType(element.tags)
-  return {
+  const view: PoiDetailView = {
     name: elementName(element, type),
     position: { ...element.position },
     type,
@@ -95,12 +102,14 @@ function toDetailView (element: OverpassElement): PoiDetailView {
     description: appendAttribution(renderOpenSeaMapDetail(element), OPENSEAMAP_ATTRIBUTION),
     skIcon: elementSkIcon(element.tags)
   }
+  if (element.timestamp !== undefined) view.timestamp = element.timestamp
+  return view
 }
 
 /** Build the list summary for an element. */
 function toSummary (element: OverpassElement): PoiSummary {
   const type = elementPoiType(element.tags)
-  return {
+  const summary: PoiSummary = {
     id: elementId(element),
     type,
     position: { ...element.position },
@@ -110,11 +119,13 @@ function toSummary (element: OverpassElement): PoiSummary {
     attribution: OPENSEAMAP_ATTRIBUTION,
     skIcon: elementSkIcon(element.tags)
   }
+  if (element.timestamp !== undefined) summary.timestamp = element.timestamp
+  return summary
 }
 
 /** Create the OpenSeaMap POI source. */
 export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSource {
-  const { client, seamarkGroups, status } = config
+  const { client, seamarkGroups, minimumYear, status } = config
 
   // The seamark filter is fixed for the life of the source: the configured
   // groups do not change without a plugin restart.
@@ -133,10 +144,16 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
     // for this source.
     listPointsOfInterest: async (bbox: Bbox): Promise<PoiSummary[]> => {
       const elements = await client.listPointsOfInterest(bbox, regex)
-      return elements.map((element) => {
+      const summaries = elements.map((element) => {
         cache.set(elementId(element), element)
         return toSummary(element)
       })
+      // The year filter runs on this source's own summaries, so OSM elements
+      // older than the configured minimum year never reach the aggregate
+      // registry, dedupe, notes output, or alarms. Elements with no OSM
+      // timestamp (the query did not return `meta` for them) are always
+      // included.
+      return [...filterByMinimumYear(summaries, minimumYear)]
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
       try {

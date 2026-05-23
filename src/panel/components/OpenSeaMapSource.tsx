@@ -9,6 +9,7 @@ import type * as React from 'react'
 import type { Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
 import {
+  DEFAULT_MINIMUM_YEAR,
   DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS,
   DEFAULT_OPENSEAMAP_ENDPOINT
 } from '../normalize-config.js'
@@ -16,6 +17,7 @@ import { SEAMARK_GROUP_IDS } from '../../shared/seamark-groups.js'
 import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import EndpointUrlField from './EndpointUrlField.js'
+import MinimumYearField from './MinimumYearField.js'
 import NumberField from './NumberField.js'
 import SeamarkGroups from './SeamarkGroups.js'
 
@@ -78,6 +80,17 @@ export default function OpenSeaMapSource ({ state, dispatch }: Props): React.Rea
         integer
         disabled={!dedupeEnabled}
         dense
+      />
+      <MinimumYearField
+        id='ac-openseamap-minimum-year'
+        label='Earliest update year'
+        hint={'Hide OSM elements whose last-edit timestamp is older than ' +
+          'this year. Leave at 0 to import every element. The timestamp is ' +
+          'an OSM contributor freshness signal: an unedited element from ' +
+          '2012 may still be correct, so old does not always mean stale. ' +
+          'Elements with no recorded timestamp are always included.'}
+        value={state.openSeaMapMinimumYear ?? DEFAULT_MINIMUM_YEAR}
+        onChange={(year) => dispatch({ type: 'setOpenSeaMapMinimumYear', year })}
       />
     </>
   )

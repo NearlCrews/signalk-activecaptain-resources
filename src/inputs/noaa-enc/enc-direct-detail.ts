@@ -16,6 +16,7 @@ import {
   WATLEV,
   QUASOU,
   TECSOU,
+  formatSordatDisplay,
   humanizeCategory,
   lookupCode
 } from './s57-mapping.js'
@@ -38,30 +39,6 @@ function escapeHtml (value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-}
-
-/**
- * Format the S-57 `SORDAT` "source date" field: the date the underlying
- * hydrographic survey was issued or compiled, NOT the date NOAA last refreshed
- * the chart. For most wrecks and obstructions this is the original survey
- * date, often decades old, and stays fixed until a re-survey. The wire
- * publishes both six-character `YYYYMM` and eight-character `YYYYMMDD` forms;
- * the renderer preserves whichever precision the upstream sent rather than
- * silently dropping the day. Anything else (null, non-string, wrong length)
- * returns undefined so the renderer can omit the suffix.
- */
-function formatSordat (raw: unknown): string | undefined {
-  if (typeof raw !== 'string') {
-    return undefined
-  }
-  const trimmed = raw.trim()
-  if (trimmed.length === 8) {
-    return `${trimmed.slice(0, 4)}-${trimmed.slice(4, 6)}-${trimmed.slice(6, 8)}`
-  }
-  if (trimmed.length === 6) {
-    return `${trimmed.slice(0, 4)}-${trimmed.slice(4, 6)}`
-  }
-  return undefined
 }
 
 /**
@@ -140,7 +117,7 @@ export function renderEncDirectDetail (
   }
 
   const dsnm = readText(properties.DSNM)
-  const surveyed = formatSordat(properties.SORDAT)
+  const surveyed = formatSordatDisplay(properties.SORDAT)
   if (dsnm !== undefined) {
     const suffix = surveyed !== undefined ? ` (surveyed ${surveyed})` : ''
     blocks.push(`<p><strong>Source:</strong> NOAA ENC ${escapeHtml(dsnm)}${suffix}.</p>`)

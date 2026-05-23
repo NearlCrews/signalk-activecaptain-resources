@@ -46,6 +46,12 @@ export interface OverpassElement {
   tags: Record<string, string>
   /** Resolved position. */
   position: Position
+  /**
+   * ISO-8601 UTC timestamp of the element's last OSM edit, as returned when
+   * the Overpass query requests `out ... meta;`. Omitted when the upstream
+   * response did not carry it.
+   */
+  timestamp?: string
 }
 
 /** Descriptive User-Agent, required by the Overpass API usage policy. */
@@ -149,7 +155,7 @@ function buildListQuery (bbox: Bbox, seamarkRegex: string): string {
     // `seamark:type`, so they are fetched alongside the seamark features.
     'nwr["leisure"="marina"];' +
     ');' +
-    'out center tags;'
+    'out center tags meta;'
   )
 }
 
@@ -158,7 +164,7 @@ function buildDetailQuery (type: OsmElementType, id: number): string {
   return (
     `[out:json][timeout:${DETAIL_QUERY_TIMEOUT_SECONDS}];` +
     `${type}(id:${id});` +
-    'out center tags;'
+    'out center tags meta;'
   )
 }
 
@@ -187,6 +193,8 @@ interface OverpassWireElement {
   lon?: number
   center?: { lat?: number, lon?: number }
   tags?: Record<string, string>
+  /** Present only when the query requested `out ... meta;`. */
+  timestamp?: string
 }
 
 /** Response body of an Overpass query. */
@@ -215,12 +223,16 @@ function parseElement (wire: OverpassWireElement): OverpassElement | null {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return null
   }
-  return {
+  const element: OverpassElement = {
     type,
     id: wire.id as number,
     tags: wire.tags ?? {},
     position: { latitude: lat as number, longitude: lon as number }
   }
+  if (typeof wire.timestamp === 'string' && wire.timestamp.length > 0) {
+    element.timestamp = wire.timestamp
+  }
+  return element
 }
 
 /**

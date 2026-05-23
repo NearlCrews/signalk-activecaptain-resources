@@ -20,13 +20,14 @@
 import { LRUCache } from 'lru-cache'
 import type { EncDirectClient } from './enc-direct-client.js'
 import type { EncFeature, EncLayerKey, ScaleBand } from './enc-direct-types.js'
-import { layerPoiType, layerSkIcon } from './s57-mapping.js'
+import { layerPoiType, layerSkIcon, sordatToIsoTimestamp } from './s57-mapping.js'
 import { renderEncDirectDetail } from './enc-direct-detail.js'
 import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
 import { MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
 import type { Bbox, PoiDetailView, PoiSummary, Position } from '../../shared/types.js'
 import { isInUsWaters } from '../../shared/us-waters.js'
+import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
 /** Stable id of the NOAA ENC Direct source. */
@@ -60,6 +61,12 @@ export interface NoaaEncSourceConfig {
   includeObstructions: boolean
   /** Include the underwater-rocks layer in list queries. */
   includeRocks: boolean
+  /**
+   * Hide features whose SORDAT survey year is older than this. `0` (the
+   * off sentinel) disables the filter; features with no parseable SORDAT
+   * are always included.
+   */
+  minimumSurveyYear: number
   /** Status recorder for per-source outcomes. */
   status: PluginStatus
   /** Returns the most recent vessel position, or undefined when unknown. */
@@ -123,7 +130,8 @@ function viewerUrl (feature: EncFeature): string {
 /** Build the source-agnostic list summary for one feature. */
 function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary {
   const [lon, lat] = feature.geometry.coordinates
-  return {
+  const timestamp = sordatToIsoTimestamp(feature.properties.SORDAT)
+  const summary: PoiSummary = {
     id: summaryId(layerKey, feature),
     type: layerPoiType(layerKey),
     position: { latitude: lat, longitude: lon },
@@ -133,6 +141,8 @@ function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary {
     attribution: NOAA_ENC_ATTRIBUTION,
     skIcon: layerSkIcon(layerKey)
   }
+  if (timestamp !== undefined) summary.timestamp = timestamp
+  return summary
 }
 
 /** Build the source-agnostic detail view for one cached feature. */
@@ -143,7 +153,8 @@ function toDetailView (cached: CachedFeature): PoiDetailView {
     renderEncDirectDetail(layerKey, feature.properties),
     NOAA_ENC_ATTRIBUTION
   )
-  return {
+  const timestamp = sordatToIsoTimestamp(feature.properties.SORDAT)
+  const view: PoiDetailView = {
     name: featureName(layerKey, feature),
     position: { latitude: lat, longitude: lon },
     type: layerPoiType(layerKey),
@@ -153,11 +164,13 @@ function toDetailView (cached: CachedFeature): PoiDetailView {
     description,
     skIcon: layerSkIcon(layerKey)
   }
+  if (timestamp !== undefined) view.timestamp = timestamp
+  return view
 }
 
 /** Create the NOAA ENC Direct POI source. */
 export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
-  const { client, band, status, getCurrentPosition } = config
+  const { client, band, minimumSurveyYear, status, getCurrentPosition } = config
   const cache = new LRUCache<string, CachedFeature>({ max: MAX_POI_CACHE_ENTRIES })
 
   return {
@@ -214,7 +227,12 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
           `Every enabled NOAA ENC layer query failed: ${String(firstRejection)}`
         )
       }
-      return summaries
+      // The year filter runs LAST on this source's own summaries (after the
+      // per-layer fan-out), so features filtered out by the configured
+      // minimum survey year never reach the aggregate registry, dedupe,
+      // notes output, or alarms. Features whose SORDAT did not parse are
+      // always included.
+      return [...filterByMinimumYear(summaries, minimumSurveyYear)]
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
       const hit = cache.get(id)
