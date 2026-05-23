@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createLightListStore } from '../src/inputs/uscg-light-list/light-list-store.js'
@@ -88,6 +88,38 @@ test('store keeps records from other districts when one district is re-upserted'
     assert.equal(reloaded.records['500'].llnr, 500)
     assert.equal(reloaded.records['100'], undefined)
     assert.equal(reloaded.records['101'].llnr, 101)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('store falls back to an empty index when index.json is the wrong shape', async () => {
+  // A future format version, a hand-edited backup, or a half-written file
+  // would otherwise crash Object.values(undefined) on the next list query.
+  // The store accepts the file as JSON, sees it does not carry the records
+  // and districts properties, and starts empty.
+  const dir = await mkdtemp(join(tmpdir(), 'll-store-'))
+  try {
+    await mkdir(join(dir, 'uscg-light-list'), { recursive: true })
+    await writeFile(join(dir, 'uscg-light-list', 'index.json'), '{}', 'utf8')
+    const index = await createLightListStore(dir).load()
+    assert.deepEqual(index.records, {})
+    assert.deepEqual(index.districts, {})
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('store falls back to an empty index when index.json is unparseable', async () => {
+  // A truncated write or a power-cycle mid-flush leaves invalid JSON on disk;
+  // a failed parse should not block the plugin from starting.
+  const dir = await mkdtemp(join(tmpdir(), 'll-store-'))
+  try {
+    await mkdir(join(dir, 'uscg-light-list'), { recursive: true })
+    await writeFile(join(dir, 'uscg-light-list', 'index.json'), '{not valid json', 'utf8')
+    const index = await createLightListStore(dir).load()
+    assert.deepEqual(index.records, {})
+    assert.deepEqual(index.districts, {})
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

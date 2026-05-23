@@ -30,6 +30,15 @@ const HTTP_NOT_MODIFIED = 304
 /** HTTP status returned by the upstream on a successful GET. */
 const HTTP_OK = 200
 
+/**
+ * Per-request timeout in milliseconds. A silently dropped TCP connection
+ * (no FIN, no RST, a transparent proxy black-holing the socket) would
+ * otherwise block the sequential refresh loop indefinitely. The shared
+ * `http-client.ts` enforces an equivalent policy for the queued sources;
+ * this raw client mirrors it.
+ */
+const REQUEST_TIMEOUT_MS = 60_000
+
 /** Result of a single district download attempt. */
 export type DownloadResult =
   | { status: 'ok', records: LightListRecord[], headers: DistrictHeaders }
@@ -85,6 +94,13 @@ function fetchUrl (
         headers: res.headers
       }))
       res.on('error', reject)
+    })
+    // A silently dropped TCP connection would otherwise hang the
+    // sequential refresh loop forever; the explicit timeout aborts and
+    // rejects, the source records the per-district error, and the next
+    // refresh tick retries.
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      req.destroy(new Error(`USCG Light List request timed out after ${REQUEST_TIMEOUT_MS} ms: ${url}`))
     })
     req.on('error', reject)
     req.end()

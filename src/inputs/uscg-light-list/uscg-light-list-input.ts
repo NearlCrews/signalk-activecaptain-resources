@@ -96,16 +96,26 @@ export const uscgLightListInput: InputModule = {
     const refreshHours = resolveRefreshHours(config.uscgLightListRefreshHours)
     const intervalMs = refreshHours * MS_PER_HOUR
     const delayMs = INITIAL_REFRESH_DELAY_SECONDS * MS_PER_SECOND
-    const initialTimer = setTimeout(() => {
-      source.refreshAll().catch(error => {
-        app.debug(`USCG Light List initial refresh failed: ${String(error)}`)
-      })
-    }, delayMs)
-    const periodicTimer = setInterval(() => {
-      source.refreshAll().catch(error => {
-        app.debug(`USCG Light List refresh failed: ${String(error)}`)
-      })
-    }, intervalMs)
+    // In-flight guard: a refresh pass that takes longer than the configured
+    // window (37 sequential conditional GETs against a slow NAVCEN) would
+    // otherwise let the next setInterval tick start a concurrent refreshAll,
+    // racing on store.upsertDistrict and clobbering each other's writes. The
+    // guard skips overlapping ticks; the next interval fires normally.
+    let refreshing = false
+    const runRefresh = (reason: string): void => {
+      if (refreshing) {
+        app.debug(`USCG Light List ${reason} skipped: previous refresh still running`)
+        return
+      }
+      refreshing = true
+      source.refreshAll()
+        .catch(error => {
+          app.debug(`USCG Light List ${reason} failed: ${String(error)}`)
+        })
+        .finally(() => { refreshing = false })
+    }
+    const initialTimer = setTimeout(() => { runRefresh('initial refresh') }, delayMs)
+    const periodicTimer = setInterval(() => { runRefresh('refresh') }, intervalMs)
     const originalClose = source.close.bind(source)
     source.close = () => {
       clearTimeout(initialTimer)

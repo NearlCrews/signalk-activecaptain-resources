@@ -60,6 +60,22 @@ function emptyIndex (): LightListIndex {
   }
 }
 
+/**
+ * Narrow a parsed-JSON value into a usable `LightListIndex`, or undefined
+ * when the shape is wrong. A readable file that is valid JSON but the wrong
+ * shape (an older version, a hand-edited backup, a half-written recovery)
+ * would otherwise leave `index.records` or `index.districts` undefined and
+ * crash `Object.values(undefined)` on the next list query.
+ */
+function isUsableIndex (value: unknown): value is LightListIndex {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as { records?: unknown, districts?: unknown }
+  return (
+    typeof candidate.records === 'object' && candidate.records !== null &&
+    typeof candidate.districts === 'object' && candidate.districts !== null
+  )
+}
+
 /** Build the persisted-index key for one (district, page) pair. */
 function districtKey (district: string, page: number): string {
   return `${district}_${page}`
@@ -78,7 +94,8 @@ export function createLightListStore (dataDir: string): LightListStore {
       }
       try {
         const raw = await readFile(filePath, 'utf8')
-        index = JSON.parse(raw) as LightListIndex
+        const parsed: unknown = JSON.parse(raw)
+        index = isUsableIndex(parsed) ? parsed : emptyIndex()
       } catch {
         // A missing, unreadable, or corrupt file starts the store empty.
         // Letting the read fail at runtime would block the daily refresh on
