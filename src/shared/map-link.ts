@@ -29,13 +29,27 @@
  *   https://wiki.openseamap.org/wiki/h:En:Marker_in_URL
  */
 
+/** Default zoom for a marker view. Matches the zoom every other deep link uses. */
+const DEFAULT_ZOOM = 15
+
+/** Fallback URL when a caller's coordinates are not usable. */
+const FALLBACK_URL = 'https://map.openseamap.org/'
+
 /**
  * Build an OpenSeaMap marker deep link centered on the given lat/lon. The
  * marker parameters (`mlat`, `mlon`) drop a pin so the feature is visible
- * without zooming around.
+ * without zooming around. A non-finite coordinate falls back to the
+ * OpenSeaMap home page rather than producing a `lat=NaN` URL that would
+ * silently land somewhere meaningless.
  */
 export function openSeaMapMarkerUrl (latitude: number, longitude: number): string {
-  const lat = encodeURIComponent(String(latitude))
-  const lon = encodeURIComponent(String(longitude))
-  return `https://map.openseamap.org/?zoom=15&lat=${lat}&lon=${lon}&mlat=${lat}&mlon=${lon}`
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return FALLBACK_URL
+  }
+  return (
+    'https://map.openseamap.org/' +
+    `?zoom=${DEFAULT_ZOOM}` +
+    `&lat=${latitude}&lon=${longitude}` +
+    `&mlat=${latitude}&mlon=${longitude}`
+  )
 }

@@ -566,3 +566,30 @@ test('listPointsOfInterest queries upstream every call when refreshSeconds is 0 
   await source.listPointsOfInterest(bbox, '')
   assert.equal(calls, 2)
 })
+
+test('the summary url field points at OpenSeaMap with a marker at the feature lat/lon', async () => {
+  // The previous NOAA ENC Direct URL format (`encdirect.noaa.gov/?center=...`)
+  // loaded a blank page in the browser, so the source now produces an
+  // OpenSeaMap marker URL instead.
+  const client: FakeClient = {
+    queryLayer: async () => ({ features: [namedWreck] }),
+    queryById: async () => undefined
+  }
+  const { status } = fakeStatus()
+  const source = createNoaaEncSource({
+    client: client as never,
+    band: 'coastal',
+    includeWrecks: true,
+    includeObstructions: false,
+    includeRocks: false,
+    minimumYear: 0,
+    refreshSeconds: 0,
+    status: status as never,
+    getCurrentPosition: () => undefined
+  })
+  const summaries = await source.listPointsOfInterest(
+    { south: 41, west: -72, north: 43, east: -70 }, '')
+  assert.ok(summaries[0].url.startsWith('https://map.openseamap.org/'))
+  assert.ok(summaries[0].url.includes('mlat=42'))
+  assert.ok(summaries[0].url.includes('mlon=-71'))
+})
