@@ -1,5 +1,10 @@
 # Crow's Nest
 
+[![npm version](https://img.shields.io/npm/v/signalk-crows-nest.svg)](https://www.npmjs.com/package/signalk-crows-nest)
+[![npm downloads](https://img.shields.io/npm/dm/signalk-crows-nest.svg)](https://www.npmjs.com/package/signalk-crows-nest)
+[![License](https://img.shields.io/github/license/NearlCrews/signalk-crows-nest.svg)](https://github.com/NearlCrews/signalk-crows-nest/blob/main/LICENSE)
+[![CI](https://github.com/NearlCrews/signalk-crows-nest/actions/workflows/ci.yml/badge.svg)](https://github.com/NearlCrews/signalk-crows-nest/actions/workflows/ci.yml)
+
 A [Signal K server](https://github.com/SignalK/signalk-server) plugin that
 imports points of interest from multiple marine data sources, the
 [Garmin ActiveCaptain](https://activecaptain.garmin.com) community database,
@@ -12,20 +17,17 @@ anchorages, hazards, and more as a layer on the chart. It also keeps a
 lookout: it raises a proximity alarm when the vessel nears a hazard, and
 scans the active route ahead for hazards, bridges, and locks.
 
-## What's New in v0.5.0
+## What's New in v0.4.2
 
-**Multi-source points of interest.** The plugin now imports from more than one
-source. Alongside Garmin ActiveCaptain it adds **OpenSeaMap**, OpenStreetMap
-marine data fetched through the OSM Overpass API, covering seamark hazards,
-navigational aids, harbours, and infrastructure. Enabled sources merge into one
-chart layer, and a failing source no longer blanks the chart. An OpenSeaMap
-point that duplicates an ActiveCaptain marker is merged into it, and the
-surviving note records every source that reported it. The configuration panel
-is now a per-source accordion, and the status bar reports each source's health
-separately. Resource ids gain a source prefix, and the hazard notifications
-move to a source-agnostic `notifications.navigation.crowsNest.*` path.
+v0.4.2 is the first release published to npm. It bundles every feature the
+plugin has developed: the four-source point-of-interest aggregate
+(ActiveCaptain, OpenSeaMap, USCG Light List, NOAA ENC Direct), the
+position-aware proximity-hazard alarms, the route-corridor hazard scan, the
+React configuration panel, the per-source earliest-year filter, and the
+per-bbox refresh-debounce cache for the two at-runtime sources.
 
-See the [CHANGELOG](CHANGELOG.md) for the full history.
+See the [v0.4.2 changelog entry](CHANGELOG.md#v042) and the
+[full release history](CHANGELOG.md) for development-milestone detail.
 
 ## Features
 

@@ -1,12 +1,25 @@
 ## Change Log
 
-<a id="unreleased"></a>
+> **Note on version numbering.** `v0.4.2` is the first release published to
+> npm. The version entries below it (`v0.5.0` through `v0.2.0`) describe
+> development milestones that preceded this publication. Their content is
+> incorporated into the `v0.4.2` release.
 
-### Unreleased
+<a id="v042"></a>
 
-**Two new authoritative US data sources, a per-source date-cutoff filter, a
-per-bbox refresh-debounce cache, and a broad cleanup pass driven by a
-multi-agent code review.**
+### v0.4.2 (2026/05/23) - first published release
+
+**First release published to npm. Bundles the multi-source POI architecture
+(ActiveCaptain, OpenSeaMap, USCG Light List, and NOAA ENC Direct), the
+position-aware safety alarms, the route-corridor hazard scan, the React
+configuration panel, the per-source earliest-year filter, the per-bbox
+refresh-debounce cache, and a multi-agent code review cleanup pass.**
+
+The full development history of the changes that ship in this release is
+documented in the per-milestone entries below (`v0.5.0` for multi-source,
+`v0.4.0` for the route-corridor scan, `v0.3.0` for the position-aware safety
+alarms, `v0.2.0` for the TypeScript and panel rewrite). This entry summarizes
+what is new since the `v0.5.0` development milestone described below.
 
 #### Per-card layout consistency
 

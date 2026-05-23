@@ -11,8 +11,10 @@ runs `npm test`; the second reinstalls and runs `npm publish`. The
 `prepublishOnly` script cleans and rebuilds `dist/` and `public/` before the
 package is published, so the npm tarball always reflects a fresh build.
 
-The workflow requires an `npm_token` repository secret (an npm Automation
+The workflow reads the `NPM_TOKEN` repository secret (an npm Automation
 token, or a Granular token with publish and read access to this package).
+Secret names are case-insensitive in GitHub Actions, but `NPM_TOKEN` is the
+canonical form.
 
 The package's `files` field publishes `dist/`, `public/`, and `assets/`;
 source, tests, and docs are not shipped to npm.
@@ -36,7 +38,7 @@ Before creating the GitHub release:
    behavior, commands, or configuration options.
 5. Commit the version bump and changelog entry.
 6. Create a GitHub release whose tag matches the new `package.json` version
-   (for example, tag `v0.5.0`). Creating the release triggers the publish
+   (for example, tag `v0.4.2`). Creating the release triggers the publish
    workflow; once it succeeds the new version is live on npm.
 
 ## Supported Node.js versions
