@@ -101,3 +101,38 @@ test('does not mount the status route when addAdminMiddleware throws', () => {
     'the unmounted route is logged as unavailable'
   )
 })
+
+test('re-invocation does not stack a duplicate admin gate on the same path', () => {
+  // SignalK may call the closure more than once across plugin enable / disable
+  // / enable cycles on a long-running server. The admin gate is path-scoped
+  // and must be installed exactly once per path; a stacked duplicate is
+  // wasted middleware on every request.
+  const gatedPaths: string[] = []
+  const app = {
+    error: () => {},
+    securityStrategy: {
+      addAdminMiddleware: (path: string) => { gatedPaths.push(path) }
+    }
+  } as unknown as ServerAPI
+  const register = createStatusRouter(app, () => SNAPSHOT)
+  register(createStubRouter().router)
+  register(createStubRouter().router)
+  register(createStubRouter().router)
+  assert.equal(gatedPaths.length, 1, 'addAdminMiddleware is called exactly once')
+})
+
+test('re-invocation against the same router does not stack a duplicate GET handler', () => {
+  // Mounting the GET handler twice would leave a phantom second handler
+  // Express never reaches, but still costs a slot in the route table.
+  const app = {
+    error: () => {},
+    securityStrategy: {
+      addAdminMiddleware: () => {}
+    }
+  } as unknown as ServerAPI
+  const register = createStatusRouter(app, () => SNAPSHOT)
+  const stub = createStubRouter()
+  register(stub.router)
+  register(stub.router)
+  assert.deepEqual(stub.routes, ['/api/status'], 'the status route is mounted exactly once')
+})

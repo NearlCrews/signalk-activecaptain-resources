@@ -32,9 +32,15 @@ export interface NotificationValue {
  * ids are numeric, but the alarm outputs' `evaluate` is a public entry point:
  * a stray `.` would silently fork the notification onto a different path, so
  * any character outside `[A-Za-z0-9_-]` is replaced.
+ *
+ * An empty id (or one whose characters all sanitize away) would otherwise
+ * yield an empty segment, so two POIs with empty ids would collide on the
+ * same notification path and silently overwrite each other's raise / clear
+ * bookkeeping. A guaranteed `_` fallback prevents that.
  */
 export function sanitizePoiId (poiId: string): string {
-  return poiId.replace(/[^A-Za-z0-9_-]/g, '_')
+  const sanitized = poiId.replace(/[^A-Za-z0-9_-]/g, '_')
+  return sanitized.length > 0 ? sanitized : '_'
 }
 
 /**

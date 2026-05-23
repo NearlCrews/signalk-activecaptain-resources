@@ -91,7 +91,7 @@ export function dedupeAgainstBase (
   if (basePois.length === 0) {
     const tagged = pois.map((poi) =>
       dedupeSources.has(poi.source) ? { ...poi, sources: [poi.source] } : poi)
-    return dedupeSameSource(tagged, radiusMeters, cellCoords)
+    return dedupeSameSource(tagged, radiusMeters, cellCoords, dedupeSources)
   }
 
   // Bucket the base POIs by grid cell, and seed each one's corroboration with
@@ -163,7 +163,7 @@ export function dedupeAgainstBase (
     const merged = corroboration.get(base) as Corroboration
     return { ...base, sources: merged.slugs, attribution: merged.attributions.join('; ') }
   })
-  return [...baseSurvivors, ...dedupeSameSource(survivors, radiusMeters, cellCoords)]
+  return [...baseSurvivors, ...dedupeSameSource(survivors, radiusMeters, cellCoords, dedupeSources)]
 }
 
 /**
@@ -177,16 +177,24 @@ export function dedupeAgainstBase (
 function dedupeSameSource (
   pois: PoiSummary[],
   radiusMeters: number,
-  cellCoords: (poi: PoiSummary) => [number, number]
+  cellCoords: (poi: PoiSummary) => [number, number],
+  dedupeSources: ReadonlySet<string>
 ): PoiSummary[] {
   if (pois.length <= 1) {
     return pois
   }
   // Keyed by `${source}|${x},${y}`: each source has its own grid, so a POI
-  // from a different source never displaces one from this one.
+  // from a different source never displaces one from this one. Only sources
+  // in `dedupeSources` participate; a source whose dedupe toggle is off
+  // passes through unmerged, so the user gets the raw, un-collapsed feed
+  // they explicitly asked for.
   const keptByCell = new Map<string, PoiSummary[]>()
   const out: PoiSummary[] = []
   for (const poi of pois) {
+    if (!dedupeSources.has(poi.source)) {
+      out.push(poi)
+      continue
+    }
     const [x, y] = cellCoords(poi)
     if (hasNearbyDuplicate(poi, x, y, radiusMeters, keptByCell)) {
       continue

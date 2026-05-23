@@ -39,33 +39,47 @@ export function createStatusRouter (
   app: ServerAPI,
   getSnapshot: () => StatusSnapshot
 ): (router: IRouter) => void {
+  // The admin gate is path-scoped and the path is fixed for the life of the
+  // plugin, so calling addAdminMiddleware more than once across enable /
+  // disable / enable cycles on a long-running SignalK server would stack
+  // duplicate gates on the same path. Track whether we have already gated
+  // the path on this app and skip on subsequent invocations.
+  let pathAdminGated = false
+  // Track per-router so a fresh router (a new plugin start hands us a new
+  // one) gets its GET handler mounted exactly once, but a re-invocation
+  // against the same router (which would otherwise stack duplicate handlers
+  // Express would never reach past the first) is skipped.
+  const handlerMounted = new WeakSet<IRouter>()
+
   return (router: IRouter): void => {
-    // Admin-gate the API subtree before mounting the route. The real
-    // signalk-server always provides securityStrategy; when it is missing or
-    // the gate cannot be installed, the route is NOT mounted, because mounting
-    // it ungated would expose the status snapshot to anyone on the admin port.
-    let adminGated = false
-    try {
-      const securityAware = app as unknown as Partial<SecurityAwareApp>
-      if (typeof securityAware.securityStrategy?.addAdminMiddleware === 'function') {
-        securityAware.securityStrategy.addAdminMiddleware(API_PATH)
-        adminGated = true
-      } else {
-        app.error(`Cannot admin-gate ${API_PATH}: securityStrategy.addAdminMiddleware is unavailable`)
+    if (!pathAdminGated) {
+      let gateInstalled = false
+      try {
+        const securityAware = app as unknown as Partial<SecurityAwareApp>
+        if (typeof securityAware.securityStrategy?.addAdminMiddleware === 'function') {
+          securityAware.securityStrategy.addAdminMiddleware(API_PATH)
+          gateInstalled = true
+        } else {
+          app.error(`Cannot admin-gate ${API_PATH}: securityStrategy.addAdminMiddleware is unavailable`)
+        }
+      } catch (error) {
+        app.error(`Cannot admin-gate ${API_PATH}: ${String(error)}`)
       }
-    } catch (error) {
-      app.error(`Cannot admin-gate ${API_PATH}: ${String(error)}`)
+      if (!gateInstalled) {
+        app.error(
+          'Status API unavailable: the /api/status route was not mounted because it could not be admin-gated'
+        )
+        return
+      }
+      pathAdminGated = true
     }
 
-    if (!adminGated) {
-      app.error(
-        'Status API unavailable: the /api/status route was not mounted because it could not be admin-gated'
-      )
+    if (handlerMounted.has(router)) {
       return
     }
-
     router.get('/api/status', (_req, res) => {
       res.json(getSnapshot())
     })
+    handlerMounted.add(router)
   }
 }

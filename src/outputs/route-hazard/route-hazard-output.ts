@@ -105,21 +105,32 @@ export const routeHazardOutput: OutputModule = {
 
     const positionScan: PositionScanContributor = {
       poiTypes: CORRIDOR_POI_TYPES,
-      buildFetchBox: () => {
-        tickRoute = courseReader.getRouteAhead()
-        return tickRoute === null
-          ? null
-          : routeCorridorBbox(tickRoute, corridorWidthMeters)
+      buildFetchBox: (tickPosition) => {
+        // Override the route's vesselPosition with the monitor's fresh
+        // tickPosition, not the independent readPosition courseReader uses.
+        // If getSelfPath transiently returns null/undefined (subscription
+        // warmup, missed data-model write), the routeCorridorBbox would
+        // otherwise be sized only around wp0 onward and miss a hazard
+        // sitting between the vessel and the first waypoint. The bbox now
+        // always covers the vessel-to-wp0 segment the scan later projects
+        // onto.
+        const rawRoute = courseReader.getRouteAhead()
+        if (rawRoute === null) {
+          tickRoute = null
+          return null
+        }
+        tickRoute = { ...rawRoute, vesselPosition: tickPosition }
+        return routeCorridorBbox(tickRoute, corridorWidthMeters)
       },
       evaluate: (vesselPosition, pois) => {
         let corridorPois: CorridorPoi[] = []
         if (tickRoute !== null) {
           const vesselState = courseReader.getVesselState()
           corridorPois = scanRouteCorridor({
-            // Scan from the fresh fix the monitor passes, not the position
-            // getRouteAhead froze in buildFetchBox before the list request:
-            // on a moving vessel the two differ by the distance traveled
-            // during that multi-second request.
+            // Scan from the latest fix the monitor passes (which may have
+            // advanced from the tickPosition the buildFetchBox saw, if the
+            // list request was slow); the buildFetchBox box was already
+            // sized to that earlier tickPosition.
             route: { ...tickRoute, vesselPosition },
             pois,
             corridorWidthMeters,
