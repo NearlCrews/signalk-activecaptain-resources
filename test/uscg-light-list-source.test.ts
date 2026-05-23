@@ -104,8 +104,10 @@ test('listPointsOfInterest filters by bbox and tags every summary with the sourc
     assert.equal(inside[0].id, '12345')
     assert.equal(inside[0].type, 'Navigational')
     assert.equal(inside[0].skIcon, 'navigation-structure')
-    assert.ok(inside[0].url.includes('listVolumeNumber=1'))
-    assert.ok(inside[0].url.includes('lightListNumber=12345'))
+    // The deep link points at OpenSeaMap with a marker at the record's
+    // lat/lon; the canonical NAVCEN search-result deep link returns 404.
+    assert.ok(inside[0].url.includes('map.openseamap.org'))
+    assert.ok(inside[0].url.includes('mlat=42'))
     const outside = await source.listPointsOfInterest(
       { south: 0, west: 0, north: 1, east: 1 }, '')
     assert.equal(outside.length, 0)

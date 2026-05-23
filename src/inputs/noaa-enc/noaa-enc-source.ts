@@ -28,6 +28,7 @@ import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
 import { MAX_BBOX_CACHE_ENTRIES, MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
 import type { Bbox, PoiDetailView, PoiSummary, Position } from '../../shared/types.js'
 import { isInUsWaters } from '../../shared/us-waters.js'
+import { openSeaMapMarkerUrl } from '../../shared/map-link.js'
 import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
@@ -129,10 +130,16 @@ function featureName (layerKey: EncLayerKey, feature: EncFeature): string {
   return LAYER_NAME[layerKey]
 }
 
-/** Public ENC Direct viewer URL centered on a feature's position. */
+/**
+ * "View this feature in a browser" deep link. NOAA's ENC Direct viewer
+ * does not support per-feature deep links (see `src/shared/map-link.ts`
+ * for the verified-with-citation reasoning), so the fallback is an
+ * OpenSeaMap marker. The popup body still names the NOAA chart cell
+ * (`DSNM`) and the survey date for cross-reference.
+ */
 function viewerUrl (feature: EncFeature): string {
   const [lon, lat] = feature.geometry.coordinates
-  return `https://encdirect.noaa.gov/?center=${lat},${lon}&zoom=15`
+  return openSeaMapMarkerUrl(lat, lon)
 }
 
 /** Build the source-agnostic list summary for one feature. */

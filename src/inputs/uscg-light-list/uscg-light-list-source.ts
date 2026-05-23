@@ -21,6 +21,7 @@ import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
 import type { Bbox, PoiDetailView, PoiSummary, Position } from '../../shared/types.js'
 import { isInUsWaters } from '../../shared/us-waters.js'
+import { openSeaMapMarkerUrl } from '../../shared/map-link.js'
 import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
@@ -29,9 +30,6 @@ export const USCG_LIGHT_LIST_SOURCE_ID = 'usclightlist'
 
 /** Human-readable attribution credit for USCG Light List data. */
 const ATTRIBUTION = '© USCG (US Government public domain)'
-
-/** Public NAVCEN search URL prefix, completed with volume and LLNR query parameters. */
-const URL_PREFIX = 'https://www.navcen.uscg.gov/light-list-search-results'
 
 /**
  * The 37 (district, page) pairs the NAVCEN MSI feed publishes. A district can
@@ -83,9 +81,19 @@ export interface UscgLightListSource extends PoiSource {
   refreshAll: () => Promise<void>
 }
 
-/** Build the NAVCEN search URL for one Light List record. */
-function recordUrl (volume: number, llnr: number): string {
-  return `${URL_PREFIX}?listVolumeNumber=${volume}&lightListNumber=${llnr}`
+/**
+ * "View this record in a browser" deep link. NAVCEN dropped its
+ * per-record search route during the 2020 Drupal migration and the MSI
+ * app has no LLNR URL routing (see `src/shared/map-link.ts` for the
+ * verified-with-citation reasoning), so the fallback is an OpenSeaMap
+ * marker. OpenSeaMap renders the seamark overlay; for most US navaids
+ * the matching aid is tagged in OSM via the `seamark:light:*` family,
+ * so the marker often lands on the same physical feature. The popup
+ * body still names the LLNR, the USCG volume, and the district for
+ * manual cross-reference against NAVCEN.
+ */
+function recordUrl (latitude: number, longitude: number): string {
+  return openSeaMapMarkerUrl(latitude, longitude)
 }
 
 /** Create the USCG Light List PoiSource. */
@@ -137,7 +145,7 @@ export function createUscgLightListSource (
             position: { ...record.position },
             name: record.name,
             source: USCG_LIGHT_LIST_SOURCE_ID,
-            url: recordUrl(record.volume, record.llnr),
+            url: recordUrl(record.position.latitude, record.position.longitude),
             attribution: ATTRIBUTION,
             skIcon: recordSkIcon(record)
           }
@@ -166,7 +174,7 @@ export function createUscgLightListSource (
         name: record.name,
         position: { ...record.position },
         type: recordPoiType(record),
-        url: recordUrl(record.volume, record.llnr),
+        url: recordUrl(record.position.latitude, record.position.longitude),
         source: USCG_LIGHT_LIST_SOURCE_ID,
         attribution: ATTRIBUTION,
         description,
