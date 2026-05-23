@@ -37,6 +37,15 @@ export interface PluginStatus {
    */
   recordError: (source: string, message: string) => void
   /**
+   * Record that a source chose not to issue a request, e.g. because the vessel
+   * is outside US waters and the source covers US data only. A skip is not a
+   * failure: it leaves `apiReachable` untouched and is not added to the
+   * recent-errors list. The base implementation is a no-op; the method is
+   * declared on the interface so the US-only sources can call it without
+   * duck-typing the recorder.
+   */
+  recordSkipped: (source: string, reason: string) => void
+  /**
    * Produce a point-in-time snapshot. The caller supplies `cachedPoiCount`
    * because the cached entry count is owned by the cache, not the recorder.
    */
@@ -101,6 +110,13 @@ export function createPluginStatus (sources: ReadonlyArray<StatusSource>): Plugi
         recentErrors.length = MAX_RECENT_ERRORS
       }
     },
+
+    // A skip is observational: the source declined to issue a request, which
+    // is not an outcome to record against `apiReachable` and not an error to
+    // surface in the recent-errors list. The hook is here so the US-only
+    // sources can call into a typed surface; a future snapshot could expose
+    // skip counts if they prove diagnostically useful.
+    recordSkipped: (_source: string, _reason: string): void => {},
 
     snapshot: (cachedPoiCount: number): StatusSnapshot => ({
       sources: [...states.entries()].map(([source, state]): SourceStatus => ({

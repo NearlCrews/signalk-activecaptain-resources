@@ -13,6 +13,7 @@ function silentStatus (): PluginStatus {
     recordListFetch: () => {},
     recordDetailSuccess: () => {},
     recordError: () => {},
+    recordSkipped: () => {},
     snapshot: () => ({}) as never
   }
 }

@@ -216,4 +216,22 @@ export interface PluginConfig {
   openSeaMapDedupe?: boolean
   /** Merge radius, in meters, for OpenSeaMap dedupe against the ActiveCaptain base. */
   openSeaMapDedupeRadiusMeters?: number
+  /** Import US Aids to Navigation from the USCG Light List. */
+  uscgLightListEnabled?: boolean
+  /** Merge USCG Light List points of interest that duplicate an ActiveCaptain marker. */
+  uscgLightListDedupe?: boolean
+  /** USCG Light List background refresh period, in hours. */
+  uscgLightListRefreshHours?: number
+  /** Import wrecks, obstructions, and rocks from NOAA ENC Direct. */
+  noaaEncEnabled?: boolean
+  /** Merge NOAA ENC points of interest that duplicate an ActiveCaptain marker. */
+  noaaEncDedupe?: boolean
+  /** NOAA ENC chart scale band (`overview` through `berthing`). */
+  noaaEncScaleBand?: string
+  /** Include the NOAA ENC wrecks layer in list queries. */
+  noaaEncIncludeWrecks?: boolean
+  /** Include the NOAA ENC obstructions layer in list queries. */
+  noaaEncIncludeObstructions?: boolean
+  /** Include the NOAA ENC underwater-rocks layer in list queries. */
+  noaaEncIncludeRocks?: boolean
 }

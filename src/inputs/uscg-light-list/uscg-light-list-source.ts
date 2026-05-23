@@ -53,16 +53,6 @@ export const DISTRICT_PAGES: ReadonlyArray<readonly [string, number]> = [
   ['D17', 1]
 ]
 
-/**
- * Optional `recordSkipped` method on the status recorder. The real
- * `PluginStatus` does not declare one, so the source duck-types against this
- * shape: a recorder that has the method receives the skip event, one that
- * does not is silently a no-op.
- */
-interface SkippedRecorder {
-  recordSkipped?: (source: string, reason: string) => void
-}
-
 /** Dependencies for {@link createUscgLightListSource}. */
 export interface UscgLightListSourceConfig {
   /** The HTTP client that downloads NAVCEN district files. */
@@ -91,12 +81,6 @@ function recordUrl (volume: number, llnr: number): string {
   return `${URL_PREFIX}?listVolumeNumber=${volume}&lightListNumber=${llnr}`
 }
 
-/** Record a "skipped" status event when the recorder supports it. */
-function recordSkipped (status: PluginStatus, source: string, reason: string): void {
-  const recorder = status as PluginStatus & SkippedRecorder
-  recorder.recordSkipped?.(source, reason)
-}
-
 /** Create the USCG Light List PoiSource. */
 export function createUscgLightListSource (
   config: UscgLightListSourceConfig
@@ -106,7 +90,7 @@ export function createUscgLightListSource (
   async function refreshAll (): Promise<void> {
     const position = getCurrentPosition()
     if (position !== undefined && !isInUsWaters(position)) {
-      recordSkipped(status, USCG_LIGHT_LIST_SOURCE_ID, 'outside US waters')
+      status.recordSkipped(USCG_LIGHT_LIST_SOURCE_ID, 'outside US waters')
       return
     }
     for (const [district, page] of DISTRICT_PAGES) {

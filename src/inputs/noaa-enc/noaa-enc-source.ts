@@ -42,16 +42,6 @@ const LAYER_NAME: Readonly<Record<EncLayerKey, string>> = {
   rock: 'Rock'
 }
 
-/**
- * Optional `recordSkipped` method on the status recorder. The real
- * `PluginStatus` does not declare one (the USCG Light List source uses the
- * same duck-typed pattern): a recorder that has the method receives the
- * skip event, one that does not is silently a no-op.
- */
-interface SkippedRecorder {
-  recordSkipped?: (source: string, reason: string) => void
-}
-
 /** Cached entry: the layer the feature came from plus the feature itself. */
 interface CachedFeature {
   layerKey: EncLayerKey
@@ -130,12 +120,6 @@ function viewerUrl (feature: EncFeature): string {
   return `https://encdirect.noaa.gov/?center=${lat},${lon}&zoom=15`
 }
 
-/** Record a `skipped` status event when the recorder supports it. */
-function recordSkipped (status: PluginStatus, source: string, reason: string): void {
-  const recorder = status as PluginStatus & SkippedRecorder
-  recorder.recordSkipped?.(source, reason)
-}
-
 /** Build the source-agnostic list summary for one feature. */
 function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary {
   const [lon, lat] = feature.geometry.coordinates
@@ -185,7 +169,7 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
     listPointsOfInterest: async (bbox: Bbox): Promise<PoiSummary[]> => {
       const position = getCurrentPosition()
       if (position !== undefined && !isInUsWaters(position)) {
-        recordSkipped(status, NOAA_ENC_SOURCE_ID, 'outside US waters')
+        status.recordSkipped(NOAA_ENC_SOURCE_ID, 'outside US waters')
         return []
       }
       const layers = enabledLayers(config)

@@ -11,10 +11,6 @@
  * module that opted in. Until then this module supplies a placeholder
  * that returns undefined; the source treats undefined as "unknown" and
  * runs the refresh, so the gate is effectively open until Phase 5 lands.
- *
- * The `PluginConfig` interface is extended with the Light List keys in
- * Phase 5; until then the input narrows the raw config to the local
- * shape via a focused interface cast.
  */
 
 import {
@@ -42,22 +38,6 @@ const INITIAL_REFRESH_DELAY_SECONDS = 30
 const MINUTES_PER_HOUR = 60
 const MS_PER_HOUR = MS_PER_MINUTE * MINUTES_PER_HOUR
 const MS_PER_SECOND = 1000
-
-/**
- * Light List slice of the plugin config. Phase 5 extends `PluginConfig`
- * with these keys; until then the input narrows raw config to this
- * shape via a focused cast.
- */
-interface UscgLightListConfig {
-  uscgLightListEnabled?: boolean
-  uscgLightListDedupe?: boolean
-  uscgLightListRefreshHours?: number
-}
-
-/** Read the Light List slice of the raw plugin config. */
-function readConfig (config: PluginConfig): UscgLightListConfig {
-  return config as PluginConfig & UscgLightListConfig
-}
 
 /** The enable, dedupe, and refresh-period config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
@@ -95,11 +75,11 @@ export const uscgLightListInput: InputModule = {
   id: USCG_LIGHT_LIST_SOURCE_ID,
   name: 'USCG Light List',
   configSchema: CONFIG_SCHEMA,
-  isEnabled: (config: PluginConfig) => readConfig(config).uscgLightListEnabled === true,
+  isEnabled: (config: PluginConfig) => config.uscgLightListEnabled === true,
   // Dedupe defaults on: an absent toggle still merges Light List entries
   // that duplicate an ActiveCaptain marker. Only an explicit false turns
   // it off, matching the OpenSeaMap input.
-  isDedupeEnabled: (config: PluginConfig) => readConfig(config).uscgLightListDedupe !== false,
+  isDedupeEnabled: (config: PluginConfig) => config.uscgLightListDedupe !== false,
   createSource: (context: InputContext) => {
     const { app, config, status, dataDir } = context
     const client = createLightListClient()
@@ -120,7 +100,7 @@ export const uscgLightListInput: InputModule = {
       status,
       getCurrentPosition
     })
-    const refreshHours = resolveRefreshHours(readConfig(config).uscgLightListRefreshHours)
+    const refreshHours = resolveRefreshHours(config.uscgLightListRefreshHours)
     const intervalMs = refreshHours * MS_PER_HOUR
     const delayMs = INITIAL_REFRESH_DELAY_SECONDS * MS_PER_SECOND
     const initialTimer = setTimeout(() => {
