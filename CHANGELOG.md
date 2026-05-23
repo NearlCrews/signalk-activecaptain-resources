@@ -27,14 +27,24 @@ own health and settings.**
   source no longer blanks the chart: the layer is served from whichever
   sources answered.
 - Resource ids gain a source prefix (`activecaptain-123456`,
-  `openseamap-node/987654`). A single-ActiveCaptain install sees its note ids
+  `openseamap-node_987654`). A single-ActiveCaptain install sees its note ids
   change from `123456` to `activecaptain-123456`; `getResource` round-trips
-  the prefixed id.
+  the prefixed id. The OpenSeaMap source uses an underscore-separated
+  internal id form (`node_123`, not `node/123`) so a slash inside the raw OSM
+  id never splits the SignalK `/resources/notes/<id>` path.
 - Per-source dedupe: an OpenSeaMap point of interest that duplicates an
-  ActiveCaptain marker of the same type, within a short radius, is merged into
-  it. The surviving note records every contributing source as a corroboration
-  signal (`properties.sources` and `properties.sourceCount`). Dedupe is on by
-  default and can be turned off per source.
+  ActiveCaptain marker of the same type, within a configurable radius
+  (default 150 meters), is merged into it. A second pass collapses
+  same-source duplicates within the same radius, so a feature OSM tagged
+  twice (typically once as a node and once as a way) still becomes one
+  note. The surviving note records every contributing source as a
+  corroboration signal (`properties.sources` and `properties.sourceCount`).
+  Dedupe is on by default and can be turned off per source; the radius is
+  exposed as a panel field.
+- OpenSeaMap navaids render with the Freeboard `real-aton` icon instead of
+  the generic `:sk-navigational` glyph, since Freeboard ships no dedicated
+  navaid SVG; the icon hint travels with the POI through the new
+  source-agnostic `PoiSummary.skIcon` / `PoiDetailView.skIcon` field.
 
 #### Per-source status and the accordion panel
 
@@ -51,6 +61,70 @@ own health and settings.**
   non-ActiveCaptain source on an `activecaptain` path is wrong. A hot upgrade
   leaves any stale `activecaptain.*` notifications in place until the next
   Signal K server restart.
+
+#### Correctness fixes
+
+- The minimum-rating filter is now scoped to the ActiveCaptain source. It
+  was applied to the merged POI list, which silently dropped every
+  OpenSeaMap point of interest (the OSM data carries no average rating).
+- The ActiveCaptain attribution footer is appended once, not twice. The
+  shared `appendAttribution` helper now owns the footer, so the renderer no
+  longer adds a duplicate `Data sourced from Garmin Active Captain` line.
+- A failed output start is surfaced via `setPluginError` (matching how a
+  failed monitor start is surfaced) rather than left as a bland "Ready"
+  status that masked a dead output.
+- `assemblePluginSchema` now throws a clear message if a key in the schema's
+  `required` array is not actually declared by any module, so a renamed or
+  dropped owner-module is caught at assembly time rather than producing a
+  schema with a required slot that has no backing property.
+
+#### Refactors and shared plumbing
+
+- A single shared HTTP client (`src/inputs/http-client.ts`) underlies both
+  the ActiveCaptain and the OpenSeaMap source: one concurrency-limited and
+  throttled request queue, one retry-with-backoff that honors `Retry-After`,
+  one `close()` that aborts in-flight work.
+- A single shared notification tracker (`src/shared/notification-tracker.ts`)
+  owns the raise/clear bookkeeping the proximity-alarm and route-hazard
+  outputs both need, so the clear-half of each alarm lives in one module.
+- The ActiveCaptain summary-API wire types (`PointOfInterest`, the section
+  types, `Availability`, `PoiDetails`, etc.) move from `src/shared/types.ts`
+  to `src/inputs/active-captain/active-captain-types.ts`. `src/shared/types.ts`
+  now holds only the cross-module, source-agnostic contracts.
+- The OpenSeaMap seamark group ids and labels move to
+  `src/shared/seamark-groups.ts` as the single source of truth, consumed by
+  the OpenSeaMap input, its config-schema fragment, and the panel.
+- The per-source POI detail caches share one `MAX_POI_CACHE_ENTRIES`
+  ceiling from `src/shared/cache.ts`; the `toFiniteNumber` narrowing helper
+  moves to `src/shared/numbers.ts` and replaces three ad-hoc copies; the
+  route-corridor leg-point chain and corridor-type list, and the
+  position-monitor tick fix, each live in one named module rather than
+  being inlined per call site.
+- The `poi-store` debounces its disk writes, so a burst of detail loads
+  collapses into a single rewrite of the cache file instead of one rewrite
+  per POI.
+- The attribution footer's CSS class is now the source-agnostic
+  `crows-nest-attribution` rather than the ActiveCaptain-flavoured
+  `ac-attribution`.
+
+#### Configuration panel
+
+- The numeric fields share one `NumberField` row layout (label, input
+  backed by `useNumberDraft` so the input can be cleared mid-edit, and hint
+  text); the proximity and route-hazard alarm controls share one
+  `AlarmFieldset` toggle-plus-numeric layout. The panel imports the
+  OpenSeaMap seamark groups from the shared module so its checklist stays
+  in lockstep with the schema. Style names are source-neutral, the style
+  table is now key-typed, and the per-source card bodies were tightened
+  for accessibility (matching `aria-*` attributes, stable callbacks, and
+  a shared number formatter).
+
+#### Tests
+
+- The duplicated test stubs (a stub SignalK app and a POI-summary builder)
+  are lifted into `test/helpers.ts` and reused across the suite. New
+  coverage was added for previously untested branches of the panel
+  reducer, the config normaliser, and the relative-time formatter.
 
 <a id="v040"></a>
 
