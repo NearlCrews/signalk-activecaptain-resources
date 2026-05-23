@@ -94,7 +94,9 @@ function startMultiSource (dataDir: string): {
     { source: 'openseamap', name: 'OpenSeaMap' }
   ])
   const inputs = createInputRegistry([activeCaptainInput, openSeaMapInput])
-  const source = inputs.createSource({ app, config: CONFIG, status, dataDir })
+  const source = inputs.createSource({
+    app, config: CONFIG, status, dataDir, getCurrentPosition: () => undefined
+  })
   const context: OutputContext = { app, config: CONFIG, pois: source, status }
   notesResourceOutput.start(context)
 

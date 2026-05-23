@@ -10,7 +10,7 @@
 
 import type { ServerAPI } from '@signalk/server-api'
 import type { PluginStatus } from '../status/plugin-status.js'
-import type { Bbox, PluginConfig, PoiDetailView, PoiSummary } from '../shared/types.js'
+import type { Bbox, PluginConfig, PoiDetailView, PoiSummary, Position } from '../shared/types.js'
 
 /** One upstream provider of points of interest. */
 export interface PoiSource {
@@ -42,6 +42,14 @@ export interface InputContext {
   status: PluginStatus
   /** Absolute path to the plugin data directory, for on-disk caches. */
   dataDir: string
+  /**
+   * The most recent vessel position known to the plugin, or undefined when
+   * no fix has arrived yet. A US-only input reads this to skip outbound
+   * HTTP when the vessel is outside US waters. The reader is a closure so
+   * the input always sees the latest fix, not a stale one captured at
+   * construction time.
+   */
+  getCurrentPosition: () => Position | undefined
 }
 
 /** A registrable POI data source. */

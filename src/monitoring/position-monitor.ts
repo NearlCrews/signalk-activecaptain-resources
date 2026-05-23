@@ -84,6 +84,12 @@ export interface PositionMonitorConfig {
 /** Public surface of the position monitor. */
 export interface PositionMonitor {
   /**
+   * The most recent vessel position the monitor has seen, or undefined when
+   * no fix has arrived yet. Read by the US-only POI inputs to skip outbound
+   * HTTP when the vessel is outside US waters.
+   */
+  getCurrentPosition: () => Position | undefined
+  /**
    * Tear the monitor down: unsubscribe from the position stream. Idempotent.
    * Each contributor's owning output clears its own alarms and resources in
    * its `OutputHandle.stop`.
@@ -220,6 +226,7 @@ export function createPositionMonitor (config: PositionMonitorConfig): PositionM
   app.debug('Position monitor started; subscribed to navigation.position')
 
   return {
+    getCurrentPosition: () => latestPosition,
     stop: () => {
       if (stopped) {
         return

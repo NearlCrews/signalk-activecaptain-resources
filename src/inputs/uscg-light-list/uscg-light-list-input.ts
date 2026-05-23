@@ -3,14 +3,10 @@
  *
  * Opt-in: defaults off. Owns the config-schema fragment, the periodic
  * refresh scheduler (cleared on close), and the factory that wires the
- * client, store, and source together.
- *
- * The position-gate wiring (the closure that feeds `getCurrentPosition`)
- * is completed in Phase 5 (Lane F): the plugin shell already maintains
- * the latest vessel position, and Phase 5 hands a reader to every input
- * module that opted in. Until then this module supplies a placeholder
- * that returns undefined; the source treats undefined as "unknown" and
- * runs the refresh, so the gate is effectively open until Phase 5 lands.
+ * client, store, and source together. The vessel-position gate is read
+ * straight off `InputContext.getCurrentPosition`: a vessel that has left
+ * US waters keeps its already-loaded index but issues no refresh against
+ * NAVCEN until it returns.
  */
 
 import {
@@ -22,7 +18,7 @@ import { createLightListClient } from './light-list-client.js'
 import { createLightListStore } from './light-list-store.js'
 import type { InputContext, InputModule } from '../poi-source.js'
 import { MS_PER_MINUTE } from '../../shared/time.js'
-import type { PluginConfig, Position } from '../../shared/types.js'
+import type { PluginConfig } from '../../shared/types.js'
 
 /** Default background refresh period, in hours. */
 const DEFAULT_REFRESH_HOURS = 6
@@ -81,12 +77,9 @@ export const uscgLightListInput: InputModule = {
   // it off, matching the OpenSeaMap input.
   isDedupeEnabled: (config: PluginConfig) => config.uscgLightListDedupe !== false,
   createSource: (context: InputContext) => {
-    const { app, config, status, dataDir } = context
+    const { app, config, status, dataDir, getCurrentPosition } = context
     const client = createLightListClient()
     const store = createLightListStore(dataDir)
-    // Phase 5 (Lane F) wires the position-gate by replacing this placeholder
-    // with a reader against the plugin's position monitor.
-    const getCurrentPosition = (): Position | undefined => undefined
     // The on-disk load is kicked off here so a refresh fired by the
     // scheduler reads a hot index; failures are logged but do not block
     // plugin start: the store falls back to an empty index, which the

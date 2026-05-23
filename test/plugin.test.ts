@@ -5,8 +5,9 @@ import type { IRouter } from 'express'
 import { createPlugin } from '../src/plugin/plugin.js'
 import { createInputRegistry } from '../src/inputs/input-registry.js'
 import { createOutputRegistry } from '../src/outputs/output-registry.js'
-import type { InputModule, PoiSource } from '../src/inputs/poi-source.js'
+import type { InputContext, InputModule, PoiSource } from '../src/inputs/poi-source.js'
 import type { OutputHandle, OutputModule, PositionScanContributor } from '../src/outputs/output.js'
+import type { Position } from '../src/shared/types.js'
 
 /** A minimal config: only the one always-required property. */
 const CONFIG = { cachingDurationMinutes: 60 }
@@ -22,6 +23,8 @@ interface StubApp {
   pluginErrors: string[]
   getSelfBusCalls: () => number
   adminGatedPaths: string[]
+  /** Feed a value through the position stream the monitor subscribed to. */
+  emitPosition: (value: unknown) => void
 }
 
 /**
@@ -34,6 +37,7 @@ function createStubApp (options: { monitorThrows?: boolean } = {}): StubApp {
   const pluginErrors: string[] = []
   const adminGatedPaths: string[] = []
   let getSelfBusCount = 0
+  let positionHandler: ((delta: { value: unknown }) => void) | undefined
   const app = {
     getDataDirPath: () => '/tmp/crows-nest-test',
     setPluginStatus: (message: string) => { statusMessages.push(message) },
@@ -46,7 +50,12 @@ function createStubApp (options: { monitorThrows?: boolean } = {}): StubApp {
         if (options.monitorThrows === true) {
           throw new Error('position stream unavailable')
         }
-        return { onValue: () => () => {} }
+        return {
+          onValue: (handler: (delta: { value: unknown }) => void) => {
+            positionHandler = handler
+            return () => { positionHandler = undefined }
+          }
+        }
       }
     },
     securityStrategy: {
@@ -59,7 +68,8 @@ function createStubApp (options: { monitorThrows?: boolean } = {}): StubApp {
     errorMessages,
     pluginErrors,
     getSelfBusCalls: () => getSelfBusCount,
-    adminGatedPaths
+    adminGatedPaths,
+    emitPosition: (value: unknown) => { positionHandler?.({ value }) }
   }
 }
 
@@ -195,9 +205,10 @@ test('a second start without a stop tears the previous runtime down first', () =
   plugin.stop()
 })
 
-test('the position monitor is built only when a position-driven output is enabled', () => {
-  // A plain output contributes no scan, so the monitor is not built and the
-  // position stream is never subscribed.
+test('the position monitor always starts so inputs and outputs can read the current fix', () => {
+  // The US-only inputs read position through InputContext.getCurrentPosition,
+  // which is plumbed through the position monitor. The monitor therefore
+  // always starts, regardless of whether a position-driven output is enabled.
   const plain = createStubOutput({ id: 'plain' })
   const stubPlain = createStubApp()
   const pluginPlain = createPlugin(
@@ -206,10 +217,9 @@ test('the position monitor is built only when a position-driven output is enable
     createOutputRegistry([plain.module])
   )
   pluginPlain.start(CONFIG, noopRestart)
-  assert.equal(stubPlain.getSelfBusCalls(), 0, 'no position subscription without a position-driven output')
+  assert.equal(stubPlain.getSelfBusCalls(), 1, 'the monitor subscribes even without a position-driven output')
   pluginPlain.stop()
 
-  // A position-driven output contributes a scan, so the monitor subscribes.
   const driven = createStubOutput({ id: 'driven', positionDriven: true })
   const stubDriven = createStubApp()
   const pluginDriven = createPlugin(
@@ -218,8 +228,52 @@ test('the position monitor is built only when a position-driven output is enable
     createOutputRegistry([driven.module])
   )
   pluginDriven.start(CONFIG, noopRestart)
-  assert.equal(stubDriven.getSelfBusCalls(), 1, 'the monitor subscribes for a position-driven output')
+  assert.equal(stubDriven.getSelfBusCalls(), 1, 'the monitor still subscribes once for a position-driven output')
   pluginDriven.stop()
+})
+
+test('the InputContext getCurrentPosition reader is wired to the position monitor', () => {
+  // The plugin shell's reader must reach into the runtime's monitor; a stub
+  // input captures the closure on createSource and the test asserts the
+  // reader returns undefined until the monitor sees its first fix.
+  const sources: Array<{ closeCount: number }> = []
+  let capturedReader: (() => Position | undefined) | undefined
+  const captureModule: InputModule = {
+    id: 'capture-input',
+    name: 'Capture Input',
+    configSchema: { cachingDurationMinutes: { type: 'number' } },
+    isEnabled: () => true,
+    createSource: (context: InputContext): PoiSource => {
+      capturedReader = context.getCurrentPosition
+      const record = { closeCount: 0 }
+      sources.push(record)
+      return {
+        id: 'capture-input',
+        listPointsOfInterest: async () => [],
+        getDetails: async () => { throw new Error('unused') },
+        cacheSize: () => 0,
+        close: () => { record.closeCount++ }
+      }
+    }
+  }
+  const stub = createStubApp()
+  const plugin = createPlugin(
+    stub.app,
+    createInputRegistry([captureModule]),
+    createOutputRegistry([createStubOutput({ id: 'plain' }).module])
+  )
+  plugin.start(CONFIG, noopRestart)
+  assert.equal(typeof capturedReader, 'function', 'the input received a getCurrentPosition reader')
+  // Before any fix arrives, the reader returns undefined.
+  assert.equal(capturedReader?.(), undefined, 'no fix yet means the reader returns undefined')
+  // A position fix flows through the monitor and the reader returns it.
+  stub.emitPosition({ latitude: 42.36, longitude: -71.05 })
+  assert.deepEqual(
+    capturedReader?.(),
+    { latitude: 42.36, longitude: -71.05 },
+    'the reader returns the latest fix the monitor has tracked'
+  )
+  plugin.stop()
 })
 
 test('an output start failure is surfaced as a plugin error, not as "Ready"', () => {

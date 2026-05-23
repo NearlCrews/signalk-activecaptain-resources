@@ -135,11 +135,17 @@ export function createPlugin (
         `POI types ${poiTypes ?? '(none selected)'}`
       )
 
+      // The InputContext's getCurrentPosition reads through the runtime's
+      // monitor, which is created later in this same start() call. The
+      // closure captures `runtime` lazily so the inputs always see the
+      // latest fix the monitor has tracked, and `undefined` while the
+      // monitor is still being built or has not yet seen a position fix.
       const source = inputs.createSource({
         app,
         config,
         status,
-        dataDir: app.getDataDirPath()
+        dataDir: app.getDataDirPath(),
+        getCurrentPosition: () => runtime?.monitor?.getCurrentPosition()
       })
 
       const outputContext: OutputContext = { app, config, pois: source, status }
@@ -160,34 +166,37 @@ export function createPlugin (
       const startedSet = new Set(startedIds)
       const failedOutputIds = enabledOutputIds.filter((id) => !startedSet.has(id))
 
-      // Build the shared position monitor from the outputs' scan contributors.
+      // The position monitor always starts, because the US-only inputs read
+      // through its `getCurrentPosition` getter to skip outbound HTTP outside
+      // US waters even when no position-driven output is enabled. The output
+      // contributors drive its per-tick scan when any are present.
       const contributors: PositionScanContributor[] = handles
         .map((handle) => handle.positionScan)
         .filter((scan): scan is PositionScanContributor => scan !== undefined)
       let monitorFailed = false
-      if (contributors.length > 0) {
-        const requiredTypes = contributors.flatMap((c) => c.poiTypes)
-        try {
-          runtime.monitor = createPositionMonitor({
-            app,
-            client: source,
-            contributors,
-            poiTypes: ensurePoiTypes(poiTypes, requiredTypes)
-          })
+      const requiredTypes = contributors.flatMap((c) => c.poiTypes)
+      try {
+        runtime.monitor = createPositionMonitor({
+          app,
+          client: source,
+          contributors,
+          poiTypes: ensurePoiTypes(poiTypes, requiredTypes)
+        })
+        if (contributors.length > 0) {
           app.debug(`Crow's Nest position monitor driving ${contributors.length} position-driven output(s)`)
-        } catch (error) {
-          // The position-driven outputs are started but, without the monitor,
-          // never driven. Surface a plugin error rather than reporting a bland
-          // "Ready" status that would mask dead safety alarms.
-          monitorFailed = true
-          app.error(`Cannot start the position monitor: ${String(error)}`)
-          // A monitor-startup failure is not a data-source outage, so it is
-          // surfaced as a plugin error rather than recorded against a source
-          // row in the per-source status snapshot.
-          app.setPluginError(
-            'Position monitor failed to start; proximity and route-hazard alarms are not running'
-          )
         }
+      } catch (error) {
+        // The position-driven outputs are started but, without the monitor,
+        // never driven. Surface a plugin error rather than reporting a bland
+        // "Ready" status that would mask dead safety alarms.
+        monitorFailed = true
+        app.error(`Cannot start the position monitor: ${String(error)}`)
+        // A monitor-startup failure is not a data-source outage, so it is
+        // surfaced as a plugin error rather than recorded against a source
+        // row in the per-source status snapshot.
+        app.setPluginError(
+          'Position monitor failed to start; proximity and route-hazard alarms are not running'
+        )
       }
 
       // Treat a failed output start the same way as a monitor failure: surface

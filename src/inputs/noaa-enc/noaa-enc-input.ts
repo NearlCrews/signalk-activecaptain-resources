@@ -4,20 +4,16 @@
  * Opt-in: defaults off. Owns the config-schema fragment (enable toggle,
  * dedupe toggle, scale-band selector, and three per-layer toggles) and the
  * factory that wires the ArcGIS REST client and the PoiSource together.
- *
- * The position-gate wiring (the closure that feeds `getCurrentPosition`)
- * is completed in Phase 5 (Lane F): the plugin shell already maintains the
- * latest vessel position, and Phase 5 plumbs a reader to every input
- * module that opted in. Until then this module supplies a placeholder that
- * returns undefined; the source treats undefined as "unknown" and runs the
- * query, so the gate is effectively open until Phase 5 lands.
+ * The vessel-position gate is read straight off
+ * `InputContext.getCurrentPosition`: a vessel that has left US waters
+ * issues no list query against NOAA until it returns.
  */
 
 import { createNoaaEncSource, NOAA_ENC_SOURCE_ID } from './noaa-enc-source.js'
 import { createEncDirectClient } from './enc-direct-client.js'
 import type { ScaleBand } from './enc-direct-types.js'
 import type { InputContext, InputModule } from '../poi-source.js'
-import type { PluginConfig, Position } from '../../shared/types.js'
+import type { PluginConfig } from '../../shared/types.js'
 
 /** The six ENC Direct scale bands, ordered overview to berthing. */
 const SCALE_BANDS: readonly ScaleBand[] = [
@@ -83,10 +79,7 @@ export const noaaEncInput: InputModule = {
   // matching the OpenSeaMap and Light List inputs.
   isDedupeEnabled: (config: PluginConfig) => config.noaaEncDedupe !== false,
   createSource: (context: InputContext) => {
-    const { config, status } = context
-    // Phase 5 (Lane F) wires the position-gate by replacing this placeholder
-    // with a reader against the plugin's position monitor.
-    const getCurrentPosition = (): Position | undefined => undefined
+    const { config, status, getCurrentPosition } = context
     return createNoaaEncSource({
       client: createEncDirectClient(),
       band: resolveBand(config.noaaEncScaleBand),
