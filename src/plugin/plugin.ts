@@ -79,10 +79,19 @@ export function createPlugin (
    */
   function teardown (): void {
     if (runtime === undefined) {
+      // Even with no runtime to tear down, reset the status recorder so a
+      // snapshot during the gap between teardown and the next start does
+      // not report stale source rows from a prior run.
+      status = createPluginStatus([])
       return
     }
     const { source, handles, monitor } = runtime
     runtime = undefined
+    // Reset the status recorder before the per-resource stop loop so a
+    // snapshot read mid-teardown sees the gap state rather than the prior
+    // run's stale rows. The new recorder reports no sources and no errors
+    // until the next start() rebuilds it.
+    status = createPluginStatus([])
 
     if (monitor !== undefined) {
       try {

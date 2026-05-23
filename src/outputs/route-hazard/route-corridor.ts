@@ -134,8 +134,19 @@ export function scanRouteCorridor (input: RouteCorridorScanInput): CorridorPoi[]
 
       const alongTrackDistanceMeters = routeDistanceToLegStart + projection.alongTrackMeters
       const existing = flagged.get(poi.id)
-      if (existing !== undefined && existing.alongTrackDistanceMeters <= alongTrackDistanceMeters) {
-        continue
+      if (existing !== undefined) {
+        // A POI exactly at a waypoint or sitting near a route bend can
+        // project onto two consecutive legs. The first criterion is the
+        // closer perpendicular distance (the leg the route actually passes
+        // nearest the POI on), with along-track distance as the tiebreaker:
+        // an earlier-encountered projection with a worse cross-track
+        // distance would otherwise be reported in the warn message even
+        // though the route passes much closer on a later leg.
+        const existingAbsCross = Math.abs(existing.crossTrackDistanceMeters)
+        const newAbsCross = Math.abs(projection.crossTrackMeters)
+        if (existingAbsCross < newAbsCross) continue
+        if (existingAbsCross === newAbsCross &&
+            existing.alongTrackDistanceMeters <= alongTrackDistanceMeters) continue
       }
 
       const corridorPoi: CorridorPoi = {
