@@ -15,6 +15,7 @@ import {
   DEFAULT_REFRESH_SECONDS
 } from '../normalize-config.js'
 import { SEAMARK_GROUP_IDS } from '../../shared/seamark-groups.js'
+import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import EndpointUrlField from './EndpointUrlField.js'
 import MergeWithActiveCaptain from './MergeWithActiveCaptain.js'
@@ -49,28 +50,31 @@ export default function OpenSeaMapSource ({ state, dispatch }: Props): React.Rea
             (groupId) => groupId === id ? enabled : selected.includes(groupId))
         })}
       />
-      <RefreshSecondsField
-        id='ac-openseamap-refresh-seconds'
-        label='Refresh period (seconds)'
-        hint={'How long to reuse the most recent Overpass result for the ' +
-          'same chart viewport before re-querying. A Freeboard refresh ' +
-          'burst on a stationary view stays inside the cache; a user who ' +
-          'pans to a fresh view re-queries immediately. Leave at 0 to ' +
-          'query Overpass on every list call.'}
-        value={state.openSeaMapRefreshSeconds ?? DEFAULT_REFRESH_SECONDS}
-        onChange={(seconds) => dispatch({ type: 'setOpenSeaMapRefreshSeconds', seconds })}
-      />
-      <MinimumYearField
-        id='ac-openseamap-minimum-year'
-        label='Earliest update year'
-        hint={'Hide OSM elements whose last-edit timestamp is older than ' +
-          'this year. Leave at 0 to import every element. The timestamp is ' +
-          'an OSM contributor freshness signal: an unedited element from ' +
-          '2012 may still be correct, so old does not always mean stale. ' +
-          'Elements with no recorded timestamp are always included.'}
-        value={state.openSeaMapMinimumYear ?? DEFAULT_MINIMUM_YEAR}
-        onChange={(year) => dispatch({ type: 'setOpenSeaMapMinimumYear', year })}
-      />
+      <fieldset style={S.group}>
+        <legend style={S.groupTitle}>Refresh and freshness</legend>
+        <RefreshSecondsField
+          id='ac-openseamap-refresh-seconds'
+          label='Refresh period (seconds)'
+          hint={'How long to reuse the most recent Overpass result for the ' +
+            'same chart viewport before re-querying. A Freeboard refresh ' +
+            'burst on a stationary view stays inside the cache; a user who ' +
+            'pans to a fresh view re-queries immediately. Leave at 0 to ' +
+            'query Overpass on every list call.'}
+          value={state.openSeaMapRefreshSeconds ?? DEFAULT_REFRESH_SECONDS}
+          onChange={(seconds) => dispatch({ type: 'setOpenSeaMapRefreshSeconds', seconds })}
+        />
+        <MinimumYearField
+          id='ac-openseamap-minimum-year'
+          label='Earliest update year'
+          hint={'Hide OSM elements whose last-edit timestamp is older than ' +
+            'this year. Leave at 0 to import every element. The timestamp is ' +
+            'an OSM contributor freshness signal: an unedited element from ' +
+            '2012 may still be correct, so old does not always mean stale. ' +
+            'Elements with no recorded timestamp are always included.'}
+          value={state.openSeaMapMinimumYear ?? DEFAULT_MINIMUM_YEAR}
+          onChange={(year) => dispatch({ type: 'setOpenSeaMapMinimumYear', year })}
+        />
+      </fieldset>
       <MergeWithActiveCaptain
         sourceName='OpenSeaMap'
         enabled={dedupeEnabled}

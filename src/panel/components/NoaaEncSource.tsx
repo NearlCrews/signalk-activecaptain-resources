@@ -119,30 +119,33 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
           </p>
         </fieldset>
       </section>
-      <RefreshSecondsField
-        id='ac-noaa-enc-refresh-seconds'
-        label='Refresh period (seconds)'
-        hint={'How long to reuse the most recent ENC Direct result for the ' +
-          'same chart viewport before re-querying. A Freeboard refresh ' +
-          'burst on a stationary view stays inside the cache; a user who ' +
-          'pans to a fresh view re-queries immediately. NOAA refreshes ENC ' +
-          'data weekly, so a sub-minute cadence here mostly protects the ' +
-          'ArcGIS service from your own chart plotter. Leave at 0 to query ' +
-          'ENC Direct on every list call.'}
-        value={state.noaaEncRefreshSeconds ?? DEFAULT_REFRESH_SECONDS}
-        onChange={(seconds) => dispatch({ type: 'setNoaaEncRefreshSeconds', seconds })}
-      />
-      <MinimumYearField
-        id='ac-noaa-enc-minimum-survey-year'
-        label='Earliest survey year'
-        hint={'Hide features whose hydrographic survey was conducted before ' +
-          'this year. Leave at 0 to import every survey. SORDAT is the ' +
-          'survey date, not the chart refresh date, so a feature surveyed ' +
-          'in 1985 carries that year even though NOAA refreshes the chart ' +
-          'weekly. Features with no recorded survey date are always included.'}
-        value={minimumSurveyYear}
-        onChange={(year) => dispatch({ type: 'setNoaaEncMinimumSurveyYear', year })}
-      />
+      <fieldset style={S.group}>
+        <legend style={S.groupTitle}>Refresh and freshness</legend>
+        <RefreshSecondsField
+          id='ac-noaa-enc-refresh-seconds'
+          label='Refresh period (seconds)'
+          hint={'How long to reuse the most recent ENC Direct result for the ' +
+            'same chart viewport before re-querying. A Freeboard refresh ' +
+            'burst on a stationary view stays inside the cache; a user who ' +
+            'pans to a fresh view re-queries immediately. NOAA refreshes ENC ' +
+            'data weekly, so a sub-minute cadence here mostly protects the ' +
+            'ArcGIS service from your own chart plotter. Leave at 0 to query ' +
+            'ENC Direct on every list call.'}
+          value={state.noaaEncRefreshSeconds ?? DEFAULT_REFRESH_SECONDS}
+          onChange={(seconds) => dispatch({ type: 'setNoaaEncRefreshSeconds', seconds })}
+        />
+        <MinimumYearField
+          id='ac-noaa-enc-minimum-survey-year'
+          label='Earliest survey year'
+          hint={'Hide features whose hydrographic survey was conducted before ' +
+            'this year. Leave at 0 to import every survey. SORDAT is the ' +
+            'survey date, not the chart refresh date, so a feature surveyed ' +
+            'in 1985 carries that year even though NOAA refreshes the chart ' +
+            'weekly. Features with no recorded survey date are always included.'}
+          value={minimumSurveyYear}
+          onChange={(year) => dispatch({ type: 'setNoaaEncMinimumSurveyYear', year })}
+        />
+      </fieldset>
       <MergeWithActiveCaptain
         sourceName='NOAA ENC'
         enabled={dedupeEnabled}

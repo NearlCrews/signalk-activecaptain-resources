@@ -15,6 +15,7 @@ import {
   MAX_USCG_LIGHT_LIST_REFRESH_HOURS,
   MIN_USCG_LIGHT_LIST_REFRESH_HOURS
 } from '../normalize-config.js'
+import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import MergeWithActiveCaptain from './MergeWithActiveCaptain.js'
 import MinimumYearField from './MinimumYearField.js'
@@ -32,26 +33,29 @@ export default function UscgLightListSource ({ state, dispatch }: Props): React.
 
   return (
     <>
-      <NumberField
-        id='ac-uscg-light-list-refresh-hours'
-        label='Refresh period (hours)'
-        hint='How often the plugin re-downloads the NAVCEN district files in the background. Longer periods reduce traffic; shorter periods pick up new aids sooner.'
-        value={state.uscgLightListRefreshHours ?? DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS}
-        onChange={(hours) => dispatch({ type: 'setUscgLightListRefreshHours', hours })}
-        min={MIN_USCG_LIGHT_LIST_REFRESH_HOURS}
-        max={MAX_USCG_LIGHT_LIST_REFRESH_HOURS}
-        step={1}
-        integer
-      />
-      <MinimumYearField
-        id='ac-uscg-light-list-minimum-update-year'
-        label='Earliest update year'
-        hint={'Hide records whose last USCG modification date is older than ' +
-          'this year. Leave at 0 to import every record. Records with no ' +
-          'recorded modification date are always included.'}
-        value={state.uscgLightListMinimumUpdateYear ?? DEFAULT_MINIMUM_YEAR}
-        onChange={(year) => dispatch({ type: 'setUscgLightListMinimumUpdateYear', year })}
-      />
+      <fieldset style={S.group}>
+        <legend style={S.groupTitle}>Refresh and freshness</legend>
+        <NumberField
+          id='ac-uscg-light-list-refresh-hours'
+          label='Refresh period (hours)'
+          hint='How often the plugin re-downloads the NAVCEN district files in the background. Longer periods reduce traffic; shorter periods pick up new aids sooner.'
+          value={state.uscgLightListRefreshHours ?? DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS}
+          onChange={(hours) => dispatch({ type: 'setUscgLightListRefreshHours', hours })}
+          min={MIN_USCG_LIGHT_LIST_REFRESH_HOURS}
+          max={MAX_USCG_LIGHT_LIST_REFRESH_HOURS}
+          step={1}
+          integer
+        />
+        <MinimumYearField
+          id='ac-uscg-light-list-minimum-update-year'
+          label='Earliest update year'
+          hint={'Hide records whose last USCG modification date is older than ' +
+            'this year. Leave at 0 to import every record. Records with no ' +
+            'recorded modification date are always included.'}
+          value={state.uscgLightListMinimumUpdateYear ?? DEFAULT_MINIMUM_YEAR}
+          onChange={(year) => dispatch({ type: 'setUscgLightListMinimumUpdateYear', year })}
+        />
+      </fieldset>
       <MergeWithActiveCaptain
         sourceName='USCG Light List'
         enabled={dedupeEnabled}

@@ -71,6 +71,19 @@ export const THEME_STYLE = `
   border-color: var(--ac-border) !important;
   cursor: not-allowed !important;
 }
+/* The browser-default <legend> layout cuts into the fieldset's top border,
+   producing a visible notch in the rounded border. Floating the legend
+   lifts it out of the border into a normal block above the fieldset
+   contents; the next sibling clears the float so it begins on a new line. */
+.ac-config-panel fieldset > legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.ac-config-panel fieldset > legend + * {
+  clear: both;
+}
 `
 
 /**
