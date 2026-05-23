@@ -4,8 +4,42 @@
 
 ### Unreleased
 
-**Two new authoritative US data sources, plus a broad cleanup pass driven by a
-multi-agent code review.**
+**Two new authoritative US data sources, a per-source date-cutoff filter, and a
+broad cleanup pass driven by a multi-agent code review.**
+
+#### Earliest-year filter, per source
+
+Each opting-in source grows an optional "earliest year" knob on its
+configuration card. When set, the source hides POIs whose source-specific
+timestamp is older than the chosen year:
+
+- **NOAA ENC Direct** gets `noaaEncMinimumSurveyYear`, filtering on the
+  S-57 `SORDAT` hydrographic survey date. SORDAT is the survey vintage,
+  often decades old for stable features (a wreck found in a 1950s
+  lead-line survey vs a 2020s multibeam survey), so this is a
+  data-confidence filter. The popup label says "Earliest survey year".
+- **USCG Light List** gets `uscgLightListMinimumUpdateYear`, filtering on
+  the NAVCEN `MODIFIED_DATE` (the date the USCG last edited the AtoN
+  record). The popup label says "Earliest update year".
+- **OpenSeaMap** gets `openSeaMapMinimumYear`, filtering on the OSM
+  element `timestamp` (the date the OSM element was last edited by any
+  contributor). The Overpass query now requests
+  `out center tags meta;` so each element carries its timestamp; the
+  response is one optional field heavier per element.
+
+Every field defaults to `0`, which disables the filter and matches the
+existing minimum-rating convention. POIs without a timestamp are always
+included: the filter only narrows, it never silences a source whose wire
+data carries no date. ActiveCaptain is intentionally not in scope:
+`dateLastModified` is on the detail response only, not the summary list,
+so filtering at list time would require fetching every detail and burning
+the API quota; AC base markers therefore always survive the filter.
+
+The collapsed accordion summary on each source card appends `since YYYY`
+when the filter is set, so a non-zero cutoff is visible without expanding
+the card.
+
+#### USCG Light List input
 
 #### USCG Light List input
 
