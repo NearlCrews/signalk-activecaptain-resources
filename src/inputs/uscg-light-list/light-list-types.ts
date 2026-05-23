@@ -5,6 +5,11 @@
  * with one Feature per Aid to Navigation. The wire shape carries every USCG
  * field; the parsed shape (LightListRecord) strips the fields the plugin
  * never displays.
+ *
+ * The wire ships an absent value as an explicit JSON `null` rather than a
+ * missing key, so every optional wire field below is widened to allow `null`
+ * alongside the declared type. The parsed shape never carries `null`: the
+ * client treats null and undefined identically as "absent".
  */
 
 import type { Position } from '../../shared/types.js'
@@ -23,25 +28,29 @@ export interface LightListProperties {
   NAME: string
   DECIMAL_LATITUDE: number
   DECIMAL_LONGITUDE: number
-  LIGHT_CHAR?: string
-  COLOR?: string
-  LIGHT_NOM_RANGE?: number
-  LIGHT_NOM_RANGE_UNIT?: string
-  LIGHT_FOCAL_PLANE?: number
-  LIGHT_FOCAL_PLANE_UNIT?: string
-  STRUCTURE_TYPE?: string
-  STRUCTURE_HEIGHT?: number
-  STRUCTURE_HEIGHT_UNIT?: string
-  DAYMARK_SHAPE?: string
-  DAYMARK_COLOR?: string
-  SOUND_EMITTER_TYPE?: string
-  RACON_MORSE_CHARACTER?: string
-  AID_TYPE?: string
-  AID_SUBTYPE?: string
-  REMARK?: string
-  VOLUME_NUMBER: number
-  MODIFIED_DATE?: number
-  INACTIVE?: string
+  LIGHT_CHAR?: string | null
+  COLOR?: string | null
+  LIGHT_NOM_RANGE?: number | null
+  LIGHT_NOM_RANGE_UNIT?: string | null
+  LIGHT_FOCAL_PLANE?: number | null
+  LIGHT_FOCAL_PLANE_UNIT?: string | null
+  STRUCTURE_TYPE?: string | null
+  STRUCTURE_HEIGHT?: number | null
+  STRUCTURE_HEIGHT_UNIT?: string | null
+  DAYMARK_SHAPE?: string | null
+  DAYMARK_COLOR?: string | null
+  SOUND_EMITTER_TYPE?: string | null
+  RACON_MORSE_CHARACTER?: string | null
+  AID_TYPE?: string | null
+  AID_SUBTYPE?: string | null
+  REMARK?: string | null
+  /**
+   * Volume number. Arrives on the wire as a zero-padded string (`"01"`,
+   * `"02"`), and the client coerces it to a number at parse time.
+   */
+  VOLUME_NUMBER: string | number
+  MODIFIED_DATE?: number | null
+  INACTIVE?: string | null
   // Other fields exist on the wire; the client ignores them on parse.
 }
 
