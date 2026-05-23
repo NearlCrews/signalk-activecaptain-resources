@@ -110,3 +110,20 @@ test('elementSkIcon reads seamark:type, then leisure=marina, then falls back', (
   assert.equal(elementSkIcon({}), 'notice-to-mariners')
   assert.equal(elementSkIcon({ name: 'Just a tagged feature' }), 'notice-to-mariners')
 })
+
+test('every fetched seamark type has a specific PoiType and Freeboard icon mapping', () => {
+  // Drift between what the Overpass query fetches, what flows through the
+  // plugin as a PoiType, and what the chart plotter renders is invisible at
+  // run time: a missing entry silently falls back to Unknown or the generic
+  // notice-to-mariners icon. This test catches that drift at test time, so a
+  // contributor adding a seamark to a group must also extend the PoiType and
+  // icon maps.
+  const allFetched = SEAMARK_GROUPS.flatMap((group) => group.seamarkTypes)
+  assert.ok(allFetched.length > 0, 'the test depends on the groups listing seamark types')
+  for (const seamark of allFetched) {
+    assert.notEqual(seamarkToPoiType(seamark), 'Unknown',
+      `seamark:type=${seamark} is fetched but has no PoiType mapping`)
+    assert.notEqual(seamarkSkIcon(seamark), 'notice-to-mariners',
+      `seamark:type=${seamark} is fetched but has no specific Freeboard icon mapping`)
+  }
+})

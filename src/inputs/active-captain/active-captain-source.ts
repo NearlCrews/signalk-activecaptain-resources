@@ -67,6 +67,19 @@ const ACTIVE_CAPTAIN_SK_ICON: Readonly<Record<PoiType, string>> = {
   Unknown: 'notice-to-mariners'
 }
 
+/**
+ * Resolve the Freeboard icon for an ActiveCaptain POI type with a runtime
+ * fallback. The `Record<PoiType, string>` above is exhaustive at compile
+ * time, but `type` comes from the wire: a future server-side POI category
+ * the union has not yet learned about would slip past the compile-time
+ * check, so a runtime coalesce hands the unknown type a sensible default
+ * rather than `undefined`.
+ */
+function activeCaptainSkIcon (type: PoiType): string {
+  const icon = (ACTIVE_CAPTAIN_SK_ICON as Readonly<Partial<Record<string, string>>>)[type]
+  return icon ?? 'notice-to-mariners'
+}
+
 /** Dependencies for {@link createActiveCaptainSource}. */
 export interface ActiveCaptainSourceConfig {
   /** The ActiveCaptain HTTP client. */
@@ -151,7 +164,7 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
         source: ACTIVE_CAPTAIN_SOURCE_ID,
         url: `${POI_PAGE_URL_PREFIX}${summary.id}`,
         attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
-        skIcon: ACTIVE_CAPTAIN_SK_ICON[summary.type]
+        skIcon: activeCaptainSkIcon(summary.type)
       }))
       // The minimum-rating filter gates ratable POIs on the review score
       // ActiveCaptain supplies. It runs here, on this source's own results, so
@@ -178,7 +191,7 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
         url: `${POI_PAGE_URL_PREFIX}${id}`,
         source: ACTIVE_CAPTAIN_SOURCE_ID,
         attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
-        skIcon: ACTIVE_CAPTAIN_SK_ICON[poi.poiType],
+        skIcon: activeCaptainSkIcon(poi.poiType),
         ...(description !== undefined && { description }),
         ...(Number.isFinite(modified.getTime()) && { timestamp: modified.toISOString() })
       }
