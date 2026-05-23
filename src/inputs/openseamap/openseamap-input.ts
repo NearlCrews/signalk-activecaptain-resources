@@ -111,6 +111,11 @@ export const openSeaMapInput: InputModule = {
   // Dedupe defaults on: an absent toggle still merges OpenSeaMap duplicates of
   // an ActiveCaptain marker. Only an explicit false turns it off.
   isDedupeEnabled: (config: PluginConfig) => config.openSeaMapDedupe !== false,
+  // Per-source merge radius surfaced on the OpenSeaMap card.
+  dedupeRadiusMeters: (config: PluginConfig) => {
+    const value = config.openSeaMapDedupeRadiusMeters
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
+  },
   createSource: (context: InputContext) => {
     const { app, config, status } = context
     return createOpenSeaMapSource({

@@ -145,3 +145,24 @@ test('same-source dedup also runs when a base POI is present alongside non-base 
   assert.equal(osm.length, 1, 'the two co-located OpenSeaMap POIs collapse to one')
   assert.equal(osm[0].id, 'node/9', 'the first occurrence in input order wins')
 })
+
+test('a per-source radius map applies each source\'s radius independently', () => {
+  // Two non-base sources at the same offset from a base POI: USCG with a
+  // tight 5 m radius (does not merge), OpenSeaMap with a wide 150 m
+  // radius (does merge). The per-source map proves each source's radius
+  // is honored independently in one dedupe pass.
+  const base = poi('1', BASE_SOURCE_ID, 'Marina', 10, 20)
+  const tight = poi('789', 'usclightlist', 'Marina', 10 + NEAR, 20)
+  const wide = poi('node/9', 'openseamap', 'Marina', 10 + NEAR, 20)
+  const result = dedupeAgainstBase(
+    [base, tight, wide],
+    new Set(['usclightlist', 'openseamap']),
+    new Map([['usclightlist', 5], ['openseamap', 150]])
+  )
+  const sources = result.map(p => p.source).sort()
+  assert.deepEqual(
+    sources,
+    ['activecaptain', 'usclightlist'],
+    'OpenSeaMap merges into the base at 150 m; USCG stays separate at 5 m'
+  )
+})

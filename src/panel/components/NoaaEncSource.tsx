@@ -12,13 +12,21 @@ import type { ConfigAction } from '../config-reducer.js'
 import {
   DEFAULT_MINIMUM_YEAR,
   DEFAULT_NOAA_ENC_SCALE_BAND,
+  DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS,
   DEFAULT_REFRESH_SECONDS,
   NOAA_ENC_SCALE_BANDS
 } from '../normalize-config.js'
 import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import MinimumYearField from './MinimumYearField.js'
+import NumberField from './NumberField.js'
 import RefreshSecondsField from './RefreshSecondsField.js'
+
+/**
+ * Smallest dedupe radius the plugin accepts. A zero radius would leave
+ * dedupe enabled but unable to ever match, mirroring the OpenSeaMap card.
+ */
+const MIN_DEDUPE_RADIUS_METERS = 1
 
 /** Stable id linking the band selector's visible label to its `<select>`. */
 const BAND_FIELD_ID = 'ac-noaa-enc-scale-band'
@@ -76,33 +84,35 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
       <section style={S.groupsSection}>
         <fieldset style={S.group}>
           <legend style={S.groupTitle}>Hazard layers to import</legend>
-          <label style={S.checkboxRow}>
-            <input
-              type='checkbox'
-              style={S.checkbox}
-              checked={includeWrecks}
-              onChange={(e) => dispatch({ type: 'setNoaaEncIncludeWrecks', enabled: e.target.checked })}
-            />
-            Wrecks
-          </label>
-          <label style={S.checkboxRow}>
-            <input
-              type='checkbox'
-              style={S.checkbox}
-              checked={includeObstructions}
-              onChange={(e) => dispatch({ type: 'setNoaaEncIncludeObstructions', enabled: e.target.checked })}
-            />
-            Obstructions
-          </label>
-          <label style={S.checkboxRow}>
-            <input
-              type='checkbox'
-              style={S.checkbox}
-              checked={includeRocks}
-              onChange={(e) => dispatch({ type: 'setNoaaEncIncludeRocks', enabled: e.target.checked })}
-            />
-            Underwater rocks
-          </label>
+          <div style={S.checkboxGrid}>
+            <label style={S.checkboxLabel}>
+              <input
+                type='checkbox'
+                style={S.checkbox}
+                checked={includeWrecks}
+                onChange={(e) => dispatch({ type: 'setNoaaEncIncludeWrecks', enabled: e.target.checked })}
+              />
+              Wrecks
+            </label>
+            <label style={S.checkboxLabel}>
+              <input
+                type='checkbox'
+                style={S.checkbox}
+                checked={includeObstructions}
+                onChange={(e) => dispatch({ type: 'setNoaaEncIncludeObstructions', enabled: e.target.checked })}
+              />
+              Obstructions
+            </label>
+            <label style={S.checkboxLabel}>
+              <input
+                type='checkbox'
+                style={S.checkbox}
+                checked={includeRocks}
+                onChange={(e) => dispatch({ type: 'setNoaaEncIncludeRocks', enabled: e.target.checked })}
+              />
+              Underwater rocks
+            </label>
+          </div>
           {!includeWrecks && !includeObstructions && !includeRocks && (
             <p style={S.hint}>
               Choose at least one layer; with all three off the source is
@@ -154,6 +164,18 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
         point of the same type is merged into it, so one physical feature is
         shown once. The surviving marker records every source that reported it.
       </p>
+      <NumberField
+        id='ac-noaa-enc-dedupe-radius'
+        label='Merge radius (meters)'
+        hint='How far apart two markers can be and still count as the same point.'
+        value={state.noaaEncDedupeRadiusMeters ?? DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS}
+        onChange={(meters) => dispatch({ type: 'setNoaaEncDedupeRadius', meters })}
+        min={MIN_DEDUPE_RADIUS_METERS}
+        step={10}
+        integer
+        disabled={!dedupeEnabled}
+        dense
+      />
     </>
   )
 }

@@ -55,7 +55,11 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       for (const entity of entities) {
         resources[entity.id] = buildNoteResource({
           name: entity.name,
-          position: { ...entity.position },
+          // Position passes through unchanged. With the per-bbox debounce
+          // caches the same position reference is shared across calls and
+          // into the published note; the pipeline downstream of the cache
+          // is strictly read-only, so the shared reference is safe.
+          position: entity.position,
           // Every source sets `skIcon` explicitly to one of Freeboard's
           // registered icons. A future source that forgets to set it falls
           // back to a known-safe Freeboard glyph rather than to
@@ -79,7 +83,9 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       // carries no cross-source corroboration.
       const note = buildNoteResource({
         name: view.name,
-        position: { ...view.position },
+        // Sources return a fresh position per call, so the reference is
+        // safe to pass through unchanged.
+        position: view.position,
         // Same Freeboard-safe fallback as the list path above.
         skIcon: view.skIcon ?? 'notice-to-mariners',
         url: view.url,

@@ -12,6 +12,7 @@
 import { createNoaaEncSource, NOAA_ENC_SOURCE_ID } from './noaa-enc-source.js'
 import { createEncDirectClient } from './enc-direct-client.js'
 import type { ScaleBand } from './enc-direct-types.js'
+import { DEFAULT_DEDUPE_RADIUS_METERS } from '../dedupe-pois.js'
 import type { InputContext, InputModule } from '../poi-source.js'
 import type { PluginConfig } from '../../shared/types.js'
 import {
@@ -52,6 +53,12 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
     type: 'boolean',
     title: 'Merge NOAA ENC points of interest that duplicate an ActiveCaptain marker',
     default: true
+  },
+  noaaEncDedupeRadiusMeters: {
+    type: 'number',
+    title: 'Merge radius for NOAA ENC points of interest, in meters',
+    default: DEFAULT_DEDUPE_RADIUS_METERS,
+    minimum: 1
   },
   noaaEncScaleBand: {
     type: 'string',
@@ -118,6 +125,11 @@ export const noaaEncInput: InputModule = {
   // duplicate an ActiveCaptain marker. Only an explicit false turns it off,
   // matching the OpenSeaMap and Light List inputs.
   isDedupeEnabled: (config: PluginConfig) => config.noaaEncDedupe !== false,
+  // Per-source merge radius surfaced on the NOAA card.
+  dedupeRadiusMeters: (config: PluginConfig) => {
+    const value = config.noaaEncDedupeRadiusMeters
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
+  },
   createSource: (context: InputContext) => {
     const { config, status, getCurrentPosition } = context
     return createNoaaEncSource({

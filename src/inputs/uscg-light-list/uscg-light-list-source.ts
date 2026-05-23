@@ -96,11 +96,35 @@ function recordUrl (latitude: number, longitude: number): string {
   return openSeaMapMarkerUrl(latitude, longitude)
 }
 
+/**
+ * Concurrency cap for the parallel NAVCEN refresh: four in-flight conditional
+ * GETs at once is well-mannered against a CDN-fronted static-file feed and
+ * collapses the 37-page refresh from ~7 s sequential to under 2 s.
+ */
+const REFRESH_CONCURRENCY = 4
+
 /** Create the USCG Light List PoiSource. */
 export function createUscgLightListSource (
   config: UscgLightListSourceConfig
 ): UscgLightListSource {
   const { client, store, minimumYear, status, getCurrentPosition } = config
+
+  async function refreshOnePage (district: string, page: number): Promise<void> {
+    const key = `${district}_${page}`
+    const previous = store.snapshot().districts[key]
+    const previousHeaders = previous !== undefined
+      ? { lastModified: previous.lastModified, etag: previous.etag }
+      : undefined
+    const result = await client.downloadDistrict(district, page, previousHeaders)
+    if (result.status === 'ok') {
+      store.upsertDistrict(district, page, result.records, result.headers)
+    } else if (result.status === 'error') {
+      status.recordError(
+        USCG_LIGHT_LIST_SOURCE_ID,
+        `Refresh failed for ${key}: ${result.message}`
+      )
+    }
+  }
 
   async function refreshAll (): Promise<void> {
     const position = getCurrentPosition()
@@ -108,55 +132,59 @@ export function createUscgLightListSource (
       status.recordSkipped(USCG_LIGHT_LIST_SOURCE_ID, 'outside US waters')
       return
     }
-    for (const [district, page] of DISTRICT_PAGES) {
-      const key = `${district}_${page}`
-      const previous = store.snapshot().districts[key]
-      const previousHeaders = previous !== undefined
-        ? { lastModified: previous.lastModified, etag: previous.etag }
-        : undefined
-      const result = await client.downloadDistrict(district, page, previousHeaders)
-      if (result.status === 'ok') {
-        store.upsertDistrict(district, page, result.records, result.headers)
-      } else if (result.status === 'error') {
-        status.recordError(
-          USCG_LIGHT_LIST_SOURCE_ID,
-          `Refresh failed for ${key}: ${result.message}`
-        )
-      }
+    // Concurrency-capped fan-out: a small worker pool pulls (district, page)
+    // pairs off the shared cursor until the table is drained. Per-page
+    // errors are recorded onto the status by refreshOnePage and do not
+    // abort the rest of the pass.
+    let next = 0
+    const workers: Array<Promise<void>> = []
+    const limit = Math.min(REFRESH_CONCURRENCY, DISTRICT_PAGES.length)
+    for (let i = 0; i < limit; i += 1) {
+      workers.push((async () => {
+        for (;;) {
+          const index = next++
+          if (index >= DISTRICT_PAGES.length) return
+          const [district, page] = DISTRICT_PAGES[index]
+          try {
+            await refreshOnePage(district, page)
+          } catch (error) {
+            status.recordError(
+              USCG_LIGHT_LIST_SOURCE_ID,
+              `Refresh worker failed for ${district}_${page}: ${String(error)}`
+            )
+          }
+        }
+      })())
     }
+    await Promise.all(workers)
     await store.flush()
   }
 
   return {
     id: USCG_LIGHT_LIST_SOURCE_ID,
     listPointsOfInterest: async (bbox: Bbox): Promise<PoiSummary[]> => {
-      const index = store.snapshot()
+      // The store's spatial tile index narrows the candidate set from the
+      // full ~57,700-record map to the records in the bbox's tiles.
+      const records = store.queryBbox(bbox)
       const result: PoiSummary[] = []
-      for (const record of Object.values(index.records)) {
-        if (
-          record.position.latitude >= bbox.south &&
-          record.position.latitude <= bbox.north &&
-          record.position.longitude >= bbox.west &&
-          record.position.longitude <= bbox.east
-        ) {
-          const summary: PoiSummary = {
-            id: String(record.llnr),
-            type: recordPoiType(record),
-            position: { ...record.position },
-            name: record.name,
-            source: USCG_LIGHT_LIST_SOURCE_ID,
-            url: recordUrl(record.position.latitude, record.position.longitude),
-            attribution: ATTRIBUTION,
-            skIcon: recordSkIcon(record)
-          }
-          // record.modifiedDate is already ISO-8601 UTC (parsed from epoch ms
-          // by the client), so PoiSummary.timestamp accepts it as-is for the
-          // year-filter helper.
-          if (record.modifiedDate !== undefined) {
-            summary.timestamp = record.modifiedDate
-          }
-          result.push(summary)
+      for (const record of records) {
+        const summary: PoiSummary = {
+          id: String(record.llnr),
+          type: recordPoiType(record),
+          position: { ...record.position },
+          name: record.name,
+          source: USCG_LIGHT_LIST_SOURCE_ID,
+          url: recordUrl(record.position.latitude, record.position.longitude),
+          attribution: ATTRIBUTION,
+          skIcon: recordSkIcon(record)
         }
+        // record.modifiedDate is already ISO-8601 UTC (parsed from epoch ms
+        // by the client), so PoiSummary.timestamp accepts it as-is for the
+        // year-filter helper.
+        if (record.modifiedDate !== undefined) {
+          summary.timestamp = record.modifiedDate
+        }
+        result.push(summary)
       }
       // Year filter is applied source-side so the rest of the pipeline
       // (dedupe, notes output, alarms) never sees filtered records.

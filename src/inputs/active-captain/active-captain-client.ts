@@ -56,7 +56,10 @@ const DEFAULTS: RateLimitOptions = {
   minDelayMs: 200,
   backoffBaseMs: 1000,
   maxBackoffMs: 30000,
-  maxRetries: 4
+  maxRetries: 4,
+  // 5 min ceiling on a server-supplied Retry-After: ample for a Garmin
+  // cooldown, capped against a misbehaving edge.
+  maxRetryAfterMs: 300_000
 }
 
 /** Public surface of the ActiveCaptain client. */

@@ -186,6 +186,13 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
   // still merges Light List entries that duplicate an ActiveCaptain marker.
   // Only an explicit false turns it off.
   config.uscgLightListDedupe = raw.uscgLightListDedupe !== false
+  // Per-source merge radius. A zero or non-positive value falls back to the
+  // shared default rather than leaving dedupe enabled but unable to match.
+  const uscgRadius = raw.uscgLightListDedupeRadiusMeters
+  config.uscgLightListDedupeRadiusMeters =
+    typeof uscgRadius === 'number' && Number.isFinite(uscgRadius) && uscgRadius > 0
+      ? uscgRadius
+      : DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
 
   // A non-numeric, infinite, or out-of-range refresh period falls back to the
   // default rather than letting the scheduler misbehave.
@@ -200,6 +207,12 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
   config.noaaEncEnabled = raw.noaaEncEnabled === true
   // Dedupe defaults on, matching the schema: only an explicit false turns it off.
   config.noaaEncDedupe = raw.noaaEncDedupe !== false
+  // Per-source merge radius. Same fallback semantic as the USCG key above.
+  const noaaRadius = raw.noaaEncDedupeRadiusMeters
+  config.noaaEncDedupeRadiusMeters =
+    typeof noaaRadius === 'number' && Number.isFinite(noaaRadius) && noaaRadius > 0
+      ? noaaRadius
+      : DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
 
   // A non-string or unknown band falls back to the default rather than leaving
   // the source unable to resolve a layer-id triple.
@@ -223,9 +236,10 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
   config.uscgLightListMinimumUpdateYear = clampMinimumYear(raw.uscgLightListMinimumUpdateYear)
   config.noaaEncMinimumSurveyYear = clampMinimumYear(raw.noaaEncMinimumSurveyYear)
 
-  // Per-bbox debounce windows for the two at-runtime sources. Default 30 s.
+  // Per-bbox debounce windows for every source. Default 30 s.
   config.openSeaMapRefreshSeconds = clampRefreshSeconds(raw.openSeaMapRefreshSeconds)
   config.noaaEncRefreshSeconds = clampRefreshSeconds(raw.noaaEncRefreshSeconds)
+  config.activeCaptainRefreshSeconds = clampRefreshSeconds(raw.activeCaptainRefreshSeconds)
 
   return config
 }

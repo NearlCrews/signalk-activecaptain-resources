@@ -23,6 +23,16 @@ export interface RateLimitOptions {
   maxBackoffMs: number
   /** Maximum retry attempts after the first try, for 429, 502, 503, and 504 responses. */
   maxRetries: number
+  /**
+   * Upper bound on how long a server-supplied Retry-After header is honored,
+   * in milliseconds. Decoupled from `maxBackoffMs` (which caps exponential
+   * backoff): Overpass legitimately sends 60-120 s cooldowns and capping at
+   * the smaller `maxBackoffMs` truncates that into another instant 429. A
+   * 5 min ceiling lets a genuine cooldown ride out while still protecting
+   * against a misbehaving edge sending an absurd value.
+   * `closeController.abort()` still cancels the wait on plugin stop.
+   */
+  maxRetryAfterMs: number
 }
 
 /** HTTP status that signals the caller is being rate limited. */
@@ -204,7 +214,8 @@ export function createHttpClient (
     minDelayMs: options.minDelayMs ?? config.defaults.minDelayMs,
     backoffBaseMs: options.backoffBaseMs ?? config.defaults.backoffBaseMs,
     maxBackoffMs: options.maxBackoffMs ?? config.defaults.maxBackoffMs,
-    maxRetries: options.maxRetries ?? config.defaults.maxRetries
+    maxRetries: options.maxRetries ?? config.defaults.maxRetries,
+    maxRetryAfterMs: options.maxRetryAfterMs ?? config.defaults.maxRetryAfterMs
   }
 
   const queue = new RequestQueue(limits.maxConcurrency, limits.minDelayMs)
@@ -235,13 +246,16 @@ export function createHttpClient (
         const retryAfter = honorsRetryAfter
           ? parseRetryAfter(response.headers.get('retry-after'))
           : undefined
-        // A Retry-After header is honored but still capped: an upstream (or a
-        // misbehaving edge) sending a huge value must not stall the request,
-        // and its queue slot, for minutes or longer.
-        const wait = Math.min(
-          retryAfter ?? backoffDelay(attempt, limits.backoffBaseMs, limits.maxBackoffMs),
-          limits.maxBackoffMs
-        )
+        // Cap a server-supplied Retry-After at `maxRetryAfterMs` rather than
+        // `maxBackoffMs`: an Overpass 60 s cooldown truncated to 30 s would
+        // just produce another instant 429. Floor it at `backoffBaseMs` so
+        // a degenerate `Retry-After: 0` or a past HTTP date does not let
+        // the client burn every remaining retry attempt in the same
+        // event-loop tick. Exponential backoff stays capped at
+        // `maxBackoffMs`; both knobs are per-client tunable.
+        const wait = retryAfter !== undefined
+          ? Math.max(limits.backoffBaseMs, Math.min(retryAfter, limits.maxRetryAfterMs))
+          : backoffDelay(attempt, limits.backoffBaseMs, limits.maxBackoffMs)
         log.debug(
           `${config.label} request to ${url} returned ${response.status}, ` +
           `retrying in ${Math.round(wait)}ms (attempt ${attempt + 1}/${limits.maxRetries})`

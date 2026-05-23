@@ -24,7 +24,9 @@ import type { PoiStore } from './poi-store.js'
 import { parseApiDate, renderDescription } from './poi-detail-renderer.js'
 import { filterByRating } from './rating-filter.js'
 import type { PoiSource } from '../poi-source.js'
-import type { PoiDetailView, PoiType } from '../../shared/types.js'
+import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
+import { MAX_BBOX_CACHE_ENTRIES } from '../../shared/cache.js'
+import type { PoiDetailView, PoiSummary, PoiType } from '../../shared/types.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
 /** The stable id of the ActiveCaptain source. */
@@ -91,6 +93,15 @@ export interface ActiveCaptainSourceConfig {
    * Omitted or 0 lists every point of interest.
    */
   minimumRating?: number
+  /**
+   * Minimum upstream-query interval per bbox, in seconds. A Freeboard
+   * refresh burst on the same viewport reuses the cached summaries for
+   * this long before re-querying ActiveCaptain. `0` (the off sentinel)
+   * disables the cache and queries upstream on every list call. Optional
+   * so a fixture that does not care about debounce can omit it; the
+   * production input module always supplies it.
+   */
+  refreshSeconds?: number
   /** Plugin data directory, for the on-disk store. */
   dataDir: string
   /** Status recorder for detail outcomes. */
@@ -101,7 +112,15 @@ export interface ActiveCaptainSourceConfig {
 
 /** Create the ActiveCaptain POI source. */
 export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): PoiSource {
-  const { client, cachingDurationMinutes, dataDir, status, app, minimumRating = 0 } = config
+  const {
+    client, cachingDurationMinutes, dataDir, status, app,
+    minimumRating = 0, refreshSeconds = 0
+  } = config
+  // Per-bbox debounce: a Freeboard refresh burst on the same view reuses the
+  // last summaries for `refreshSeconds` before re-querying ActiveCaptain.
+  // The detail cache below (TTL by POI id) is unrelated; this one keys on
+  // the bounding-box string and gates the list call only.
+  const bboxCache = createBboxDebounceCache<PoiSummary[]>(refreshSeconds, MAX_BBOX_CACHE_ENTRIES)
 
   // Set by close(). Once the source is closed, a load that resolves later
   // belongs to the torn-down run: its outcome must not touch a later run's
@@ -155,20 +174,27 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
   return {
     id: ACTIVE_CAPTAIN_SOURCE_ID,
     listPointsOfInterest: async (bbox, poiTypes) => {
-      const summaries = await client.listPointsOfInterest(bbox, poiTypes)
-      // The client is source-agnostic; tag each summary with the source slug,
-      // its public ActiveCaptain page, the attribution credit, and the
-      // Freeboard icon for its type.
-      const tagged = summaries.map((summary) => ({
-        ...summary,
-        source: ACTIVE_CAPTAIN_SOURCE_ID,
-        url: `${POI_PAGE_URL_PREFIX}${summary.id}`,
-        attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
-        skIcon: activeCaptainSkIcon(summary.type)
-      }))
-      // The minimum-rating filter gates ratable POIs on the review score
-      // ActiveCaptain supplies. It runs here, on this source's own results, so
-      // it never touches POIs from sources that carry no rating.
+      // Wrap the upstream fetch in the bbox debounce cache so a refresh
+      // burst on the same viewport reuses the previous summaries. The cache
+      // key includes `poiTypes` because the Garmin endpoint filters
+      // server-side on that argument: a notes-resource call without Hazard
+      // must not poison a later proximity-alarm scan that needs Hazard.
+      const tagged = await bboxCache.get(bbox, async () => {
+        const summaries = await client.listPointsOfInterest(bbox, poiTypes)
+        // The client is source-agnostic; tag each summary with the source slug,
+        // its public ActiveCaptain page, the attribution credit, and the
+        // Freeboard icon for its type.
+        return summaries.map((summary) => ({
+          ...summary,
+          source: ACTIVE_CAPTAIN_SOURCE_ID,
+          url: `${POI_PAGE_URL_PREFIX}${summary.id}`,
+          attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
+          skIcon: activeCaptainSkIcon(summary.type)
+        }))
+      }, poiTypes)
+      // The minimum-rating filter runs OUTSIDE the cache so a runtime
+      // change to minimumRating takes effect on the next list call rather
+      // than after the bbox TTL expires.
       return filterByRating(tagged, minimumRating)
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
@@ -202,6 +228,7 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
       // Flush any debounced store write so a clean shutdown persists every
       // detail loaded during the run.
       baseStore.flush()
+      bboxCache.clear()
       client.close()
     }
   }

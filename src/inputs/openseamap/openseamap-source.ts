@@ -142,9 +142,11 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
   // Detail cache, populated from every list query. `getDetails` queries
   // Overpass by id only on a miss.
   const cache = new LRUCache<string, OverpassElement>({ max: MAX_POI_CACHE_ENTRIES })
-  // Per-bbox debounce: a Freeboard refresh burst on the same view reuses the
-  // last summaries for `refreshSeconds` before re-querying Overpass.
-  const bboxCache = createBboxDebounceCache<PoiSummary[]>(refreshSeconds, MAX_BBOX_CACHE_ENTRIES)
+  // Per-bbox debounce: a Freeboard refresh burst on the same view reuses
+  // the raw Overpass elements for `refreshSeconds` before re-querying. The
+  // cache holds raw elements (not summaries) so the per-call tagging,
+  // detail-LRU repopulation, and year filter run outside the cache.
+  const bboxCache = createBboxDebounceCache<OverpassElement[]>(refreshSeconds, MAX_BBOX_CACHE_ENTRIES)
 
   return {
     id: OPENSEAMAP_SOURCE_ID,
@@ -154,18 +156,22 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
     // closes over. The `poiTypes` argument is therefore intentionally ignored
     // for this source.
     listPointsOfInterest: async (bbox: Bbox): Promise<PoiSummary[]> => {
-      // Wrap the upstream fetch in the bbox debounce cache so a refresh
-      // burst on the same viewport reuses the previous summaries.
-      return await bboxCache.get(bbox, async () => {
-        const elements = await client.listPointsOfInterest(bbox, regex)
-        const summaries = elements.map((element) => {
-          cache.set(elementId(element), element)
-          return toSummary(element)
-        })
-        // Year filter is applied source-side so the rest of the pipeline
-        // (dedupe, notes output, alarms) never sees filtered elements.
-        return filterByMinimumYear(summaries, minimumYear)
-      })
+      // Cache only the raw Overpass elements. The per-call tagging, the
+      // detail-LRU repopulation, and the year filter run OUTSIDE the cache
+      // so a runtime config change to `minimumYear` takes effect on the
+      // next list call rather than after the TTL, and so a click on a
+      // marker whose detail entry has been LRU-evicted between two list
+      // calls re-seeds rather than re-fetching upstream.
+      const elements = await bboxCache.get(bbox, async () =>
+        await client.listPointsOfInterest(bbox, regex))
+      const summaries: PoiSummary[] = []
+      for (const element of elements) {
+        cache.set(elementId(element), element)
+        summaries.push(toSummary(element))
+      }
+      // Year filter is applied source-side so the rest of the pipeline
+      // (dedupe, notes output, alarms) never sees filtered elements.
+      return filterByMinimumYear(summaries, minimumYear)
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
       try {

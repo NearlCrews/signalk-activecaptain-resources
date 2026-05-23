@@ -19,6 +19,7 @@ import { createLightListStore } from './light-list-store.js'
 import type { InputContext, InputModule } from '../poi-source.js'
 import { MS_PER_HOUR } from '../../shared/time.js'
 import type { PluginConfig } from '../../shared/types.js'
+import { DEFAULT_DEDUPE_RADIUS_METERS } from '../dedupe-pois.js'
 import {
   clampMinimumYear,
   DEFAULT_MINIMUM_YEAR,
@@ -50,6 +51,12 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
     type: 'boolean',
     title: 'Merge USCG Light List points of interest that duplicate an ActiveCaptain marker',
     default: true
+  },
+  uscgLightListDedupeRadiusMeters: {
+    type: 'number',
+    title: 'Merge radius for USCG Light List points of interest, in meters',
+    default: DEFAULT_DEDUPE_RADIUS_METERS,
+    minimum: 1
   },
   uscgLightListRefreshHours: {
     type: 'number',
@@ -87,6 +94,11 @@ export const uscgLightListInput: InputModule = {
   // that duplicate an ActiveCaptain marker. Only an explicit false turns
   // it off, matching the OpenSeaMap input.
   isDedupeEnabled: (config: PluginConfig) => config.uscgLightListDedupe !== false,
+  // Per-source merge radius surfaced on the USCG card.
+  dedupeRadiusMeters: (config: PluginConfig) => {
+    const value = config.uscgLightListDedupeRadiusMeters
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
+  },
   createSource: (context: InputContext) => {
     const { app, config, status, dataDir, getCurrentPosition } = context
     const client = createLightListClient()

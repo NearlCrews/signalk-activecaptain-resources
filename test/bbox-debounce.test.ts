@@ -107,3 +107,30 @@ test('the fetcher\'s rejection propagates without caching', async () => {
   }), /still down/)
   assert.equal(calls, 2)
 })
+
+test('an extraKey discriminates cache entries for the same bbox', async () => {
+  // The ActiveCaptain source passes `poiTypes` as the extraKey so a
+  // notes-resource call without Hazard does not poison a later
+  // proximity-alarm scan that needs Hazard.
+  let marinaCalls = 0
+  let hazardCalls = 0
+  const now = 1000
+  const cache = createBboxDebounceCache<string>(30, 16, () => now)
+  await cache.get(SAMPLE, async () => { marinaCalls++; return 'marina' }, 'Marina')
+  await cache.get(SAMPLE, async () => { hazardCalls++; return 'hazard' }, 'Hazard')
+  const second = await cache.get(SAMPLE, async () => { marinaCalls++; return 'oops' }, 'Marina')
+  assert.equal(marinaCalls, 1, 'Marina was fetched only once')
+  assert.equal(hazardCalls, 1, 'Hazard was fetched separately')
+  assert.equal(second, 'marina', 'the Marina key returned its own cached value')
+})
+
+test('omitting the extraKey shares the cache slot with another omitted call', async () => {
+  // Sources that take no extra discriminator (OpenSeaMap, NOAA ENC) should
+  // continue to share the bbox-only key shape.
+  let calls = 0
+  const now = 1000
+  const cache = createBboxDebounceCache<number>(30, 16, () => now)
+  await cache.get(SAMPLE, async () => { calls++; return 1 })
+  await cache.get(SAMPLE, async () => { calls++; return 2 })
+  assert.equal(calls, 1)
+})

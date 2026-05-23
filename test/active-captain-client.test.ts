@@ -445,7 +445,7 @@ test('a 429 Retry-After header as an HTTP date is honored before the retry', asy
   assert.ok(Date.now() - start >= 800, 'expected the retry to wait for the HTTP-date Retry-After')
 })
 
-test('a huge Retry-After value is capped at maxBackoffMs', async () => {
+test('a huge Retry-After value is capped at maxRetryAfterMs', async () => {
   const start = Date.now()
   await withMockFetch(
     callIndex => callIndex === 0
@@ -453,7 +453,11 @@ test('a huge Retry-After value is capped at maxBackoffMs', async () => {
       : jsonResponse({ pointsOfInterest: [] }),
     async calls => {
       const client = createActiveCaptainClient(silentLog, {
-        minDelayMs: 0, backoffBaseMs: 1, maxBackoffMs: 30, maxRetries: 2
+        minDelayMs: 0,
+        backoffBaseMs: 1,
+        maxBackoffMs: 30,
+        maxRetryAfterMs: 50,
+        maxRetries: 2
       })
       const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
       assert.deepEqual(result, [])
@@ -461,6 +465,8 @@ test('a huge Retry-After value is capped at maxBackoffMs', async () => {
     }
   )
   // 99999 seconds would stall for over a day if honored literally; the cap
-  // holds the wait down to maxBackoffMs (30ms here).
+  // holds the wait down to maxRetryAfterMs (50 ms here). The cap is
+  // decoupled from maxBackoffMs so a real Overpass-style cooldown
+  // (60-120 s) is not truncated into another instant 429.
   assert.ok(Date.now() - start < 2000, 'expected the huge Retry-After to be capped')
 })

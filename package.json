@@ -6,13 +6,13 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "public",
-    "assets"
+    "public"
   ],
   "scripts": {
     "build": "npm run build:plugin && npm run build:panel",
     "build:plugin": "tsc",
     "build:panel": "webpack --config webpack.config.cjs",
+    "watch:panel": "webpack --watch --mode development --config webpack.config.cjs",
     "clean": "rm -rf dist && rm -f public/*.js public/*.js.map public/*.LICENSE.txt",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.panel.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint .",

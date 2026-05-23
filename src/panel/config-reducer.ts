@@ -24,9 +24,11 @@ export type ConfigAction =
   | { type: 'setOpenSeaMapDedupeRadius', meters: number }
   | { type: 'setUscgLightListEnabled', enabled: boolean }
   | { type: 'setUscgLightListDedupe', enabled: boolean }
+  | { type: 'setUscgLightListDedupeRadius', meters: number }
   | { type: 'setUscgLightListRefreshHours', hours: number }
   | { type: 'setNoaaEncEnabled', enabled: boolean }
   | { type: 'setNoaaEncDedupe', enabled: boolean }
+  | { type: 'setNoaaEncDedupeRadius', meters: number }
   | { type: 'setNoaaEncScaleBand', band: string }
   | { type: 'setNoaaEncIncludeWrecks', enabled: boolean }
   | { type: 'setNoaaEncIncludeObstructions', enabled: boolean }
@@ -36,6 +38,7 @@ export type ConfigAction =
   | { type: 'setNoaaEncMinimumSurveyYear', year: number }
   | { type: 'setOpenSeaMapRefreshSeconds', seconds: number }
   | { type: 'setNoaaEncRefreshSeconds', seconds: number }
+  | { type: 'setActiveCaptainRefreshSeconds', seconds: number }
   | { type: 'discard', config: PluginConfig }
 
 /**
@@ -106,6 +109,9 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
     case 'setUscgLightListDedupe':
       if (state.uscgLightListDedupe === action.enabled) return state
       return { ...state, uscgLightListDedupe: action.enabled }
+    case 'setUscgLightListDedupeRadius':
+      if (state.uscgLightListDedupeRadiusMeters === action.meters) return state
+      return { ...state, uscgLightListDedupeRadiusMeters: action.meters }
     case 'setUscgLightListRefreshHours':
       if (state.uscgLightListRefreshHours === action.hours) return state
       return { ...state, uscgLightListRefreshHours: action.hours }
@@ -115,6 +121,9 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
     case 'setNoaaEncDedupe':
       if (state.noaaEncDedupe === action.enabled) return state
       return { ...state, noaaEncDedupe: action.enabled }
+    case 'setNoaaEncDedupeRadius':
+      if (state.noaaEncDedupeRadiusMeters === action.meters) return state
+      return { ...state, noaaEncDedupeRadiusMeters: action.meters }
     case 'setNoaaEncScaleBand':
       if (state.noaaEncScaleBand === action.band) return state
       return { ...state, noaaEncScaleBand: action.band }
@@ -142,5 +151,8 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
     case 'setNoaaEncRefreshSeconds':
       if (state.noaaEncRefreshSeconds === action.seconds) return state
       return { ...state, noaaEncRefreshSeconds: action.seconds }
+    case 'setActiveCaptainRefreshSeconds':
+      if (state.activeCaptainRefreshSeconds === action.seconds) return state
+      return { ...state, activeCaptainRefreshSeconds: action.seconds }
   }
 }

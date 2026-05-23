@@ -95,7 +95,11 @@ const DEFAULTS: RateLimitOptions = {
   minDelayMs: 1000,
   backoffBaseMs: 2000,
   maxBackoffMs: 60000,
-  maxRetries: 3
+  maxRetries: 3,
+  // 5 min ceiling on a server-supplied Retry-After: Overpass legitimately
+  // sends 60-120 s cooldowns, so the ceiling has to be larger than
+  // maxBackoffMs to avoid truncating into another instant 429.
+  maxRetryAfterMs: 300_000
 }
 
 /** Public surface of the Overpass client. */

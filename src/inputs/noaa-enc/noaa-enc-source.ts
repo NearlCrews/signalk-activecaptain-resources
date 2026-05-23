@@ -187,11 +187,18 @@ function toDetailView (cached: CachedFeature): PoiDetailView {
 export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
   const { client, band, minimumYear, refreshSeconds, status, getCurrentPosition } = config
   const cache = new LRUCache<string, CachedFeature>({ max: MAX_POI_CACHE_ENTRIES })
-  // Per-bbox debounce: a Freeboard refresh burst on the same view reuses the
-  // last summaries for `refreshSeconds` before re-querying upstream. The
-  // detail cache above (LRU by feature id) is unrelated; this one keys on
-  // the bounding-box string.
-  const bboxCache = createBboxDebounceCache<PoiSummary[]>(refreshSeconds, MAX_BBOX_CACHE_ENTRIES)
+  // Per-bbox debounce: a Freeboard refresh burst on the same view reuses
+  // the raw layer features for `refreshSeconds` before re-querying upstream.
+  // The cache holds raw per-layer features (not summaries) so the per-call
+  // tagging, detail-LRU repopulation, and year filter run outside the
+  // cache. The detail cache above (LRU by feature id) is unrelated; this
+  // one keys on the bounding-box string.
+  type LayerFeatures = Array<{ layerKey: EncLayerKey, features: EncFeature[] }>
+  const bboxCache = createBboxDebounceCache<LayerFeatures>(refreshSeconds, MAX_BBOX_CACHE_ENTRIES)
+  // The set of enabled hazard layers is fixed for the life of the source,
+  // so the array is built once at construction rather than on every list
+  // call.
+  const layers = enabledLayers(config)
 
   return {
     id: NOAA_ENC_SOURCE_ID,
@@ -205,23 +212,26 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
         status.recordSkipped(NOAA_ENC_SOURCE_ID, 'outside US waters')
         return []
       }
-      const layers = enabledLayers(config)
       // No enabled layers is a configured-empty list, not a failure: return
       // empty so the aggregate sees a fulfilled empty result and the source
       // is correctly reachable.
       if (layers.length === 0) {
         return []
       }
-      // Wrap the upstream fan-out in the bbox debounce cache so a refresh
-      // burst on the same viewport reuses the previous summaries.
-      return await bboxCache.get(bbox, async () => {
+      // Cache only the raw per-layer features. The per-call tagging, the
+      // detail-LRU repopulation, and the year filter run OUTSIDE the cache
+      // so a runtime config change to `minimumYear` takes effect on the
+      // next list call rather than after the TTL, and so the detail LRU is
+      // re-seeded on every cache hit rather than going stale alongside the
+      // bbox cache.
+      const cached = await bboxCache.get(bbox, async () => {
         const results = await Promise.allSettled(
           layers.map(async (layerKey) => {
             const response = await client.queryLayer({ band, layerKey, bbox })
             return { layerKey, features: response.features }
           })
         )
-        const summaries: PoiSummary[] = []
+        const layerFeatures: Array<{ layerKey: EncLayerKey, features: EncFeature[] }> = []
         let anyLayerOk = false
         let firstRejection: unknown
         for (const result of results) {
@@ -234,12 +244,7 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
             continue
           }
           anyLayerOk = true
-          const { layerKey, features } = result.value
-          for (const feature of features) {
-            const id = summaryId(layerKey, feature)
-            cache.set(id, { layerKey, feature })
-            summaries.push(toSummary(layerKey, feature))
-          }
+          layerFeatures.push(result.value)
         }
         // If every enabled layer rejected, the source itself failed: reject
         // rather than returning a fulfilled empty result, so the aggregate
@@ -252,10 +257,19 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
             `Every enabled NOAA ENC layer query failed: ${String(firstRejection)}`
           )
         }
-        // Year filter is applied source-side so the rest of the pipeline
-        // (dedupe, notes output, alarms) never sees filtered features.
-        return filterByMinimumYear(summaries, minimumYear)
+        return layerFeatures
       })
+      const summaries: PoiSummary[] = []
+      for (const { layerKey, features } of cached) {
+        for (const feature of features) {
+          const id = summaryId(layerKey, feature)
+          cache.set(id, { layerKey, feature })
+          summaries.push(toSummary(layerKey, feature))
+        }
+      }
+      // Year filter is applied source-side so the rest of the pipeline
+      // (dedupe, notes output, alarms) never sees filtered features.
+      return filterByMinimumYear(summaries, minimumYear)
     },
     getDetails: async (id: string): Promise<PoiDetailView> => {
       const hit = cache.get(id)

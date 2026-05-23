@@ -11,6 +11,7 @@ import type { Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
 import {
   DEFAULT_MINIMUM_YEAR,
+  DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS,
   DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS,
   MAX_USCG_LIGHT_LIST_REFRESH_HOURS,
   MIN_USCG_LIGHT_LIST_REFRESH_HOURS
@@ -19,6 +20,12 @@ import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import MinimumYearField from './MinimumYearField.js'
 import NumberField from './NumberField.js'
+
+/**
+ * Smallest dedupe radius the plugin accepts. A zero radius would leave
+ * dedupe enabled but unable to ever match, mirroring the OpenSeaMap card.
+ */
+const MIN_DEDUPE_RADIUS_METERS = 1
 
 interface Props {
   state: PluginConfig
@@ -67,6 +74,18 @@ export default function UscgLightListSource ({ state, dispatch }: Props): React.
         physical feature is shown once. The surviving marker records every
         source that reported it.
       </p>
+      <NumberField
+        id='ac-uscg-light-list-dedupe-radius'
+        label='Merge radius (meters)'
+        hint='How far apart two markers can be and still count as the same point.'
+        value={state.uscgLightListDedupeRadiusMeters ?? DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS}
+        onChange={(meters) => dispatch({ type: 'setUscgLightListDedupeRadius', meters })}
+        min={MIN_DEDUPE_RADIUS_METERS}
+        step={10}
+        integer
+        disabled={!dedupeEnabled}
+        dense
+      />
     </>
   )
 }

@@ -9,7 +9,7 @@
  */
 
 import type { InputContext, InputModule, PoiSource } from './poi-source.js'
-import { BASE_SOURCE_ID, DEFAULT_DEDUPE_RADIUS_METERS, dedupeAgainstBase } from './dedupe-pois.js'
+import { BASE_SOURCE_ID, dedupeAgainstBase } from './dedupe-pois.js'
 import type { PoiSummary } from '../shared/types.js'
 
 /** Public surface of the input registry. */
@@ -42,10 +42,18 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
       // Dedupe runs only when the ActiveCaptain base layer is enabled and at
       // least one non-base input has its per-source dedupe toggle on.
       const dedupeSources = new Set<string>()
+      // Per-source merge-radius map: each non-base input contributes the
+      // radius surfaced on its card. Sources that omit the contract use
+      // DEFAULT_DEDUPE_RADIUS_METERS via the dedupe pass's fallback.
+      const dedupeRadiusBySource = new Map<string, number>()
       if (enabled.some((module) => module.id === BASE_SOURCE_ID)) {
         for (const module of enabled) {
           if (module.id !== BASE_SOURCE_ID && module.isDedupeEnabled?.(context.config) === true) {
             dedupeSources.add(module.id)
+            const radius = module.dedupeRadiusMeters?.(context.config)
+            if (radius !== undefined) {
+              dedupeRadiusBySource.set(module.id, radius)
+            }
           }
         }
       }
@@ -55,8 +63,6 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
       // every call.
       const sourceIds = [...sources.keys()]
       const sourceList = [...sources.values()]
-      const dedupeRadiusMeters =
-        context.config.openSeaMapDedupeRadiusMeters ?? DEFAULT_DEDUPE_RADIUS_METERS
       return {
         id: 'aggregate',
         listPointsOfInterest: async (bbox, poiTypes) => {
@@ -80,8 +86,16 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
               if (!context.status.wasJustSkipped(sourceId)) {
                 context.status.recordListFetch(sourceId, result.value.length)
               }
+              // The id rewrite is done via a spread-clone, not an in-place
+              // mutation: the per-source bbox-debounce caches now return the
+              // same PoiSummary[] reference across hits, and mutating the
+              // shared objects would re-apply the prefix on every cached
+              // tick (`activecaptain-12345` becoming
+              // `activecaptain-activecaptain-12345` and so on, breaking
+              // detail lookup and proximity-alarm hysteresis).
+              const prefix = `${sourceId}-`
               for (const poi of result.value) {
-                merged.push({ ...poi, id: `${sourceId}-${poi.id}` })
+                merged.push({ ...poi, id: prefix + poi.id })
               }
             } else {
               context.status.recordError(
@@ -94,7 +108,7 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
           // Merge each dedupe-enabled source's duplicates into the base layer,
           // so a feature reported by several sources is one corroborated note.
           return dedupeSources.size > 0
-            ? dedupeAgainstBase(merged, dedupeSources, dedupeRadiusMeters)
+            ? dedupeAgainstBase(merged, dedupeSources, dedupeRadiusBySource)
             : merged
         },
         getDetails: async (id) => {

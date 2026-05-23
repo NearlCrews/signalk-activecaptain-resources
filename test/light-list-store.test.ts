@@ -124,3 +124,78 @@ test('store falls back to an empty index when index.json is unparseable', async 
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('queryBbox returns records inside the bbox using the spatial tile index', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-store-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    store.upsertDistrict('D01', 1, [
+      sampleRecord(100), // (42, -71): inside the New England bbox below
+      { ...sampleRecord(200), position: { latitude: 25, longitude: -80 } } // off New England
+    ], {})
+    const inside = store.queryBbox({ south: 41, west: -72, north: 43, east: -70 })
+    assert.equal(inside.length, 1)
+    assert.equal(inside[0].llnr, 100)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('queryBbox returns records on both sides of an antimeridian-crossing bbox', async () => {
+  // A vessel near the western Aleutians (D17, an active Light List
+  // district) gets a bbox whose `east < west` because it wraps the
+  // 180/-180 meridian. queryBbox must split the longitude range into two
+  // and return records from both halves; the naive single-range loop
+  // returned zero hits, hiding every aid on the very stretch the data is
+  // meant for.
+  const dir = await mkdtemp(join(tmpdir(), 'll-store-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    store.upsertDistrict('D17', 1, [
+      { ...sampleRecord(800, 'D17'), position: { latitude: 52, longitude: 179 } },
+      { ...sampleRecord(801, 'D17'), position: { latitude: 52, longitude: -179 } },
+      { ...sampleRecord(802, 'D17'), position: { latitude: 52, longitude: 0 } } // far away
+    ], {})
+    const wrap = store.queryBbox({ south: 51, west: 178, north: 53, east: -178 })
+    const llnrs = wrap.map(r => r.llnr).sort()
+    assert.deepEqual(llnrs, [800, 801])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('load drops cached conditional-GET headers when the page file is missing', async () => {
+  // A district whose metadata is persisted but whose page file is missing
+  // or unreadable was previously a permanent 304 dark zone: the cached
+  // lastModified/etag kept NAVCEN replying 304 and the records stayed
+  // missing forever. After load, those headers must be cleared so the
+  // next refresh forces a 200 OK.
+  const dir = await mkdtemp(join(tmpdir(), 'll-store-'))
+  try {
+    const store1 = createLightListStore(dir)
+    await store1.load()
+    store1.upsertDistrict('D01', 1, [sampleRecord(100)], {
+      lastModified: 'Thu, 22 May 2026 09:26:29 GMT',
+      etag: '"abc"'
+    })
+    await store1.flush()
+    // Simulate the failure: blank out the page file but leave metadata
+    // alone. (rm + create empty is the simplest reproduction.)
+    await writeFile(join(dir, 'uscg-light-list', 'pages', 'D01_1.json'), '[]', 'utf8')
+    const store2 = createLightListStore(dir)
+    const reloaded = await store2.load()
+    // The metadata for the district is preserved so the source still
+    // knows the page exists; the conditional-GET headers are cleared.
+    assert.ok(reloaded.districts.D01_1 !== undefined)
+    assert.equal(reloaded.districts.D01_1.lastModified, undefined)
+    assert.equal(reloaded.districts.D01_1.etag, undefined)
+    // The cleared metadata is flushed to disk.
+    await store2.flush()
+    const reloaded2 = await createLightListStore(dir).load()
+    assert.equal(reloaded2.districts.D01_1.etag, undefined)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})

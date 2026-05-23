@@ -229,12 +229,16 @@ export interface PluginConfig {
   uscgLightListEnabled?: boolean
   /** Merge USCG Light List points of interest that duplicate an ActiveCaptain marker. */
   uscgLightListDedupe?: boolean
+  /** Merge radius, in meters, for USCG Light List dedupe against the ActiveCaptain base. */
+  uscgLightListDedupeRadiusMeters?: number
   /** USCG Light List background refresh period, in hours. */
   uscgLightListRefreshHours?: number
   /** Import wrecks, obstructions, and rocks from NOAA ENC Direct. */
   noaaEncEnabled?: boolean
   /** Merge NOAA ENC points of interest that duplicate an ActiveCaptain marker. */
   noaaEncDedupe?: boolean
+  /** Merge radius, in meters, for NOAA ENC dedupe against the ActiveCaptain base. */
+  noaaEncDedupeRadiusMeters?: number
   /** NOAA ENC chart scale band (`overview` through `berthing`). */
   noaaEncScaleBand?: string
   /** Include the NOAA ENC wrecks layer in list queries. */
@@ -274,4 +278,10 @@ export interface PluginConfig {
    * cache.
    */
   noaaEncRefreshSeconds?: number
+  /**
+   * Minimum upstream-query interval per bbox for ActiveCaptain, in
+   * seconds. Same semantic as `openSeaMapRefreshSeconds`. `0` disables the
+   * cache and posts to Garmin on every list call.
+   */
+  activeCaptainRefreshSeconds?: number
 }

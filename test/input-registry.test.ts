@@ -57,18 +57,6 @@ function stubModule (id: string, enabled: boolean, source?: PoiSource): InputMod
   }
 }
 
-/** A non-base stub module with dedupe turned on, suitable for dedupe tests. */
-function dedupingModule (id: string, source: PoiSource): InputModule {
-  return {
-    id,
-    name: id,
-    configSchema: {},
-    isEnabled: () => true,
-    isDedupeEnabled: () => true,
-    createSource: () => source
-  }
-}
-
 /** A no-op status recorder, enough for tests that do not inspect status. */
 const silentStatus = {
   recordListFetch: () => {},
@@ -214,10 +202,11 @@ test('cacheSize sums the cache size of every source', () => {
   assert.equal(source.cacheSize(), 7)
 })
 
-test('listPointsOfInterest passes openSeaMapDedupeRadiusMeters through to the dedupe pass', async () => {
-  // A base POI and a non-base POI ~20 m apart. With the registry's default
-  // dedupe radius (150 m) they merge into one. With a tight 5 m radius they
-  // do not, proving the configured radius reached dedupeAgainstBase.
+test('listPointsOfInterest passes each non-base module\'s dedupeRadiusMeters through to the dedupe pass', async () => {
+  // A base POI and a non-base POI ~20 m apart. With the per-source default
+  // (150 m) they merge into one. With the non-base module reporting a 5 m
+  // radius they stay separate, proving the per-module radius reached
+  // dedupeAgainstBase as the per-source map entry.
   const NEAR_M = 0.00018 // ~20 m of latitude
   const baseAt = (latitude: number): PoiSummary => ({
     ...summary('1', 'activecaptain'),
@@ -230,9 +219,22 @@ test('listPointsOfInterest passes openSeaMapDedupeRadiusMeters through to the de
   const base = stubModule('activecaptain', true, stubSource('activecaptain', {
     list: async () => [baseAt(10)]
   }))
-  const other = dedupingModule('other', stubSource('other', {
-    list: async () => [otherAt(10 + NEAR_M)]
-  }))
+  // Like the production OpenSeaMap, USCG, and NOAA modules, this stub
+  // surfaces its dedupe radius by reading a per-source config key.
+  const other: InputModule = {
+    id: 'other',
+    name: 'other',
+    configSchema: {},
+    isEnabled: () => true,
+    isDedupeEnabled: () => true,
+    dedupeRadiusMeters: (config) => {
+      const v = (config as { otherDedupeRadiusMeters?: number }).otherDedupeRadiusMeters
+      return typeof v === 'number' && v > 0 ? v : undefined
+    },
+    createSource: () => stubSource('other', {
+      list: async () => [otherAt(10 + NEAR_M)]
+    })
+  }
 
   const wide = createInputRegistry([base, other]).createSource(context)
   const wideList = await wide.listPointsOfInterest(SAMPLE_BBOX, '')
@@ -240,7 +242,7 @@ test('listPointsOfInterest passes openSeaMapDedupeRadiusMeters through to the de
 
   const tightContext = {
     app: {},
-    config: { openSeaMapDedupeRadiusMeters: 5 },
+    config: { otherDedupeRadiusMeters: 5 },
     status: silentStatus,
     dataDir: '/tmp'
   } as never

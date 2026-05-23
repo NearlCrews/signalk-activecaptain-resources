@@ -71,6 +71,16 @@ export interface InputModule {
    * has no dedupe toggle; present on a non-base input that offers one.
    */
   isDedupeEnabled?: (config: PluginConfig) => boolean
+  /**
+   * The merge radius (in meters) this input wants the dedupe pass to use
+   * when matching its POIs against the ActiveCaptain base. Absent for the
+   * base input and for any input that does not surface a per-source radius
+   * field; present for each non-base input that does. The registry passes
+   * a per-source radius map to {@link dedupeAgainstBase} built from this
+   * method, so a tight USCG-against-AC merge can coexist with a looser
+   * OpenSeaMap-against-AC merge in the same run.
+   */
+  dedupeRadiusMeters?: (config: PluginConfig) => number | undefined
   /** Build the source. Called once per plugin start. */
   createSource: (context: InputContext) => PoiSource
 }
