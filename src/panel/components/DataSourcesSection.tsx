@@ -3,6 +3,9 @@
  * It renders one collapsible `DataSourceCard` per POI source, each with the
  * matching card-body component as its children, plus a one-line summary built
  * from the current configuration so a collapsed card still says what it does.
+ *
+ * Disclosure state (which card is expanded) lives on the panel root and is
+ * passed down here so the section is purely declarative.
  */
 
 import type * as React from 'react'
@@ -16,6 +19,7 @@ import {
 } from '../normalize-config.js'
 import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
+import type { SourceStatus, StatusSnapshot } from '../../status/status-types.js'
 import ActiveCaptainSource from './ActiveCaptainSource.js'
 import DataSourceCard from './DataSourceCard.js'
 import NoaaEncSource, { BAND_LABELS } from './NoaaEncSource.js'
@@ -27,6 +31,12 @@ type ScaleBand = keyof typeof BAND_LABELS
 interface Props {
   state: PluginConfig
   dispatch: Dispatch<ConfigAction>
+  /** Per-source status snapshot, or null until the first poll resolves. */
+  status: StatusSnapshot | null
+  /** Which card ids are currently expanded. */
+  expanded: Record<string, boolean>
+  /** Toggle the expansion of one card by id. */
+  onToggleExpanded: (cardId: string) => void
 }
 
 /** Build the ActiveCaptain card's collapsed one-line summary. */
@@ -78,8 +88,15 @@ function noaaEncSummary (state: PluginConfig): string {
   return appendSinceYear(`${label} band, ${layerList}`, state.noaaEncMinimumSurveyYear)
 }
 
+/** Look up the per-source status entry by source slug. */
+function statusFor (snapshot: StatusSnapshot | null, sourceId: string): SourceStatus | undefined {
+  return snapshot?.sources.find((entry) => entry.source === sourceId)
+}
+
 /** The per-source accordion shown in the configuration panel. */
-export default function DataSourcesSection ({ state, dispatch }: Props): React.ReactElement {
+export default function DataSourcesSection (
+  { state, dispatch, status, expanded, onToggleExpanded }: Props
+): React.ReactElement {
   return (
     <section>
       <h2 style={S.sectionHeading}>Data sources</h2>
@@ -87,6 +104,9 @@ export default function DataSourcesSection ({ state, dispatch }: Props): React.R
         name='Garmin ActiveCaptain'
         enabled
         summary={activeCaptainSummary(state)}
+        expanded={expanded.activecaptain === true}
+        onToggleExpanded={() => onToggleExpanded('activecaptain')}
+        status={statusFor(status, 'activecaptain')}
       >
         <ActiveCaptainSource state={state} dispatch={dispatch} />
       </DataSourceCard>
@@ -94,7 +114,10 @@ export default function DataSourcesSection ({ state, dispatch }: Props): React.R
         name='OpenSeaMap'
         enabled={state.openSeaMapEnabled === true}
         summary={openSeaMapSummary(state)}
+        expanded={expanded.openseamap === true}
+        onToggleExpanded={() => onToggleExpanded('openseamap')}
         onToggleEnabled={(enabled) => dispatch({ type: 'setOpenSeaMapEnabled', enabled })}
+        status={statusFor(status, 'openseamap')}
       >
         <OpenSeaMapSource state={state} dispatch={dispatch} />
       </DataSourceCard>
@@ -102,7 +125,10 @@ export default function DataSourcesSection ({ state, dispatch }: Props): React.R
         name='USCG Light List (US Aids to Navigation)'
         enabled={state.uscgLightListEnabled === true}
         summary={uscgLightListSummary(state)}
+        expanded={expanded.usclightlist === true}
+        onToggleExpanded={() => onToggleExpanded('usclightlist')}
         onToggleEnabled={(enabled) => dispatch({ type: 'setUscgLightListEnabled', enabled })}
+        status={statusFor(status, 'usclightlist')}
       >
         <UscgLightListSource state={state} dispatch={dispatch} />
       </DataSourceCard>
@@ -110,7 +136,10 @@ export default function DataSourcesSection ({ state, dispatch }: Props): React.R
         name='NOAA ENC Direct (US wrecks, obstructions, and rocks)'
         enabled={state.noaaEncEnabled === true}
         summary={noaaEncSummary(state)}
+        expanded={expanded.noaaenc === true}
+        onToggleExpanded={() => onToggleExpanded('noaaenc')}
         onToggleEnabled={(enabled) => dispatch({ type: 'setNoaaEncEnabled', enabled })}
+        status={statusFor(status, 'noaaenc')}
       >
         <NoaaEncSource state={state} dispatch={dispatch} />
       </DataSourceCard>

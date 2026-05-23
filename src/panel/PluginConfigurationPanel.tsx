@@ -35,6 +35,14 @@ export default function PluginConfigurationPanel ({ configuration, save }: Props
   const { status, error } = useStatus()
   const { state, savedState, dispatch, markSaved } = useConfig(configuration)
   const [justSavedAt, setJustSavedAt] = useState<number | null>(null)
+  // Per-source disclosure state lives at the panel root so it survives any
+  // subtree remount (e.g., a config-shape-driven rebuild of the data-source
+  // cards) and so it can later be persisted to the URL or to local storage
+  // without each card needing its own useState.
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
+  const toggleCard = useCallback((cardId: string): void => {
+    setExpandedCards((prev) => ({ ...prev, [cardId]: !(prev[cardId] === true) }))
+  }, [])
 
   // Clear the "Saved" pill a short while after a save.
   useEffect(() => {
@@ -68,7 +76,13 @@ export default function PluginConfigurationPanel ({ configuration, save }: Props
           </div>
           )
         : null}
-      <DataSourcesSection state={state} dispatch={dispatch} />
+      <DataSourcesSection
+        state={state}
+        dispatch={dispatch}
+        status={status}
+        expanded={expandedCards}
+        onToggleExpanded={toggleCard}
+      />
       <AlertsSection state={state} dispatch={dispatch} />
       <FooterBar
         dirty={dirty}

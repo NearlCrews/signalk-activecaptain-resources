@@ -51,22 +51,27 @@ export default function NumberField ({
 }: Props): React.ReactElement {
   const draft = useNumberDraft(value, onChange, { min, max, integer, fallback })
 
+  // The label-control pair sits on one row; the hint renders as a sibling
+  // block below so a narrow input does not push the hint into a cramped
+  // wrap alongside the field.
   return (
-    <div style={dense === true ? S.labelledInputRow : S.fieldRow}>
-      <label htmlFor={id} style={S.label}>{label}</label>
-      <input
-        id={id}
-        type='number'
-        min={min}
-        max={max}
-        step={step}
-        style={S.input}
-        disabled={disabled}
-        value={draft.display}
-        onChange={(e) => draft.handleChange(e.target.value)}
-        onBlur={draft.handleBlur}
-      />
+    <>
+      <div style={dense === true ? S.labelledInputRow : S.fieldRow}>
+        <label htmlFor={id} style={S.label}>{label}</label>
+        <input
+          id={id}
+          type='number'
+          min={min}
+          max={max}
+          step={step}
+          style={S.input}
+          disabled={disabled}
+          value={draft.display}
+          onChange={(e) => draft.handleChange(e.target.value)}
+          onBlur={draft.handleBlur}
+        />
+      </div>
       <p style={S.hint}>{hint}</p>
-    </div>
+    </>
   )
 }
