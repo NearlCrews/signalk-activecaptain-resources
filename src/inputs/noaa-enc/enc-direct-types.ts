@@ -41,3 +41,19 @@ export interface EncFeatureCollection {
   features: EncFeature[]
   exceededTransferLimit?: boolean
 }
+
+/**
+ * Numeric ArcGIS layer ids per scale band. Discovered live from the ENC Direct
+ * MapServer endpoints in Task 3.2 of the implementation plan; every entry was
+ * cross-checked against `MapServer/<id>?f=json` so the id matches the layer
+ * name. A `test/enc-layer-ids.test.ts` guard asserts no zero placeholders
+ * survive so a contributor cannot silently ship a default-zero entry.
+ */
+export const LAYER_IDS_BY_BAND: Readonly<Record<ScaleBand, LayerIds>> = {
+  overview: { wreck: 24, obstruction: 21, rock: 22 },
+  general: { wreck: 29, obstruction: 26, rock: 27 },
+  coastal: { wreck: 33, obstruction: 30, rock: 31 },
+  approach: { wreck: 39, obstruction: 36, rock: 37 },
+  harbour: { wreck: 36, obstruction: 33, rock: 34 },
+  berthing: { wreck: 21, obstruction: 19, rock: 20 }
+}
