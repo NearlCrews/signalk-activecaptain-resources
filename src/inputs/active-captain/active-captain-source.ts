@@ -24,7 +24,7 @@ import type { PoiStore } from './poi-store.js'
 import { parseApiDate, renderDescription } from './poi-detail-renderer.js'
 import { filterByRating } from './rating-filter.js'
 import type { PoiSource } from '../poi-source.js'
-import type { PoiDetailView } from '../../shared/types.js'
+import type { PoiDetailView, PoiType } from '../../shared/types.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
 /** The stable id of the ActiveCaptain source. */
@@ -38,6 +38,34 @@ const POI_PAGE_URL_PREFIX = 'https://activecaptain.garmin.com/en-US/pois/'
 
 /** HTTP status for a point of interest that does not exist. */
 const HTTP_NOT_FOUND = 404
+
+/**
+ * Map every `PoiType` an ActiveCaptain POI can carry onto a Freeboard-SK note
+ * icon. Freeboard registers a fixed set of POI icons under the `sk-`
+ * namespace; an unregistered name silently falls back to a default yellow
+ * square. Every value here is one of Freeboard's actually registered icons.
+ *
+ * Most ActiveCaptain types match Freeboard's icon name directly when
+ * lowercased; the three that don't (`LocalKnowledge`, `Navigational`,
+ * `Airport`) and the catch-all `Unknown` are routed to the best available
+ * Freeboard glyph rather than left to silently break.
+ */
+const ACTIVE_CAPTAIN_SK_ICON: Readonly<Record<PoiType, string>> = {
+  Marina: 'marina',
+  Anchorage: 'anchorage',
+  Hazard: 'hazard',
+  Business: 'business',
+  BoatRamp: 'boatramp',
+  Bridge: 'bridge',
+  Dam: 'dam',
+  Ferry: 'ferry',
+  Inlet: 'inlet',
+  Lock: 'lock',
+  LocalKnowledge: 'notice-to-mariners',
+  Navigational: 'navigation-structure',
+  Airport: 'notice-to-mariners',
+  Unknown: 'notice-to-mariners'
+}
 
 /** Dependencies for {@link createActiveCaptainSource}. */
 export interface ActiveCaptainSourceConfig {
@@ -116,12 +144,14 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
     listPointsOfInterest: async (bbox, poiTypes) => {
       const summaries = await client.listPointsOfInterest(bbox, poiTypes)
       // The client is source-agnostic; tag each summary with the source slug,
-      // its public ActiveCaptain page, and the attribution credit.
+      // its public ActiveCaptain page, the attribution credit, and the
+      // Freeboard icon for its type.
       const tagged = summaries.map((summary) => ({
         ...summary,
         source: ACTIVE_CAPTAIN_SOURCE_ID,
         url: `${POI_PAGE_URL_PREFIX}${summary.id}`,
-        attribution: ACTIVE_CAPTAIN_ATTRIBUTION
+        attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
+        skIcon: ACTIVE_CAPTAIN_SK_ICON[summary.type]
       }))
       // The minimum-rating filter gates ratable POIs on the review score
       // ActiveCaptain supplies. It runs here, on this source's own results, so
@@ -148,6 +178,7 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
         url: `${POI_PAGE_URL_PREFIX}${id}`,
         source: ACTIVE_CAPTAIN_SOURCE_ID,
         attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
+        skIcon: ACTIVE_CAPTAIN_SK_ICON[poi.poiType],
         ...(description !== undefined && { description }),
         ...(Number.isFinite(modified.getTime()) && { timestamp: modified.toISOString() })
       }

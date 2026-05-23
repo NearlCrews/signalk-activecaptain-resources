@@ -129,6 +129,61 @@ test('listPointsOfInterest delegates to the client', async () => {
     assert.equal(list.length, 1)
     assert.equal(list[0].source, 'activecaptain')
     assert.equal(list[0].url, 'https://activecaptain.garmin.com/en-US/pois/1')
+    assert.equal(list[0].skIcon, 'marina',
+      'the marina type rides the Freeboard-registered marina icon')
+    source.close()
+  } finally {
+    cleanup()
+  }
+})
+
+test('listPointsOfInterest tags each POI type with a Freeboard-registered skIcon', async () => {
+  const { dataDir, cleanup } = makeTempDir()
+  try {
+    const { client } = fakeClient({
+      listPointsOfInterest: async (): Promise<ClientPoiSummary[]> => [
+        { id: '1', name: 'M', type: 'Marina', position: { latitude: 0, longitude: 0 } },
+        { id: '2', name: 'A', type: 'Anchorage', position: { latitude: 0, longitude: 0 } },
+        { id: '3', name: 'H', type: 'Hazard', position: { latitude: 0, longitude: 0 } },
+        { id: '4', name: 'B', type: 'Business', position: { latitude: 0, longitude: 0 } },
+        { id: '5', name: 'R', type: 'BoatRamp', position: { latitude: 0, longitude: 0 } },
+        { id: '6', name: 'Br', type: 'Bridge', position: { latitude: 0, longitude: 0 } },
+        { id: '7', name: 'D', type: 'Dam', position: { latitude: 0, longitude: 0 } },
+        { id: '8', name: 'F', type: 'Ferry', position: { latitude: 0, longitude: 0 } },
+        { id: '9', name: 'I', type: 'Inlet', position: { latitude: 0, longitude: 0 } },
+        { id: '10', name: 'L', type: 'Lock', position: { latitude: 0, longitude: 0 } },
+        { id: '11', name: 'LK', type: 'LocalKnowledge', position: { latitude: 0, longitude: 0 } },
+        { id: '12', name: 'N', type: 'Navigational', position: { latitude: 0, longitude: 0 } },
+        { id: '13', name: 'Air', type: 'Airport', position: { latitude: 0, longitude: 0 } }
+      ]
+    })
+    const source = createActiveCaptainSource({
+      client,
+      cachingDurationMinutes: 60,
+      dataDir,
+      ...spies()
+    })
+    const list = await source.listPointsOfInterest(
+      { north: 1, south: 0, east: 1, west: 0 }, '')
+    const byId = new Map(list.map((p) => [p.id, p.skIcon]))
+    // Direct lowercase matches.
+    assert.equal(byId.get('1'), 'marina')
+    assert.equal(byId.get('2'), 'anchorage')
+    assert.equal(byId.get('3'), 'hazard')
+    assert.equal(byId.get('4'), 'business')
+    assert.equal(byId.get('5'), 'boatramp')
+    assert.equal(byId.get('6'), 'bridge')
+    assert.equal(byId.get('7'), 'dam')
+    assert.equal(byId.get('8'), 'ferry')
+    assert.equal(byId.get('9'), 'inlet')
+    assert.equal(byId.get('10'), 'lock')
+    // The three formerly-broken types now ride Freeboard-registered icons.
+    assert.equal(byId.get('11'), 'notice-to-mariners',
+      'LocalKnowledge -> notice-to-mariners (no localknowledge icon in Freeboard)')
+    assert.equal(byId.get('12'), 'navigation-structure',
+      'Navigational -> navigation-structure (no navigational icon in Freeboard)')
+    assert.equal(byId.get('13'), 'notice-to-mariners',
+      'Airport -> notice-to-mariners (no airport icon in Freeboard)')
     source.close()
   } finally {
     cleanup()

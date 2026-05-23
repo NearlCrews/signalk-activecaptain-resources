@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import {
   SEAMARK_GROUPS,
   elementPoiType,
+  elementSkIcon,
   seamarkRegex,
+  seamarkSkIcon,
   seamarkToPoiType
 } from '../src/inputs/openseamap/seamark-mapping.js'
 
@@ -59,4 +61,52 @@ test('seamarkRegex unions the seamark types of every enabled group', () => {
   assert.ok(pattern.test('rock'))
   assert.ok(pattern.test('lock_basin'))
   assert.ok(!pattern.test('light_major'), 'a disabled group is excluded')
+})
+
+test('seamarkSkIcon maps hazards to the hazard glyph', () => {
+  assert.equal(seamarkSkIcon('rock'), 'hazard')
+  assert.equal(seamarkSkIcon('wreck'), 'hazard')
+  assert.equal(seamarkSkIcon('obstruction'), 'hazard')
+})
+
+test('seamarkSkIcon maps harbours, marinas, anchorages, locks, and bridges to their Freeboard icons', () => {
+  assert.equal(seamarkSkIcon('harbour'), 'marina')
+  assert.equal(seamarkSkIcon('marina'), 'marina')
+  assert.equal(seamarkSkIcon('anchorage'), 'anchorage')
+  assert.equal(seamarkSkIcon('anchor_berth'), 'anchorage')
+  assert.equal(seamarkSkIcon('mooring'), 'anchorage')
+  assert.equal(seamarkSkIcon('lock_basin'), 'lock')
+  assert.equal(seamarkSkIcon('bridge'), 'bridge')
+})
+
+test('seamarkSkIcon routes lights, beacons, and buoys to the navigation-structure glyph', () => {
+  for (const value of [
+    'light_major', 'light_minor', 'light_float', 'light_vessel', 'landmark',
+    'beacon_lateral', 'beacon_cardinal', 'beacon_safe_water', 'beacon_special_purpose',
+    'buoy_lateral', 'buoy_cardinal', 'buoy_safe_water', 'buoy_special_purpose'
+  ]) {
+    assert.equal(seamarkSkIcon(value), 'navigation-structure', `${value} -> navigation-structure`)
+  }
+})
+
+test('seamarkSkIcon renders isolated-danger marks as hazards while the PoiType stays Navigational', () => {
+  // An isolated-danger buoy or beacon exists to flag a danger; the hazard
+  // glyph is the visually correct cue. The PoiType stays Navigational so the
+  // proximity alarm does not falsely trigger on the buoy itself.
+  assert.equal(seamarkSkIcon('beacon_isolated_danger'), 'hazard')
+  assert.equal(seamarkSkIcon('buoy_isolated_danger'), 'hazard')
+  assert.equal(seamarkToPoiType('beacon_isolated_danger'), 'Navigational')
+  assert.equal(seamarkToPoiType('buoy_isolated_danger'), 'Navigational')
+})
+
+test('seamarkSkIcon falls back to notice-to-mariners for an unmapped seamark type', () => {
+  assert.equal(seamarkSkIcon('definitely_not_a_seamark'), 'notice-to-mariners')
+})
+
+test('elementSkIcon reads seamark:type, then leisure=marina, then falls back', () => {
+  assert.equal(elementSkIcon({ 'seamark:type': 'wreck' }), 'hazard')
+  assert.equal(elementSkIcon({ 'seamark:type': 'light_minor' }), 'navigation-structure')
+  assert.equal(elementSkIcon({ leisure: 'marina' }), 'marina')
+  assert.equal(elementSkIcon({}), 'notice-to-mariners')
+  assert.equal(elementSkIcon({ name: 'Just a tagged feature' }), 'notice-to-mariners')
 })

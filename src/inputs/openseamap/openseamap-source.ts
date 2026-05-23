@@ -14,7 +14,7 @@
 
 import { LRUCache } from 'lru-cache'
 import type { OverpassClient, OverpassElement } from './overpass-client.js'
-import { elementPoiType, seamarkRegex } from './seamark-mapping.js'
+import { elementPoiType, elementSkIcon, seamarkRegex } from './seamark-mapping.js'
 import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
 import { MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
@@ -33,14 +33,6 @@ export const OPENSEAMAP_ATTRIBUTION = '© OpenStreetMap contributors (ODbL)'
 
 /** Prefix of an OpenStreetMap element page, completed with `type/id`. */
 const OSM_ELEMENT_URL_PREFIX = 'https://www.openstreetmap.org/'
-
-/**
- * Freeboard glyph used for every OpenSeaMap navaid. The `PoiType` for lights,
- * buoys, beacons, and landmarks collapses to `Navigational`, for which
- * Freeboard ships no `:sk-navigational` SVG; `real-aton` is the closest
- * navigational aid glyph the Freeboard SVG set provides.
- */
-const NAVAID_SK_ICON = 'real-aton'
 
 /** Dependencies for {@link createOpenSeaMapSource}. */
 export interface OpenSeaMapSourceConfig {
@@ -123,7 +115,7 @@ function toDetailView (element: OverpassElement): PoiDetailView {
     source: OPENSEAMAP_SOURCE_ID,
     attribution: OPENSEAMAP_ATTRIBUTION,
     description: appendAttribution(renderDescription(element), OPENSEAMAP_ATTRIBUTION),
-    ...(type === 'Navigational' && { skIcon: NAVAID_SK_ICON })
+    skIcon: elementSkIcon(element.tags)
   }
 }
 
@@ -138,7 +130,7 @@ function toSummary (element: OverpassElement): PoiSummary {
     source: OPENSEAMAP_SOURCE_ID,
     url: elementOsmUrl(element),
     attribution: OPENSEAMAP_ATTRIBUTION,
-    ...(type === 'Navigational' && { skIcon: NAVAID_SK_ICON })
+    skIcon: elementSkIcon(element.tags)
   }
 }
 

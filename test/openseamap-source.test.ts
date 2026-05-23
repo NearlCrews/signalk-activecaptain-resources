@@ -61,7 +61,8 @@ test('listPointsOfInterest maps elements to source-tagged summaries', async () =
       name: 'Big Rock',
       source: 'openseamap',
       url: 'https://www.openstreetmap.org/node/123',
-      attribution: '© OpenStreetMap contributors (ODbL)'
+      attribution: '© OpenStreetMap contributors (ODbL)',
+      skIcon: 'hazard'
     },
     {
       id: 'way_456',
@@ -70,13 +71,14 @@ test('listPointsOfInterest maps elements to source-tagged summaries', async () =
       name: 'Unnamed marina',
       source: 'openseamap',
       url: 'https://www.openstreetmap.org/way/456',
-      attribution: '© OpenStreetMap contributors (ODbL)'
+      attribution: '© OpenStreetMap contributors (ODbL)',
+      skIcon: 'marina'
     }
   ])
   source.close()
 })
 
-test('a navaid element rides the real-aton skIcon override', async () => {
+test('a navaid element rides the navigation-structure skIcon', async () => {
   const lightNode: OverpassElement = {
     type: 'node',
     id: 777,
@@ -90,16 +92,39 @@ test('a navaid element rides the real-aton skIcon override', async () => {
   const source = createOpenSeaMapSource({ client, seamarkGroups: ['navaids'], status: silentStatus() })
   const list = await source.listPointsOfInterest(sampleBbox, '')
   assert.equal(list[0].type, 'Navigational')
-  assert.equal(list[0].skIcon, 'real-aton', 'a navaid summary carries the real-aton icon')
+  assert.equal(list[0].skIcon, 'navigation-structure', 'a navaid summary carries the navigation-structure icon')
   const view = await source.getDetails('node_777')
-  assert.equal(view.skIcon, 'real-aton', 'the detail view carries the same override')
+  assert.equal(view.skIcon, 'navigation-structure', 'the detail view carries the same icon')
   source.close()
 })
 
-test('a non-navaid element carries no explicit skIcon so the output falls back to the type', async () => {
+test('an isolated-danger buoy rides the hazard glyph, not the navigation-structure one', async () => {
+  const isolatedDanger: OverpassElement = {
+    type: 'node',
+    id: 888,
+    tags: { 'seamark:type': 'buoy_isolated_danger', name: 'IDM 5' },
+    position: { latitude: 50, longitude: -5 }
+  }
+  const { client } = fakeClient({
+    listPointsOfInterest: async () => [isolatedDanger],
+    getById: async () => isolatedDanger
+  })
+  const source = createOpenSeaMapSource({ client, seamarkGroups: ['navaids'], status: silentStatus() })
+  const list = await source.listPointsOfInterest(sampleBbox, '')
+  assert.equal(list[0].type, 'Navigational',
+    'the PoiType stays Navigational so the buoy does not falsely trigger the proximity alarms')
+  assert.equal(list[0].skIcon, 'hazard',
+    'an isolated-danger mark renders with the hazard glyph because that is its purpose')
+  source.close()
+})
+
+test('every element carries an explicit skIcon mapped to a Freeboard-registered icon', async () => {
   const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'], status: silentStatus() })
   const list = await source.listPointsOfInterest(sampleBbox, '')
-  assert.equal(list[0].skIcon, undefined, 'a hazard summary leaves skIcon undefined')
+  // The rock element maps directly to the hazard glyph.
+  assert.equal(list[0].skIcon, 'hazard', 'a rock carries the hazard icon')
+  // The marina way (leisure=marina with no seamark:type) maps to marina.
+  assert.equal(list[1].skIcon, 'marina', 'a leisure=marina way carries the marina icon')
   source.close()
 })
 

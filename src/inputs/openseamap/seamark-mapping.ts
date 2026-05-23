@@ -70,6 +70,76 @@ export function elementPoiType (tags: Record<string, string>): PoiType {
 }
 
 /**
+ * Map a `seamark:type` value onto a Freeboard-SK note icon name (without the
+ * `sk-` prefix the renderer applies). Freeboard registers a fixed set of POI
+ * icons under that namespace, so an unregistered name silently falls back to
+ * a default yellow square. Each value here is one of Freeboard's actually
+ * registered icons.
+ *
+ * Isolated-danger buoys and beacons render with the `hazard` glyph: their
+ * entire purpose is to flag a danger, so the hazard icon is the visually
+ * correct cue. Their `PoiType` stays `Navigational` so they do not falsely
+ * trigger the proximity alarms; the icon decoupling is what makes that
+ * possible.
+ */
+const SEAMARK_SK_ICON: Readonly<Record<string, string>> = {
+  rock: 'hazard',
+  wreck: 'hazard',
+  obstruction: 'hazard',
+  harbour: 'marina',
+  marina: 'marina',
+  lock_basin: 'lock',
+  bridge: 'bridge',
+  light_major: 'navigation-structure',
+  light_minor: 'navigation-structure',
+  light_float: 'navigation-structure',
+  light_vessel: 'navigation-structure',
+  landmark: 'navigation-structure',
+  beacon_lateral: 'navigation-structure',
+  beacon_cardinal: 'navigation-structure',
+  beacon_isolated_danger: 'hazard',
+  beacon_safe_water: 'navigation-structure',
+  beacon_special_purpose: 'navigation-structure',
+  buoy_lateral: 'navigation-structure',
+  buoy_cardinal: 'navigation-structure',
+  buoy_isolated_danger: 'hazard',
+  buoy_safe_water: 'navigation-structure',
+  buoy_special_purpose: 'navigation-structure',
+  anchorage: 'anchorage',
+  anchor_berth: 'anchorage',
+  mooring: 'anchorage'
+}
+
+/** Generic fallback icon, used when no specific Freeboard icon fits. */
+const FALLBACK_SK_ICON = 'notice-to-mariners'
+
+/**
+ * Map a `seamark:type` value onto a Freeboard-SK note icon name, defaulting
+ * to a generic notice glyph for an unmapped value.
+ */
+export function seamarkSkIcon (value: string): string {
+  return SEAMARK_SK_ICON[value] ?? FALLBACK_SK_ICON
+}
+
+/**
+ * Resolve the Freeboard-SK note icon for an OpenSeaMap element from its OSM
+ * tags. A `seamark:type` tag is mapped directly; a `leisure=marina` element
+ * with no seamark gets the `marina` icon. Anything else falls back to the
+ * generic notice glyph, so a missing icon never renders as a bare yellow
+ * square.
+ */
+export function elementSkIcon (tags: Record<string, string>): string {
+  const seamark = tags['seamark:type']
+  if (seamark !== undefined && seamark.length > 0) {
+    return seamarkSkIcon(seamark)
+  }
+  if (tags.leisure === 'marina') {
+    return 'marina'
+  }
+  return FALLBACK_SK_ICON
+}
+
+/**
  * One configurable group of seamark features the OpenSeaMap source fetches.
  * Extends the shared {@link SeamarkGroupRef} with the per-group
  * `seamark:type` values used to build the Overpass query.
