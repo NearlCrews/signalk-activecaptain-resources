@@ -14,6 +14,7 @@
 
 import { LRUCache } from 'lru-cache'
 import type { OverpassClient, OverpassElement } from './overpass-client.js'
+import { renderOpenSeaMapDetail } from './openseamap-detail.js'
 import { elementPoiType, elementSkIcon, seamarkRegex } from './seamark-mapping.js'
 import type { PoiSource } from '../poi-source.js'
 import { appendAttribution } from '../../shared/attribution.js'
@@ -81,29 +82,6 @@ function elementName (element: OverpassElement, type: PoiType): string {
   return element.tags.name ?? element.tags['seamark:name'] ?? `Unnamed ${type.toLowerCase()}`
 }
 
-/** Escape text for safe inclusion in the rendered HTML description. */
-function escapeHtml (value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-/**
- * Render a simple HTML description for an OpenSeaMap element: a one-line
- * identity header followed by a table of its OSM tags. The shared attribution
- * footer is appended by the caller.
- */
-function renderDescription (element: OverpassElement): string {
-  const rows = Object.entries(element.tags)
-    .filter(([key]) => key !== 'name')
-    .map(([key, value]) => `<tr><td>${escapeHtml(key)}</td><td>${escapeHtml(value)}</td></tr>`)
-    .join('')
-  const table = rows.length > 0 ? `<table class="osm-tags">${rows}</table>` : ''
-  return `<p>OpenStreetMap ${escapeHtml(element.type)} ${element.id}</p>${table}`
-}
-
 /** Build the source-agnostic detail view for an element. */
 function toDetailView (element: OverpassElement): PoiDetailView {
   const type = elementPoiType(element.tags)
@@ -114,7 +92,7 @@ function toDetailView (element: OverpassElement): PoiDetailView {
     url: elementOsmUrl(element),
     source: OPENSEAMAP_SOURCE_ID,
     attribution: OPENSEAMAP_ATTRIBUTION,
-    description: appendAttribution(renderDescription(element), OPENSEAMAP_ATTRIBUTION),
+    description: appendAttribution(renderOpenSeaMapDetail(element), OPENSEAMAP_ATTRIBUTION),
     skIcon: elementSkIcon(element.tags)
   }
 }
