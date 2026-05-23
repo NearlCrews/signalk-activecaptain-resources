@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   createUscgLightListSource,
+  DISTRICT_PAGES,
   USCG_LIGHT_LIST_SOURCE_ID
 } from '../src/inputs/uscg-light-list/uscg-light-list-source.js'
 import { createLightListStore } from '../src/inputs/uscg-light-list/light-list-store.js'
@@ -204,9 +205,12 @@ test('refreshAll iterates every district page when the vessel is in US waters', 
       getCurrentPosition: () => ({ latitude: 42.36, longitude: -71.05 })
     })
     await source.refreshAll()
-    // The plan pins the (district, page) pair count at 61.
-    assert.ok(calls > 0, 'at least one district was requested')
-    assert.ok(calls <= 61, 'no more than the pinned 61 (district, page) pairs')
+    // The source pins DISTRICT_PAGES exactly: a regression that shrank or
+    // grew the table would change the iteration count, which a generous
+    // upper bound would silently miss. Import the table and assert the
+    // exact count instead.
+    assert.equal(calls, DISTRICT_PAGES.length,
+      'refreshAll iterates every pinned (district, page) pair exactly once')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

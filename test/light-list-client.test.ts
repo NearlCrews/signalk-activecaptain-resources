@@ -60,7 +60,13 @@ test('downloadDistrict parses the GeoJSON into LightListRecord values', async ()
     assert.equal(result.status, 'ok')
     if (result.status !== 'ok') return
     assert.ok(Array.isArray(result.records))
-    assert.equal(result.records.length, 5)
+    // Asserting one-record-per-fixture-feature lets the fixture be refreshed
+    // from a newer NAVCEN export without breaking the test for a non-bug.
+    // The fixture currently has 5 features; this asserts whatever it has.
+    const fixtureBody = await readFile('test/fixtures/light-list-d01-1.geojson', 'utf8')
+    const expectedCount = (JSON.parse(fixtureBody) as { features: unknown[] }).features.length
+    assert.equal(result.records.length, expectedCount)
+    assert.ok(result.records.length > 0, 'the fixture carries at least one parseable record')
     const first = result.records[0]
     assert.equal(typeof first.llnr, 'number')
     assert.equal(typeof first.name, 'string')

@@ -373,10 +373,14 @@ test('cacheSize reports the LRU entry count', async () => {
     status: status as never,
     getCurrentPosition: () => undefined
   })
-  assert.equal(source.cacheSize(), 0)
-  await source.listPointsOfInterest(
-    { south: 41, west: -72, north: 43, east: -70 }, '')
-  assert.equal(source.cacheSize(), 2)
-  source.close()
+  try {
+    assert.equal(source.cacheSize(), 0)
+    await source.listPointsOfInterest(
+      { south: 41, west: -72, north: 43, east: -70 }, '')
+    assert.equal(source.cacheSize(), 2)
+  } finally {
+    source.close()
+  }
+  // After close, cacheSize stays zero regardless of the in-try outcomes.
   assert.equal(source.cacheSize(), 0)
 })

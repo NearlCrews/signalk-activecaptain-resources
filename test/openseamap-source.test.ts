@@ -192,7 +192,10 @@ test('getDetails records a per-source detail success on the status recorder', as
   }
   const source = createOpenSeaMapSource({ client: fakeClient().client, seamarkGroups: ['hazards'], status })
   await source.listPointsOfInterest(sampleBbox, '')
-  await source.getDetails('node/123')
+  // The aggregate registry hands the source the underscore form, so the
+  // detail tests use it too: passing the slash form would silently miss
+  // the cache and re-query the upstream, hiding cache-coupled regressions.
+  await source.getDetails('node_123')
   assert.deepEqual(successes, ['openseamap'])
   source.close()
 })
@@ -209,7 +212,7 @@ test('getDetails records a per-source detail error when the client rejects', asy
     }
   })
   const source = createOpenSeaMapSource({ client, seamarkGroups: ['hazards'], status })
-  await assert.rejects(() => source.getDetails('node/999'))
+  await assert.rejects(() => source.getDetails('node_999'))
   assert.equal(errors.length, 1)
   assert.equal(errors[0].source, 'openseamap')
   assert.match(errors[0].message, /overpass down/)

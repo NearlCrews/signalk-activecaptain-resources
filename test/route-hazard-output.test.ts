@@ -121,12 +121,17 @@ test('isEnabled tracks the config flag', () => {
 })
 
 test('start contributes a route scan for Hazard, Bridge, and Lock', () => {
+  // Asserting set-equality (deepEqual on a sorted copy) catches BOTH a
+  // missing required type and an unexpected addition. The previous
+  // includes() pattern would silently pass if a future regression added
+  // Marina or Anchorage to the scan, ballooning the per-tick list request.
   const { context } = createContext({ course: courseWithoutRoute() })
   const handle = routeHazardOutput.start(context)
   assert.ok(handle.positionScan)
-  assert.ok(handle.positionScan.poiTypes.includes('Hazard'))
-  assert.ok(handle.positionScan.poiTypes.includes('Bridge'))
-  assert.ok(handle.positionScan.poiTypes.includes('Lock'))
+  assert.deepEqual(
+    [...handle.positionScan.poiTypes].sort(),
+    ['Bridge', 'Hazard', 'Lock']
+  )
   handle.stop()
 })
 
