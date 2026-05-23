@@ -41,10 +41,21 @@ own health and settings.**
   corroboration signal (`properties.sources` and `properties.sourceCount`).
   Dedupe is on by default and can be turned off per source; the radius is
   exposed as a panel field.
-- OpenSeaMap navaids render with the Freeboard `real-aton` icon instead of
-  the generic `:sk-navigational` glyph, since Freeboard ships no dedicated
-  navaid SVG; the icon hint travels with the POI through the new
-  source-agnostic `PoiSummary.skIcon` / `PoiDetailView.skIcon` field.
+- Every POI is mapped at the source to a Freeboard-registered icon, since
+  Freeboard's icon registry is fixed and an unregistered name silently
+  renders as a default yellow square. The icon hint travels with the POI
+  through the new source-agnostic `PoiSummary.skIcon` /
+  `PoiDetailView.skIcon` field. OpenSeaMap maps every `seamark:type`
+  individually: rocks, wrecks, and obstructions render as hazards; harbours
+  and marinas as marina markers; locks, bridges, anchorages, anchor berths,
+  and moorings as their direct icons; lights, beacons, buoys, and landmarks
+  as `navigation-structure`; isolated-danger buoys and beacons as hazards
+  even though their `PoiType` stays `Navigational` so they do not falsely
+  trigger the proximity alarms. ActiveCaptain maps every `PoiType` to a
+  Freeboard-registered icon; the three types with no direct glyph
+  (`LocalKnowledge`, `Navigational`, `Airport`) route to
+  `notice-to-mariners` or `navigation-structure` rather than silently
+  breaking.
 
 #### Per-source status and the accordion panel
 

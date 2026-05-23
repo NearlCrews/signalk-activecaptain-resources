@@ -128,11 +128,15 @@ export interface PoiSummary {
   /** Number of reviews behind the rating. */
   reviewCount?: number
   /**
-   * Chart-plotter icon hint, mapped to a Freeboard `:sk-${icon}` glyph. When
-   * omitted the notes output falls back to the POI type lowercased, which is
-   * what every ActiveCaptain POI uses. A source sets this explicitly when its
-   * `PoiType` does not correspond to a Freeboard glyph: OpenSeaMap navaids
-   * collapse to `Navigational` (no glyph) and ride `real-aton` instead.
+   * Chart-plotter icon hint, mapped to a Freeboard `:sk-${icon}` glyph.
+   * Freeboard only renders a fixed list of registered icons; an unknown name
+   * silently falls back to a default yellow square. Both built-in sources
+   * therefore set this explicitly per element: ActiveCaptain maps every
+   * `PoiType` to a Freeboard-registered icon, and OpenSeaMap maps every
+   * seamark feature (with isolated-danger marks rendered as hazards even
+   * though the `PoiType` stays `Navigational`). The lowercased-type fallback
+   * in the notes output is kept only for a future source that omits the
+   * hint.
    */
   skIcon?: string
 }

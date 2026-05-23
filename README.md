@@ -167,9 +167,17 @@ duplicate themselves, so a feature that OSM tagged twice (typically once as
 a node and once as a way) still becomes one note. This dedupe is on by
 default and can be turned off in the OpenSeaMap card.
 
-Navigational aids from OpenSeaMap render with a Freeboard `real-aton` icon
-rather than the generic `navigational` glyph, since Freeboard ships no
-dedicated navaid SVG.
+Every OpenSeaMap feature is mapped at the source to a Freeboard-registered
+icon. Rocks, wrecks, and obstructions render as hazards; harbours and marinas
+as marina markers; locks, bridges, anchorages, anchor berths, and moorings as
+their direct Freeboard icons; lights, beacons, buoys, and landmarks render
+with the `navigation-structure` glyph. Isolated-danger buoys and beacons
+render with the hazard glyph because their purpose is to flag a danger; their
+`PoiType` stays `Navigational` so they do not falsely trigger the proximity
+alarms. The three ActiveCaptain types Freeboard has no glyph for (Local
+Knowledge, Navigational, Airport) likewise route to the closest registered
+icon (`notice-to-mariners` or `navigation-structure`) so nothing renders as a
+bare default marker.
 
 OpenStreetMap data is published under the
 [Open Database License](https://opendatacommons.org/licenses/odbl/) (ODbL),

@@ -56,9 +56,10 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
         resources[entity.id] = buildNoteResource({
           name: entity.name,
           position: { ...entity.position },
-          // A source can override the default icon when its `PoiType` does not
-          // correspond to a Freeboard glyph; ActiveCaptain rides the type
-          // fallback, OpenSeaMap navaids set `real-aton` explicitly.
+          // Every source sets `skIcon` explicitly per element to a
+          // Freeboard-registered icon. The type-lowercased fallback is kept
+          // so a future source that omits the hint still routes to its
+          // PoiType-named icon.
           skIcon: entity.skIcon ?? entity.type.toLowerCase(),
           url: entity.url,
           source: entity.source,

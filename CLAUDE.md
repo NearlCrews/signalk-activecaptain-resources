@@ -75,13 +75,14 @@ self-contained module registered on one line in `src/index.ts`.
     - `openseamap/` - the OpenSeaMap input (OpenStreetMap marine data via the
       OSM Overpass API): `openseamap-input.ts` (the `InputModule`),
       `openseamap-source.ts` (the `PoiSource` adapter over the client and an
-      in-memory detail cache; maps OpenSeaMap navaids to the Freeboard
-      `real-aton` icon and uses an underscore-separated internal id form like
-      `node_123` so the slash in raw OSM ids never splits the resource URL),
-      `overpass-client.ts` (the Overpass HTTP client built on `http-client.ts`,
-      with the required `User-Agent`), and `seamark-mapping.ts` (maps
-      `seamark:type` values onto the plugin's `PoiType` union and defines the
-      seamark feature groups).
+      in-memory detail cache; uses an underscore-separated internal id form
+      like `node_123` so the slash in raw OSM ids never splits the resource
+      URL), `overpass-client.ts` (the Overpass HTTP client built on
+      `http-client.ts`, with the required `User-Agent`), and
+      `seamark-mapping.ts` (maps every `seamark:type` value onto the
+      plugin's `PoiType` union AND onto a Freeboard-registered `:sk-` icon,
+      with isolated-danger marks rendered as hazards; defines the seamark
+      feature groups).
   - `outputs/` - SignalK consumers of POI data.
     - `output.ts` - the `OutputModule`, `OutputHandle`, `OutputContext`, and
       `PositionScanContributor` contracts an output implements.
