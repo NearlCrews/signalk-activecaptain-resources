@@ -11,7 +11,7 @@
  * to a whole number.
  */
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /** Options that shape how a draft string is parsed and clamped on commit. */
 export interface NumberDraftOptions {
@@ -47,21 +47,41 @@ export function useNumberDraft (
 ): NumberDraft {
   const [draft, setDraft] = useState<string | null>(null)
 
+  // Drop the draft when the committed value changes externally (e.g. a
+  // Discard action restores the saved snapshot). Without this, the input
+  // would keep rendering the user's stale typed text until they
+  // focus-and-blur the field. lastCommittedFromHere tracks the value the
+  // hook itself last produced, so a self-driven update (handleChange
+  // calling onChange) is recognized as ours and leaves the draft alone;
+  // any other transition is treated as external and clears the draft.
+  const lastCommittedFromHere = useRef<number | null>(null)
+  useEffect(() => {
+    if (lastCommittedFromHere.current === value) {
+      lastCommittedFromHere.current = null
+      return
+    }
+    setDraft(null)
+  }, [value])
+
   const commit = (raw: string): void => {
     const fallback = options.fallback ?? options.min
+    let next: number
     if (raw.trim() === '') {
-      onChange(fallback)
-      return
+      next = fallback
+    } else {
+      const parsed = Number(raw)
+      if (!Number.isFinite(parsed)) {
+        next = fallback
+      } else {
+        next = parsed
+        if (options.integer === true) next = Math.trunc(next)
+        if (options.max !== undefined && next > options.max) next = options.max
+        if (next < options.min) next = options.min
+      }
     }
-    const parsed = Number(raw)
-    if (!Number.isFinite(parsed)) {
-      onChange(fallback)
-      return
-    }
-    let next = parsed
-    if (options.integer === true) next = Math.trunc(next)
-    if (options.max !== undefined && next > options.max) next = options.max
-    if (next < options.min) next = options.min
+    // Tag this committed value so the external-change-detector recognizes
+    // the next render's `value` as ours and leaves the draft in place.
+    lastCommittedFromHere.current = next
     onChange(next)
   }
 

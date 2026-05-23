@@ -1,12 +1,14 @@
 /**
  * A collapsible data-source card for the configuration panel's accordion. The
- * header row carries an enable checkbox, the source name, a one-line summary,
- * and an expand chevron; the source's own fields render as `children` only
- * while the card is expanded. The card is collapsed by default, so a panel
- * with several sources stays scannable: each source is one row until opened.
+ * header row carries an enable checkbox (or an "Always on" badge for a source
+ * with no enable toggle), the source name, a one-line summary, and an expand
+ * chevron; the source's own fields render as `children` only while the card
+ * is expanded. The card is collapsed by default, so a panel with several
+ * sources stays scannable: each source is one row until opened.
  *
- * An always-on source (one with no enable toggle) omits `onToggleEnabled`; its
- * checkbox is then shown checked and disabled.
+ * An always-on source (one with no enable toggle) omits `onToggleEnabled`; the
+ * header shows the "Always on" badge instead of a checkbox so it cannot be
+ * mistaken for a disabled toggle.
  */
 
 import type * as React from 'react'
@@ -42,18 +44,25 @@ export default function DataSourceCard ({
   return (
     <div style={S.sourceCard}>
       <div style={S.sourceCardHeader}>
-        <input
-          type='checkbox'
-          style={S.checkbox}
-          checked={enabled}
-          disabled={onToggleEnabled === undefined}
-          // An always-on source's checkbox is permanently checked-and-disabled,
-          // so the "Enable X" label would misdescribe a control the user
-          // cannot operate. Drop the aria-label there and let assistive tech
-          // read the source name from the visible header text instead.
-          aria-label={onToggleEnabled === undefined ? undefined : `Enable ${name}`}
-          onChange={(e) => onToggleEnabled?.(e.target.checked)}
-        />
+        {onToggleEnabled !== undefined
+          ? (
+            <input
+              type='checkbox'
+              style={S.checkbox}
+              checked={enabled}
+              aria-label={`Enable ${name}`}
+              onChange={(e) => onToggleEnabled(e.target.checked)}
+            />
+            )
+          : (
+            // An always-on source shows a non-interactive "Always on" badge
+            // rather than a disabled checkbox: a disabled checkbox is
+            // visually indistinguishable from an off-and-greyed-out toggle,
+            // so an operator might think the source is unavailable.
+            <span style={S.alwaysOnBadge} aria-label={`${name} is always on`}>
+              Always on
+            </span>
+            )}
         <button
           type='button'
           style={S.sourceCardToggle}

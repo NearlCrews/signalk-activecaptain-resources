@@ -58,6 +58,15 @@ export function buildPoiTypesString (config: Partial<PluginConfig>): string | nu
  * Ensure the POI-types string includes every type in `required`. The position
  * monitor's per-tick fetch uses it, and the position-driven outputs can only
  * act on points of interest the fetch returned.
+ *
+ * This is deliberately the ONE place the user's "select none" choice is
+ * overridden: if the operator enabled the proximity-alarm or route-hazard
+ * output, the per-tick monitor scan force-includes Hazard / Bridge / Lock
+ * so the alarm has data to fire on. The chart-display path
+ * (`notes-resource-output.listResources`) still respects the user's
+ * selection, so a user who turned every POI-type toggle off sees a clean
+ * chart but still gets alarms. The split is intentional, not a bug: alarms
+ * are a safety output independent of chart display.
  */
 export function ensurePoiTypes (poiTypes: string | null, required: readonly string[]): string {
   const present = (poiTypes === null || poiTypes === '') ? [] : poiTypes.split(',')

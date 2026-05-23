@@ -5,7 +5,7 @@
  */
 
 import type { Dispatch } from 'react'
-import { useCallback, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { PluginConfig } from '../../shared/types.js'
 import { configReducer } from '../config-reducer.js'
 import type { ConfigAction } from '../config-reducer.js'
@@ -33,9 +33,15 @@ export function useConfig (configuration: unknown): UseConfigResult {
   const [state, dispatch] = useReducer(configReducer, initial)
   const [savedState, setSavedState] = useState<PluginConfig>(initial)
 
+  // Keep markSaved's identity stable across renders by reading the latest
+  // state through a ref. The previous `useCallback(_, [state])` recreated
+  // markSaved on every keystroke, cascading through handleSave and
+  // re-rendering FooterBar even when only an unrelated field changed.
+  const stateRef = useRef(state)
+  useEffect(() => { stateRef.current = state }, [state])
   const markSaved = useCallback((): void => {
-    setSavedState(state)
-  }, [state])
+    setSavedState(stateRef.current)
+  }, [])
 
   return { state, savedState, dispatch, markSaved }
 }

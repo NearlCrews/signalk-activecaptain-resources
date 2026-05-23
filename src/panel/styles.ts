@@ -218,6 +218,18 @@ export const S = {
     gap: 10,
     padding: '10px 14px'
   },
+  alwaysOnBadge: {
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+    color: 'var(--ac-text-muted)',
+    background: 'var(--ac-surface-muted, rgba(255,255,255,0.05))',
+    border: '1px solid var(--ac-border)',
+    borderRadius: 3,
+    padding: '2px 6px',
+    flexShrink: 0
+  },
   sourceCardToggle: {
     display: 'flex',
     alignItems: 'center',
