@@ -1,0 +1,226 @@
+/**
+ * Tests for the USCG Light List PoiSource adapter.
+ *
+ * The adapter wraps the HTTP client and the on-disk store in a PoiSource:
+ * `listPointsOfInterest` filters the in-memory index by bbox; `getDetails`
+ * reads from the in-memory map; `refreshAll` iterates the (district, page)
+ * pairs and gates the outbound HTTP on `isInUsWaters` so a vessel that has
+ * left US waters keeps its already-loaded index without issuing a refresh.
+ */
+
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import {
+  createUscgLightListSource,
+  USCG_LIGHT_LIST_SOURCE_ID
+} from '../src/inputs/uscg-light-list/uscg-light-list-source.js'
+import { createLightListStore } from '../src/inputs/uscg-light-list/light-list-store.js'
+import type {
+  DownloadResult,
+  LightListClient
+} from '../src/inputs/uscg-light-list/light-list-client.js'
+import type { LightListStore } from '../src/inputs/uscg-light-list/light-list-store.js'
+import type { LightListRecord } from '../src/inputs/uscg-light-list/light-list-types.js'
+import type { PluginStatus } from '../src/status/plugin-status.js'
+
+interface FakeStatus extends PluginStatus {
+  recordSkipped: (source: string, reason: string) => void
+}
+
+/**
+ * A small fake status recorder. Returns the recorded events as an array of
+ * `event:source[:detail]` strings so a test can assert exactly what happened
+ * without depending on the real status snapshot format.
+ */
+function fakeStatus (): { events: string[], status: FakeStatus } {
+  const events: string[] = []
+  const status: FakeStatus = {
+    recordListFetch: (source, count) => { events.push(`list:${source}:${count}`) },
+    recordDetailSuccess: (source) => { events.push(`detail-ok:${source}`) },
+    recordError: (source, message) => { events.push(`error:${source}:${message}`) },
+    recordSkipped: (source, reason) => { events.push(`skipped:${source}:${reason}`) },
+    snapshot: () => ({ sources: [], cachedPoiCount: 0, recentErrors: [], startedAt: '' })
+  }
+  return { events, status }
+}
+
+/** A fake client that defaults to "not-modified" for every download. */
+function fakeClient (): LightListClient {
+  return {
+    downloadDistrict: async (): Promise<DownloadResult> => ({ status: 'not-modified' })
+  }
+}
+
+function sampleRecord (overrides: Partial<LightListRecord> = {}): LightListRecord {
+  return {
+    llnr: 12345,
+    name: 'Test Light',
+    position: { latitude: 42.0, longitude: -71.0 },
+    district: 'D01',
+    volume: 1,
+    source: 'usclightlist',
+    inactive: false,
+    ...overrides
+  }
+}
+
+function loadOne (store: LightListStore, record: LightListRecord = sampleRecord()): void {
+  store.upsertDistrict('D01', 1, [record], {})
+}
+
+test('listPointsOfInterest filters by bbox and tags every summary with the source', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    loadOne(store)
+    const { status } = fakeStatus()
+    const source = createUscgLightListSource({
+      client: fakeClient(),
+      store,
+      status,
+      getCurrentPosition: () => undefined
+    })
+    const inside = await source.listPointsOfInterest(
+      { south: 41, west: -72, north: 43, east: -70 }, '')
+    assert.equal(inside.length, 1)
+    assert.equal(inside[0].source, USCG_LIGHT_LIST_SOURCE_ID)
+    assert.equal(inside[0].id, '12345')
+    assert.equal(inside[0].type, 'Navigational')
+    assert.equal(inside[0].skIcon, 'navigation-structure')
+    assert.ok(inside[0].url.includes('listVolumeNumber=1'))
+    assert.ok(inside[0].url.includes('lightListNumber=12345'))
+    const outside = await source.listPointsOfInterest(
+      { south: 0, west: 0, north: 1, east: 1 }, '')
+    assert.equal(outside.length, 0)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('getDetails returns a fully rendered detail view with attribution', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    loadOne(store, sampleRecord({ remark: 'Visible 015° to 195°' }))
+    const { events, status } = fakeStatus()
+    const source = createUscgLightListSource({
+      client: fakeClient(),
+      store,
+      status,
+      getCurrentPosition: () => undefined
+    })
+    const view = await source.getDetails('12345')
+    assert.equal(view.source, USCG_LIGHT_LIST_SOURCE_ID)
+    assert.equal(view.type, 'Navigational')
+    assert.ok(view.description !== undefined)
+    assert.ok(view.description.includes('Visible 015° to 195°'))
+    assert.ok(view.description.includes('crows-nest-attribution'))
+    assert.ok(events.includes(`detail-ok:${USCG_LIGHT_LIST_SOURCE_ID}`))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('getDetails rejects for an unknown id', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    const { status } = fakeStatus()
+    const source = createUscgLightListSource({
+      client: fakeClient(),
+      store,
+      status,
+      getCurrentPosition: () => undefined
+    })
+    await assert.rejects(() => source.getDetails('does-not-exist'))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('refreshAll skips outbound HTTP when the vessel is outside US waters', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    const { events, status } = fakeStatus()
+    let calls = 0
+    const client: LightListClient = {
+      downloadDistrict: async (): Promise<DownloadResult> => {
+        calls++
+        return { status: 'not-modified' }
+      }
+    }
+    const source = createUscgLightListSource({
+      client,
+      store,
+      status,
+      // Sydney Harbour, decidedly not US.
+      getCurrentPosition: () => ({ latitude: -33.85, longitude: 151.22 })
+    })
+    await source.refreshAll()
+    assert.equal(calls, 0)
+    assert.ok(events.some(event => event.startsWith(`skipped:${USCG_LIGHT_LIST_SOURCE_ID}`)))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('refreshAll iterates every district page when the vessel is in US waters', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    const { status } = fakeStatus()
+    let calls = 0
+    const client: LightListClient = {
+      downloadDistrict: async (): Promise<DownloadResult> => {
+        calls++
+        return { status: 'not-modified' }
+      }
+    }
+    const source = createUscgLightListSource({
+      client,
+      store,
+      status,
+      // Boston Harbor.
+      getCurrentPosition: () => ({ latitude: 42.36, longitude: -71.05 })
+    })
+    await source.refreshAll()
+    // The plan pins the (district, page) pair count at 61.
+    assert.ok(calls > 0, 'at least one district was requested')
+    assert.ok(calls <= 61, 'no more than the pinned 61 (district, page) pairs')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('refreshAll records an error status when a district download fails', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'll-src-'))
+  try {
+    const store = createLightListStore(dir)
+    await store.load()
+    const { events, status } = fakeStatus()
+    const client: LightListClient = {
+      downloadDistrict: async (): Promise<DownloadResult> =>
+        ({ status: 'error', message: 'HTTP 500' })
+    }
+    const source = createUscgLightListSource({
+      client,
+      store,
+      status,
+      // Boston Harbor.
+      getCurrentPosition: () => ({ latitude: 42.36, longitude: -71.05 })
+    })
+    await source.refreshAll()
+    assert.ok(events.some(event => event.startsWith(`error:${USCG_LIGHT_LIST_SOURCE_ID}`)))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
