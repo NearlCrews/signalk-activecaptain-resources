@@ -56,11 +56,13 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
         resources[entity.id] = buildNoteResource({
           name: entity.name,
           position: { ...entity.position },
-          // Every source sets `skIcon` explicitly per element to a
-          // Freeboard-registered icon. The type-lowercased fallback is kept
-          // so a future source that omits the hint still routes to its
-          // PoiType-named icon.
-          skIcon: entity.skIcon ?? entity.type.toLowerCase(),
+          // Every source sets `skIcon` explicitly to one of Freeboard's
+          // registered icons. A future source that forgets to set it falls
+          // back to a known-safe Freeboard glyph rather than to
+          // type.toLowerCase(), which would produce unregistered names
+          // like `boatramp` or `localknowledge` and render as the default
+          // yellow square.
+          skIcon: entity.skIcon ?? 'notice-to-mariners',
           url: entity.url,
           source: entity.source,
           attribution: entity.attribution,
@@ -78,8 +80,8 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       const note = buildNoteResource({
         name: view.name,
         position: { ...view.position },
-        // Same source-overrides-default rule as the list path above.
-        skIcon: view.skIcon ?? view.type.toLowerCase(),
+        // Same Freeboard-safe fallback as the list path above.
+        skIcon: view.skIcon ?? 'notice-to-mariners',
         url: view.url,
         source: view.source,
         attribution: view.attribution,
@@ -98,10 +100,10 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
     },
 
     setResource: (): Promise<void> =>
-      Promise.reject(new Error('ActiveCaptain resources are read-only')),
+      Promise.reject(new Error('Crow\'s nest notes resources are read-only')),
 
     deleteResource: (): Promise<void> =>
-      Promise.reject(new Error('ActiveCaptain resources are read-only'))
+      Promise.reject(new Error('Crow\'s nest notes resources are read-only'))
   }
 }
 

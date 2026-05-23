@@ -48,9 +48,16 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   }
 }
 
-/** Resolve the corridor half-width from raw config, applying the default. */
+/**
+ * Resolve the corridor half-width from raw config, applying the default.
+ * Rejects non-finite values (NaN, Infinity) so a hand-edited config file
+ * cannot propagate NaN through routeCorridorBbox into the outbound list URL.
+ */
 function resolveCorridorWidth (raw: unknown): number {
-  return typeof raw === 'number' && raw > 0 ? raw : DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) {
+    return DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+  }
+  return raw
 }
 
 /**

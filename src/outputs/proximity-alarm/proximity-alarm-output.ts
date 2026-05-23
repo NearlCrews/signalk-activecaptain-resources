@@ -34,9 +34,16 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   }
 }
 
-/** Resolve the alarm radius from raw config, applying the default. */
+/**
+ * Resolve the alarm radius from raw config, applying the default. Rejects
+ * non-finite values (NaN, Infinity) so a hand-edited config file cannot
+ * propagate NaN through positionToBbox into the outbound list URL.
+ */
 function resolveRadius (raw: unknown): number {
-  return typeof raw === 'number' && raw > 0 ? raw : DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) {
+    return DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+  }
+  return raw
 }
 
 /** The proximity-alarm output module. */

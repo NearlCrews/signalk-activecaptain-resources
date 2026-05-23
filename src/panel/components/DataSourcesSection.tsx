@@ -18,9 +18,11 @@ import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import ActiveCaptainSource from './ActiveCaptainSource.js'
 import DataSourceCard from './DataSourceCard.js'
-import NoaaEncSource from './NoaaEncSource.js'
+import NoaaEncSource, { BAND_LABELS } from './NoaaEncSource.js'
 import OpenSeaMapSource from './OpenSeaMapSource.js'
 import UscgLightListSource from './UscgLightListSource.js'
+
+type ScaleBand = keyof typeof BAND_LABELS
 
 interface Props {
   state: PluginConfig
@@ -50,14 +52,18 @@ function uscgLightListSummary (state: PluginConfig): string {
 
 /** Build the NOAA ENC card's collapsed one-line summary. */
 function noaaEncSummary (state: PluginConfig): string {
-  const band = state.noaaEncScaleBand ?? DEFAULT_NOAA_ENC_SCALE_BAND
+  const rawBand = state.noaaEncScaleBand ?? DEFAULT_NOAA_ENC_SCALE_BAND
+  // Use the same friendly label the expanded card shows ("Harbor" not
+  // "harbour", "Coastal" not "coastal"), so collapsing the card never
+  // surfaces the raw NOAA wire value.
+  const label = BAND_LABELS[rawBand as ScaleBand] ?? rawBand
   // Wrecks and obstructions default on; rocks default off.
   const layers: string[] = []
   if (state.noaaEncIncludeWrecks !== false) layers.push('wrecks')
   if (state.noaaEncIncludeObstructions !== false) layers.push('obstructions')
   if (state.noaaEncIncludeRocks === true) layers.push('rocks')
   const layerList = layers.length === 0 ? 'no layers' : layers.join(', ')
-  return `${band} band, ${layerList}`
+  return `${label} band, ${layerList}`
 }
 
 /** The per-source accordion shown in the configuration panel. */

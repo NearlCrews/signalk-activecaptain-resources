@@ -16,8 +16,12 @@ import type { PluginConfig } from '../../shared/types.js'
 /** Stable id linking the band selector's visible label to its `<select>`. */
 const BAND_FIELD_ID = 'ac-noaa-enc-scale-band'
 
-/** Human-readable label for each ENC chart scale band. */
-const BAND_LABELS: Readonly<Record<typeof NOAA_ENC_SCALE_BANDS[number], string>> = {
+/**
+ * Human-readable label for each ENC chart scale band. Exported so the
+ * collapsed accordion summary in DataSourcesSection reads "Harbor" rather
+ * than the raw NOAA wire value "harbour".
+ */
+export const BAND_LABELS: Readonly<Record<typeof NOAA_ENC_SCALE_BANDS[number], string>> = {
   overview: 'Overview',
   general: 'General',
   coastal: 'Coastal',
@@ -105,6 +109,12 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
             />
             Underwater rocks
           </label>
+          {!includeWrecks && !includeObstructions && !includeRocks && (
+            <p style={S.hint}>
+              Choose at least one layer; with all three off the source is
+              enabled but imports nothing.
+            </p>
+          )}
           <p style={S.hint}>
             Underwater rocks default off because a coastal-band query can
             return tens of thousands of rocks, which slows the chart plotter

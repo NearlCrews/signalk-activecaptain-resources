@@ -68,7 +68,8 @@ function contextWith (overrides: Partial<OutputContext>): OutputContext {
           position: { latitude: 0, longitude: 0 },
           source: 'activecaptain',
           url: 'https://activecaptain.garmin.com/en-US/pois/1',
-          attribution: 'Data from Garmin ActiveCaptain'
+          attribution: 'Data from Garmin ActiveCaptain',
+          skIcon: 'marina'
         }
       ],
       getDetails: async (): Promise<PoiDetailView> => ({
@@ -77,7 +78,8 @@ function contextWith (overrides: Partial<OutputContext>): OutputContext {
         position: { latitude: 0, longitude: 0 },
         url: 'https://activecaptain.garmin.com/en-US/pois/1',
         source: 'activecaptain',
-        attribution: 'Data from Garmin ActiveCaptain'
+        attribution: 'Data from Garmin ActiveCaptain',
+        skIcon: 'marina'
       }),
       cacheSize: () => 0,
       close: () => {}
@@ -210,14 +212,54 @@ test('getResource rejects cleanly when getDetails fails', async () => {
   await assert.rejects(getResource('1'), /detail boom/)
 })
 
-test('setResource rejects', async () => {
+test('setResource rejects with a multi-source read-only message', async () => {
   const methods = startMethods({})
   const setResource = methods.setResource as () => Promise<void>
-  await assert.rejects(setResource(), /read-only/)
+  await assert.rejects(setResource(), /Crow's nest notes resources are read-only/)
 })
 
-test('deleteResource rejects', async () => {
+test('deleteResource rejects with a multi-source read-only message', async () => {
   const methods = startMethods({})
   const deleteResource = methods.deleteResource as () => Promise<void>
-  await assert.rejects(deleteResource(), /read-only/)
+  await assert.rejects(deleteResource(), /Crow's nest notes resources are read-only/)
+})
+
+test('absent skIcon falls back to notice-to-mariners (a Freeboard-registered icon), not type.toLowerCase()', async () => {
+  // The type.toLowerCase() fallback would produce unregistered names like
+  // "boatramp" for BoatRamp and "localknowledge" for LocalKnowledge, which
+  // Freeboard renders as the default yellow square. notice-to-mariners is
+  // always registered.
+  const noIconContext = contextWith({
+    pois: {
+      id: 'activecaptain',
+      listPointsOfInterest: async () => [
+        {
+          id: '7',
+          name: 'No-icon POI',
+          type: 'BoatRamp',
+          position: { latitude: 0, longitude: 0 },
+          source: 'activecaptain',
+          url: 'https://activecaptain.garmin.com/en-US/pois/7',
+          attribution: 'Data from Garmin ActiveCaptain'
+          // skIcon deliberately omitted
+        }
+      ],
+      getDetails: async () => ({
+        name: 'No-icon POI',
+        type: 'BoatRamp',
+        position: { latitude: 0, longitude: 0 },
+        url: 'https://activecaptain.garmin.com/en-US/pois/7',
+        source: 'activecaptain',
+        attribution: 'Data from Garmin ActiveCaptain'
+      }),
+      cacheSize: () => 0,
+      close: () => {}
+    } as never
+  })
+  const { app, provider } = recordingApp()
+  notesResourceOutput.start({ ...noIconContext, app: app as never })
+  const methods = provider.methods as Record<string, unknown>
+  const listResources = methods.listResources as (q: object) => Promise<Record<string, { properties: { skIcon: string } }>>
+  const result = await listResources({ bbox: '0,0,1,1' })
+  assert.equal(result['7'].properties.skIcon, 'notice-to-mariners')
 })
