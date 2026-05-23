@@ -50,6 +50,8 @@ terms-of-service exposure.
 - Full review list and review photos (developer API only).
 - Contributing reviews and hazard reports back to ActiveCaptain (developer API
   plus per-user Garmin sign-in).
-- Multi-source marine POI aggregation (OpenSeaMap, USACE lock status, Waterway
-  Guide).
+- Multi-source marine POI aggregation. OpenSeaMap (OpenStreetMap marine data
+  via the OSM Overpass API) shipped in v0.5.0, with per-source dedupe against
+  the ActiveCaptain base layer; USACE lock status and Waterway Guide remain
+  candidates for follow-up sources.
 - React panel component tests.
