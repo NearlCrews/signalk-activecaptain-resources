@@ -24,8 +24,11 @@ import type { Bbox, PoiDetailView, PoiSummary, PoiType } from '../../shared/type
 import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
-/** The stable id of the OpenSeaMap source. */
-export const OPENSEAMAP_SOURCE_ID = 'openseamap'
+// The stable source id is defined in `src/shared/source-ids.ts` so the
+// browser-bundled panel can import it without pulling in this module's
+// node-only dependencies.
+export { OPENSEAMAP_SOURCE_ID } from '../../shared/source-ids.js'
+import { OPENSEAMAP_SOURCE_ID } from '../../shared/source-ids.js'
 
 /**
  * Attribution credit for OpenStreetMap data. The Open Database License (ODbL)

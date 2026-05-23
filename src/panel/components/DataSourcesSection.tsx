@@ -5,7 +5,10 @@
  * from the current configuration so a collapsed card still says what it does.
  *
  * Disclosure state (which card is expanded) lives on the panel root and is
- * passed down here so the section is purely declarative.
+ * passed down here so the section is purely declarative. The card id is the
+ * source's own PoiSource.id constant (imported from the source module), so a
+ * future rename of one of the source ids is a single-site TypeScript
+ * compile error rather than a silent panel/registry skew.
  */
 
 import type * as React from 'react'
@@ -13,6 +16,13 @@ import type { Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
 import { POI_TYPE_FLAGS } from '../../shared/poi-type-selection.js'
 import { SEAMARK_GROUP_REFS } from '../../shared/seamark-groups.js'
+import {
+  ACTIVE_CAPTAIN_SOURCE_ID,
+  NOAA_ENC_SOURCE_ID,
+  OPENSEAMAP_SOURCE_ID,
+  USCG_LIGHT_LIST_SOURCE_ID,
+  type SourceSlug
+} from '../../shared/source-ids.js'
 import {
   DEFAULT_NOAA_ENC_SCALE_BAND,
   DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS
@@ -26,6 +36,8 @@ import NoaaEncSource, { BAND_LABELS } from './NoaaEncSource.js'
 import OpenSeaMapSource from './OpenSeaMapSource.js'
 import UscgLightListSource from './UscgLightListSource.js'
 
+export type { SourceSlug }
+
 type ScaleBand = keyof typeof BAND_LABELS
 
 interface Props {
@@ -33,10 +45,10 @@ interface Props {
   dispatch: Dispatch<ConfigAction>
   /** Per-source status snapshot, or null until the first poll resolves. */
   status: StatusSnapshot | null
-  /** Which card ids are currently expanded. */
-  expanded: Record<string, boolean>
-  /** Toggle the expansion of one card by id. */
-  onToggleExpanded: (cardId: string) => void
+  /** Which card slugs are currently expanded. */
+  expanded: Partial<Record<SourceSlug, boolean>>
+  /** Toggle the expansion of one card by its slug. */
+  onToggleExpanded: (cardId: SourceSlug) => void
 }
 
 /** Build the ActiveCaptain card's collapsed one-line summary. */
@@ -89,7 +101,7 @@ function noaaEncSummary (state: PluginConfig): string {
 }
 
 /** Look up the per-source status entry by source slug. */
-function statusFor (snapshot: StatusSnapshot | null, sourceId: string): SourceStatus | undefined {
+function statusFor (snapshot: StatusSnapshot | null, sourceId: SourceSlug): SourceStatus | undefined {
   return snapshot?.sources.find((entry) => entry.source === sourceId)
 }
 
@@ -101,45 +113,49 @@ export default function DataSourcesSection (
     <section>
       <h2 style={S.sectionHeading}>Data sources</h2>
       <DataSourceCard
+        cardId={ACTIVE_CAPTAIN_SOURCE_ID}
         name='Garmin ActiveCaptain'
         enabled
         summary={activeCaptainSummary(state)}
-        expanded={expanded.activecaptain === true}
-        onToggleExpanded={() => onToggleExpanded('activecaptain')}
-        status={statusFor(status, 'activecaptain')}
+        expanded={expanded[ACTIVE_CAPTAIN_SOURCE_ID] === true}
+        onToggleExpanded={onToggleExpanded}
+        status={statusFor(status, ACTIVE_CAPTAIN_SOURCE_ID)}
       >
         <ActiveCaptainSource state={state} dispatch={dispatch} />
       </DataSourceCard>
       <DataSourceCard
+        cardId={OPENSEAMAP_SOURCE_ID}
         name='OpenSeaMap'
         enabled={state.openSeaMapEnabled === true}
         summary={openSeaMapSummary(state)}
-        expanded={expanded.openseamap === true}
-        onToggleExpanded={() => onToggleExpanded('openseamap')}
+        expanded={expanded[OPENSEAMAP_SOURCE_ID] === true}
+        onToggleExpanded={onToggleExpanded}
         onToggleEnabled={(enabled) => dispatch({ type: 'setOpenSeaMapEnabled', enabled })}
-        status={statusFor(status, 'openseamap')}
+        status={statusFor(status, OPENSEAMAP_SOURCE_ID)}
       >
         <OpenSeaMapSource state={state} dispatch={dispatch} />
       </DataSourceCard>
       <DataSourceCard
+        cardId={USCG_LIGHT_LIST_SOURCE_ID}
         name='USCG Light List (US Aids to Navigation)'
         enabled={state.uscgLightListEnabled === true}
         summary={uscgLightListSummary(state)}
-        expanded={expanded.usclightlist === true}
-        onToggleExpanded={() => onToggleExpanded('usclightlist')}
+        expanded={expanded[USCG_LIGHT_LIST_SOURCE_ID] === true}
+        onToggleExpanded={onToggleExpanded}
         onToggleEnabled={(enabled) => dispatch({ type: 'setUscgLightListEnabled', enabled })}
-        status={statusFor(status, 'usclightlist')}
+        status={statusFor(status, USCG_LIGHT_LIST_SOURCE_ID)}
       >
         <UscgLightListSource state={state} dispatch={dispatch} />
       </DataSourceCard>
       <DataSourceCard
+        cardId={NOAA_ENC_SOURCE_ID}
         name='NOAA ENC Direct (US wrecks, obstructions, and rocks)'
         enabled={state.noaaEncEnabled === true}
         summary={noaaEncSummary(state)}
-        expanded={expanded.noaaenc === true}
-        onToggleExpanded={() => onToggleExpanded('noaaenc')}
+        expanded={expanded[NOAA_ENC_SOURCE_ID] === true}
+        onToggleExpanded={onToggleExpanded}
         onToggleEnabled={(enabled) => dispatch({ type: 'setNoaaEncEnabled', enabled })}
-        status={statusFor(status, 'noaaenc')}
+        status={statusFor(status, NOAA_ENC_SOURCE_ID)}
       >
         <NoaaEncSource state={state} dispatch={dispatch} />
       </DataSourceCard>

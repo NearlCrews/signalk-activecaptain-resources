@@ -25,8 +25,11 @@ import { openSeaMapMarkerUrl } from '../../shared/map-link.js'
 import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
-/** Stable id of the USCG Light List source. */
-export const USCG_LIGHT_LIST_SOURCE_ID = 'usclightlist'
+// The stable source id is defined in `src/shared/source-ids.ts` so the
+// browser-bundled panel can import it without pulling in this module's
+// node-only dependencies.
+export { USCG_LIGHT_LIST_SOURCE_ID } from '../../shared/source-ids.js'
+import { USCG_LIGHT_LIST_SOURCE_ID } from '../../shared/source-ids.js'
 
 /** Human-readable attribution credit for USCG Light List data. */
 const ATTRIBUTION = '© USCG (US Government public domain)'

@@ -53,7 +53,9 @@ export default function NumberField ({
 
   // The label-control pair sits on one row; the hint renders as a sibling
   // block below so a narrow input does not push the hint into a cramped
-  // wrap alongside the field.
+  // wrap alongside the field. The hint uses S.hintBelow (not the bare
+  // S.hint token), so it supplies its own 12px bottom margin without
+  // forcing every other hint paragraph in the panel to grow one.
   return (
     <>
       <div style={dense === true ? S.labelledInputRow : S.fieldRow}>
@@ -71,7 +73,7 @@ export default function NumberField ({
           onBlur={draft.handleBlur}
         />
       </div>
-      <p style={S.hint}>{hint}</p>
+      <p style={S.hintBelow}>{hint}</p>
     </>
   )
 }

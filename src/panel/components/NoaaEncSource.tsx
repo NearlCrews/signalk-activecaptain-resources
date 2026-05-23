@@ -68,12 +68,12 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
             <option key={bandId} value={bandId}>{BAND_LABELS[bandId]}</option>
           ))}
         </select>
-        <p style={S.hint}>
-          Which ENC chart scale to query. Overview returns large-area features
-          only; berthing returns the densest, finest detail. Coastal is the
-          recommended default for most underway use.
-        </p>
       </div>
+      <p style={S.hintBelow}>
+        Which ENC chart scale to query. Overview returns large-area features
+        only; berthing returns the densest, finest detail. Coastal is the
+        recommended default for most underway use.
+      </p>
       <section style={S.groupsSection}>
         <fieldset style={S.group}>
           <legend style={S.groupTitle}>Hazard layers to import</legend>

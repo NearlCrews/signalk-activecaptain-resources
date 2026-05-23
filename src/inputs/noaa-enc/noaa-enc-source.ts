@@ -32,8 +32,11 @@ import { openSeaMapMarkerUrl } from '../../shared/map-link.js'
 import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
-/** Stable id of the NOAA ENC Direct source. */
-export const NOAA_ENC_SOURCE_ID = 'noaaenc'
+// The stable source id is defined in `src/shared/source-ids.ts` so the
+// browser-bundled panel can import it without pulling in this module's
+// node-only dependencies.
+export { NOAA_ENC_SOURCE_ID } from '../../shared/source-ids.js'
+import { NOAA_ENC_SOURCE_ID } from '../../shared/source-ids.js'
 
 /** Human-readable attribution credit for NOAA ENC Direct data. */
 export const NOAA_ENC_ATTRIBUTION = '© NOAA Office of Coast Survey (CC0)'

@@ -1,15 +1,20 @@
 /**
  * Inline-style design tokens for the federated configuration panel.
  *
- * The panel renders inside the Signal K admin UI, which is Bootstrap 5.3 and
- * flips between light and dark via `data-bs-theme` on a host element. Inline
- * styles cannot read that theme, so every color here references an `--ac-*`
- * CSS custom property rather than a hex literal. THEME_STYLE (below) defines
- * those properties once on `.ac-config-panel` with explicit light values,
- * then overrides them for dark mode. Surfaces are deliberately NOT derived
- * from the host's `--bs-body-bg`: the admin's body background is page-gray,
- * so a card that inherited it would lose its white fill. Components stay
- * theme-agnostic: they read tokens, the theme layer redefines them.
+ * The panel renders inside the Signal K admin UI. Inline styles cannot
+ * read the host's theme, so every color here references an `--ac-*` CSS
+ * custom property rather than a hex literal. THEME_STYLE (below) defines
+ * those properties once on `.ac-config-panel` with explicit light values.
+ * It also carries an opportunistic dark-mode override block keyed on
+ * `[data-bs-theme="dark"]` and `.dark-mode`: the current SignalK admin
+ * does not set either selector (the dark block is dormant today), but
+ * doing the work in tokens now means a future admin theme switcher will
+ * light up the panel with no code change.
+ *
+ * Surfaces are deliberately NOT derived from the host's `--bs-body-bg`:
+ * the admin's body background is page-gray, so a card that inherited it
+ * would lose its white fill. Components stay theme-agnostic: they read
+ * tokens, the theme layer redefines them.
  */
 
 import type { CSSProperties } from 'react'
@@ -47,7 +52,11 @@ export const THEME_STYLE = `
   --ac-border: #3a3c4a;
   --ac-text: #e6e7ea;
   --ac-text-muted: #a3a9b5;
-  --ac-text-faint: #7c8290;
+  /* Bumped up from #7c8290 (3.80:1 on --ac-surface) to #9ba0ad (4.62:1)
+     so the muted-faint text token clears WCAG AA at the smaller font
+     sizes it lands on (the source-card chevron, status error times, the
+     fieldset legend that titles every option group). */
+  --ac-text-faint: #9ba0ad;
   --ac-accent: #4c93ff;
   --ac-ok: #2dd4a0;
   --ac-off: #6b7785;
@@ -142,9 +151,10 @@ export const S = {
   statusErrorTime: { color: 'var(--ac-text-faint)', flexShrink: 0 },
 
   // Generic field row: a label-input pair laid out as one row, with the
-  // hint rendered as a sibling block below (NumberField composes the two).
-  // Labels are a fixed-width muted column on the left, so successive rows
-  // visually align without depending on label length.
+  // hint rendered as a sibling block below (NumberField composes the two
+  // via the S.hintBelow variant). Labels are a fixed-width muted column
+  // on the left, so successive rows visually align without depending on
+  // label length.
   fieldRow: {
     display: 'flex',
     alignItems: 'center',
@@ -155,6 +165,7 @@ export const S = {
   label: {
     fontSize: 13,
     color: 'var(--ac-text-muted)',
+    width: 220,
     flexShrink: 0
   },
   input: {
@@ -166,7 +177,28 @@ export const S = {
     fontSize: 13,
     width: 110
   },
+  /**
+   * Default hint paragraph style. Used by callers that supply their own
+   * outer container spacing (toggle hints inside AlarmFieldset, the
+   * rationale paragraph in MergeWithActiveCaptain, the empty-state hints
+   * in fieldset bodies). Defaults to `margin: 0` so a hint nested inside
+   * a labeled group inherits the group's vertical rhythm and does NOT
+   * grow its own bottom margin.
+   */
   hint: {
+    fontSize: 12,
+    color: 'var(--ac-text-muted)',
+    lineHeight: 1.45,
+    margin: 0
+  },
+  /**
+   * Variant for a hint paragraph rendered immediately below a labeled
+   * field row (the NumberField/EndpointUrlField/NoaaEnc band selector
+   * shape). Adds 12px of bottom margin so successive fields visually
+   * separate, while the bare `S.hint` token stays at `margin: 0` for
+   * callers that supply their own surrounding spacing.
+   */
+  hintBelow: {
     fontSize: 12,
     color: 'var(--ac-text-muted)',
     lineHeight: 1.45,
@@ -303,6 +335,14 @@ export const S = {
     padding: '0 14px 6px',
     marginTop: 4
   },
+  // Body visible-state for a collapsed card. The body stays mounted so a
+  // half-typed NumberField draft survives a collapse-and-expand round
+  // trip; `display: none` removes it from the layout AND skips paint cost,
+  // matching the visual effect of a conditional render without unmounting
+  // the subtree.
+  sourceCardBodyHidden: {
+    display: 'none'
+  },
 
   // Panel section heading bar (Data sources, Alerts): a muted-surface row
   // with a normal-case title, replacing the smaller all-caps tracked label.
@@ -340,6 +380,12 @@ export const S = {
     color: 'var(--ac-danger-fg)',
     background: 'var(--ac-danger-bg)',
     borderColor: 'var(--ac-danger-border)'
+  },
+  // Idle (no list fetch yet) variant. Visually de-emphasized so it cannot
+  // be confused with the success variant; the muted color and dotted-line
+  // ellipsis glyph together signal "waiting" rather than "good".
+  sourceStatusPillIdle: {
+    color: 'var(--ac-text-faint)'
   },
 
   // Wide text input, for values such as a URL.

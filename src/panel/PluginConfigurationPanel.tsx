@@ -14,6 +14,7 @@ import type * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import AlertsSection from './components/AlertsSection.js'
 import DataSourcesSection from './components/DataSourcesSection.js'
+import type { SourceSlug } from './components/DataSourcesSection.js'
 import FooterBar from './components/FooterBar.js'
 import StatusBar from './components/StatusBar.js'
 import { useConfig } from './hooks/use-config.js'
@@ -35,12 +36,15 @@ export default function PluginConfigurationPanel ({ configuration, save }: Props
   const { status, error } = useStatus()
   const { state, savedState, dispatch, markSaved } = useConfig(configuration)
   const [justSavedAt, setJustSavedAt] = useState<number | null>(null)
-  // Per-source disclosure state lives at the panel root so it survives any
-  // subtree remount (e.g., a config-shape-driven rebuild of the data-source
-  // cards) and so it can later be persisted to the URL or to local storage
-  // without each card needing its own useState.
-  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
-  const toggleCard = useCallback((cardId: string): void => {
+  // Per-source disclosure state lives at the panel root so it survives
+  // saves, so the four DataSourceCards can iterate it with a stable map,
+  // and so it can later be persisted to the URL or to local storage
+  // without each card needing its own useState. The card-body subtree
+  // itself stays mounted (the card swaps `display: none` rather than
+  // unmounting) so a half-typed NumberField draft survives a collapse.
+  const [expandedCards, setExpandedCards] =
+    useState<Partial<Record<SourceSlug, boolean>>>({})
+  const toggleCard = useCallback((cardId: SourceSlug): void => {
     setExpandedCards((prev) => ({ ...prev, [cardId]: !(prev[cardId] === true) }))
   }, [])
 
