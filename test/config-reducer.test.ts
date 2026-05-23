@@ -219,6 +219,51 @@ test('setOpenSeaMapDedupeRadius returns the same state when the value is unchang
   assert.equal(next, state)
 })
 
+test('setUscgLightListEnabled toggles the source', () => {
+  const next = configReducer(baseConfig(), { type: 'setUscgLightListEnabled', enabled: true })
+  assert.equal(next.uscgLightListEnabled, true)
+})
+
+test('setUscgLightListDedupe toggles the dedupe pass', () => {
+  const next = configReducer(baseConfig(), { type: 'setUscgLightListDedupe', enabled: false })
+  assert.equal(next.uscgLightListDedupe, false)
+})
+
+test('setUscgLightListRefreshHours updates the refresh period', () => {
+  const next = configReducer(baseConfig(), { type: 'setUscgLightListRefreshHours', hours: 24 })
+  assert.equal(next.uscgLightListRefreshHours, 24)
+})
+
+test('setNoaaEncEnabled toggles the source', () => {
+  const next = configReducer(baseConfig(), { type: 'setNoaaEncEnabled', enabled: true })
+  assert.equal(next.noaaEncEnabled, true)
+})
+
+test('setNoaaEncDedupe toggles the dedupe pass', () => {
+  const next = configReducer(baseConfig(), { type: 'setNoaaEncDedupe', enabled: false })
+  assert.equal(next.noaaEncDedupe, false)
+})
+
+test('setNoaaEncScaleBand updates the scale band', () => {
+  const next = configReducer(baseConfig(), { type: 'setNoaaEncScaleBand', band: 'harbour' })
+  assert.equal(next.noaaEncScaleBand, 'harbour')
+})
+
+test('setNoaaEncIncludeWrecks toggles the wrecks layer', () => {
+  const next = configReducer(baseConfig(), { type: 'setNoaaEncIncludeWrecks', enabled: false })
+  assert.equal(next.noaaEncIncludeWrecks, false)
+})
+
+test('setNoaaEncIncludeObstructions toggles the obstructions layer', () => {
+  const next = configReducer(baseConfig(), { type: 'setNoaaEncIncludeObstructions', enabled: false })
+  assert.equal(next.noaaEncIncludeObstructions, false)
+})
+
+test('setNoaaEncIncludeRocks toggles the rocks layer', () => {
+  const next = configReducer(baseConfig(), { type: 'setNoaaEncIncludeRocks', enabled: true })
+  assert.equal(next.noaaEncIncludeRocks, true)
+})
+
 test('discard returns the supplied configuration', () => {
   const edited: PluginConfig = { ...baseConfig(), cachingDurationMinutes: 999, includeMarinas: true }
   const saved: PluginConfig = { ...baseConfig(), includeAnchorages: true }

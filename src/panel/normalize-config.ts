@@ -61,6 +61,30 @@ export const DEFAULT_OPENSEAMAP_ENDPOINT = 'https://overpass-api.de/api/interpre
 export const DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS = 150
 
 /**
+ * Fallback USCG Light List background refresh period, in hours. Mirrors the
+ * `uscgLightListRefreshHours` schema default in
+ * src/inputs/uscg-light-list/uscg-light-list-input.ts; keep the two in step so
+ * the panel and the plugin agree.
+ */
+export const DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS = 6
+
+/** Lower and upper bounds on the configurable USCG Light List refresh, in hours. */
+export const MIN_USCG_LIGHT_LIST_REFRESH_HOURS = 1
+export const MAX_USCG_LIGHT_LIST_REFRESH_HOURS = 168
+
+/**
+ * Fallback NOAA ENC scale band. Mirrors the `noaaEncScaleBand` schema default
+ * in src/inputs/noaa-enc/noaa-enc-input.ts; keep the two in step so the panel
+ * and the plugin agree.
+ */
+export const DEFAULT_NOAA_ENC_SCALE_BAND = 'coastal'
+
+/** The six NOAA ENC chart scale bands, ordered overview to berthing. */
+export const NOAA_ENC_SCALE_BANDS = [
+  'overview', 'general', 'coastal', 'approach', 'harbour', 'berthing'
+] as const
+
+/**
  * Coerce the admin UI's untyped `configuration` prop into a fully populated
  * PluginConfig. A POI-type flag absent from the stored config defaults to
  * true, matching the plugin schema, so a never-configured plugin shows every
@@ -140,6 +164,41 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
     typeof dedupeRadius === 'number' && Number.isFinite(dedupeRadius) && dedupeRadius > 0
       ? dedupeRadius
       : DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
+
+  config.uscgLightListEnabled = raw.uscgLightListEnabled === true
+  // Dedupe defaults on, matching the schema: an old config that omits the key
+  // still merges Light List entries that duplicate an ActiveCaptain marker.
+  // Only an explicit false turns it off.
+  config.uscgLightListDedupe = raw.uscgLightListDedupe !== false
+
+  // A non-numeric, infinite, or out-of-range refresh period falls back to the
+  // default rather than letting the scheduler misbehave.
+  const refreshHours = raw.uscgLightListRefreshHours
+  config.uscgLightListRefreshHours =
+    typeof refreshHours === 'number' && Number.isFinite(refreshHours) &&
+    refreshHours >= MIN_USCG_LIGHT_LIST_REFRESH_HOURS &&
+    refreshHours <= MAX_USCG_LIGHT_LIST_REFRESH_HOURS
+      ? refreshHours
+      : DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS
+
+  config.noaaEncEnabled = raw.noaaEncEnabled === true
+  // Dedupe defaults on, matching the schema: only an explicit false turns it off.
+  config.noaaEncDedupe = raw.noaaEncDedupe !== false
+
+  // A non-string or unknown band falls back to the default rather than leaving
+  // the source unable to resolve a layer-id triple.
+  const scaleBand = raw.noaaEncScaleBand
+  config.noaaEncScaleBand =
+    typeof scaleBand === 'string' && (NOAA_ENC_SCALE_BANDS as readonly string[]).includes(scaleBand)
+      ? scaleBand
+      : DEFAULT_NOAA_ENC_SCALE_BAND
+
+  // Wrecks and obstructions default on; only an explicit false turns them off.
+  // Rocks default off because a coastal-band query can return tens of thousands
+  // of underwater rocks; only an explicit true opts in.
+  config.noaaEncIncludeWrecks = raw.noaaEncIncludeWrecks !== false
+  config.noaaEncIncludeObstructions = raw.noaaEncIncludeObstructions !== false
+  config.noaaEncIncludeRocks = raw.noaaEncIncludeRocks === true
 
   return config
 }

@@ -10,11 +10,17 @@ import type { Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
 import { POI_TYPE_FLAGS } from '../../shared/poi-type-selection.js'
 import { SEAMARK_GROUP_REFS } from '../../shared/seamark-groups.js'
+import {
+  DEFAULT_NOAA_ENC_SCALE_BAND,
+  DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS
+} from '../normalize-config.js'
 import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import ActiveCaptainSource from './ActiveCaptainSource.js'
 import DataSourceCard from './DataSourceCard.js'
+import NoaaEncSource from './NoaaEncSource.js'
 import OpenSeaMapSource from './OpenSeaMapSource.js'
+import UscgLightListSource from './UscgLightListSource.js'
 
 interface Props {
   state: PluginConfig
@@ -36,6 +42,24 @@ function openSeaMapSummary (state: PluginConfig): string {
   return `${selected} of ${SEAMARK_GROUP_REFS.length} feature groups`
 }
 
+/** Build the USCG Light List card's collapsed one-line summary. */
+function uscgLightListSummary (state: PluginConfig): string {
+  const hours = state.uscgLightListRefreshHours ?? DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS
+  return `${hours} h refresh`
+}
+
+/** Build the NOAA ENC card's collapsed one-line summary. */
+function noaaEncSummary (state: PluginConfig): string {
+  const band = state.noaaEncScaleBand ?? DEFAULT_NOAA_ENC_SCALE_BAND
+  // Wrecks and obstructions default on; rocks default off.
+  const layers: string[] = []
+  if (state.noaaEncIncludeWrecks !== false) layers.push('wrecks')
+  if (state.noaaEncIncludeObstructions !== false) layers.push('obstructions')
+  if (state.noaaEncIncludeRocks === true) layers.push('rocks')
+  const layerList = layers.length === 0 ? 'no layers' : layers.join(', ')
+  return `${band} band, ${layerList}`
+}
+
 /** The per-source accordion shown in the configuration panel. */
 export default function DataSourcesSection ({ state, dispatch }: Props): React.ReactElement {
   return (
@@ -55,6 +79,22 @@ export default function DataSourcesSection ({ state, dispatch }: Props): React.R
         onToggleEnabled={(enabled) => dispatch({ type: 'setOpenSeaMapEnabled', enabled })}
       >
         <OpenSeaMapSource state={state} dispatch={dispatch} />
+      </DataSourceCard>
+      <DataSourceCard
+        name='USCG Light List (US Aids to Navigation)'
+        enabled={state.uscgLightListEnabled === true}
+        summary={uscgLightListSummary(state)}
+        onToggleEnabled={(enabled) => dispatch({ type: 'setUscgLightListEnabled', enabled })}
+      >
+        <UscgLightListSource state={state} dispatch={dispatch} />
+      </DataSourceCard>
+      <DataSourceCard
+        name='NOAA ENC Direct (US wrecks, obstructions, and rocks)'
+        enabled={state.noaaEncEnabled === true}
+        summary={noaaEncSummary(state)}
+        onToggleEnabled={(enabled) => dispatch({ type: 'setNoaaEncEnabled', enabled })}
+      >
+        <NoaaEncSource state={state} dispatch={dispatch} />
       </DataSourceCard>
     </section>
   )

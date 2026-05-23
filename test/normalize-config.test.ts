@@ -4,10 +4,12 @@ import assert from 'node:assert/strict'
 import {
   DEFAULT_CACHE_DURATION_MINUTES,
   DEFAULT_MINIMUM_RATING,
+  DEFAULT_NOAA_ENC_SCALE_BAND,
   DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS,
   DEFAULT_OPENSEAMAP_ENDPOINT,
   DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
   DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS,
+  DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS,
   normalizeConfig
 } from '../src/panel/normalize-config.js'
 import { SEAMARK_GROUP_IDS } from '../src/shared/seamark-groups.js'
@@ -199,4 +201,63 @@ test('normalizeConfig falls back to the default for an unusable dedupe merge rad
       DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
     )
   }
+})
+
+test('normalizeConfig defaults the USCG Light List options for an empty config', () => {
+  const config = normalizeConfig({})
+  assert.equal(config.uscgLightListEnabled, false)
+  assert.equal(config.uscgLightListDedupe, true)
+  assert.equal(config.uscgLightListRefreshHours, DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS)
+})
+
+test('normalizeConfig keeps a valid USCG Light List refresh period', () => {
+  assert.equal(normalizeConfig({ uscgLightListRefreshHours: 24 }).uscgLightListRefreshHours, 24)
+})
+
+test('normalizeConfig falls back to the default for an out-of-range USCG Light List refresh period', () => {
+  for (const input of [0, -1, 200, 'soon', Number.NaN]) {
+    assert.equal(
+      normalizeConfig({ uscgLightListRefreshHours: input }).uscgLightListRefreshHours,
+      DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS
+    )
+  }
+})
+
+test('normalizeConfig honors an explicit uscgLightListDedupe false', () => {
+  assert.equal(normalizeConfig({ uscgLightListDedupe: false }).uscgLightListDedupe, false)
+})
+
+test('normalizeConfig defaults the NOAA ENC options for an empty config', () => {
+  const config = normalizeConfig({})
+  assert.equal(config.noaaEncEnabled, false)
+  assert.equal(config.noaaEncDedupe, true)
+  assert.equal(config.noaaEncScaleBand, DEFAULT_NOAA_ENC_SCALE_BAND)
+  assert.equal(config.noaaEncIncludeWrecks, true)
+  assert.equal(config.noaaEncIncludeObstructions, true)
+  // Rocks default off so a coastal-band query does not flood the chart plotter.
+  assert.equal(config.noaaEncIncludeRocks, false)
+})
+
+test('normalizeConfig keeps a known NOAA ENC scale band', () => {
+  assert.equal(normalizeConfig({ noaaEncScaleBand: 'harbour' }).noaaEncScaleBand, 'harbour')
+})
+
+test('normalizeConfig falls back to the default for an unknown NOAA ENC scale band', () => {
+  for (const input of ['unknown', '', 42, null]) {
+    assert.equal(
+      normalizeConfig({ noaaEncScaleBand: input }).noaaEncScaleBand,
+      DEFAULT_NOAA_ENC_SCALE_BAND
+    )
+  }
+})
+
+test('normalizeConfig honors explicit NOAA ENC layer toggles', () => {
+  const config = normalizeConfig({
+    noaaEncIncludeWrecks: false,
+    noaaEncIncludeObstructions: false,
+    noaaEncIncludeRocks: true
+  })
+  assert.equal(config.noaaEncIncludeWrecks, false)
+  assert.equal(config.noaaEncIncludeObstructions, false)
+  assert.equal(config.noaaEncIncludeRocks, true)
 })

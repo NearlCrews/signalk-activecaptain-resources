@@ -22,6 +22,15 @@ export type ConfigAction =
   | { type: 'setOpenSeaMapSeamarkGroups', groups: string[] }
   | { type: 'setOpenSeaMapDedupe', enabled: boolean }
   | { type: 'setOpenSeaMapDedupeRadius', meters: number }
+  | { type: 'setUscgLightListEnabled', enabled: boolean }
+  | { type: 'setUscgLightListDedupe', enabled: boolean }
+  | { type: 'setUscgLightListRefreshHours', hours: number }
+  | { type: 'setNoaaEncEnabled', enabled: boolean }
+  | { type: 'setNoaaEncDedupe', enabled: boolean }
+  | { type: 'setNoaaEncScaleBand', band: string }
+  | { type: 'setNoaaEncIncludeWrecks', enabled: boolean }
+  | { type: 'setNoaaEncIncludeObstructions', enabled: boolean }
+  | { type: 'setNoaaEncIncludeRocks', enabled: boolean }
   | { type: 'discard', config: PluginConfig }
 
 /**
@@ -86,5 +95,32 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
     case 'setOpenSeaMapDedupeRadius':
       if (state.openSeaMapDedupeRadiusMeters === action.meters) return state
       return { ...state, openSeaMapDedupeRadiusMeters: action.meters }
+    case 'setUscgLightListEnabled':
+      if (state.uscgLightListEnabled === action.enabled) return state
+      return { ...state, uscgLightListEnabled: action.enabled }
+    case 'setUscgLightListDedupe':
+      if (state.uscgLightListDedupe === action.enabled) return state
+      return { ...state, uscgLightListDedupe: action.enabled }
+    case 'setUscgLightListRefreshHours':
+      if (state.uscgLightListRefreshHours === action.hours) return state
+      return { ...state, uscgLightListRefreshHours: action.hours }
+    case 'setNoaaEncEnabled':
+      if (state.noaaEncEnabled === action.enabled) return state
+      return { ...state, noaaEncEnabled: action.enabled }
+    case 'setNoaaEncDedupe':
+      if (state.noaaEncDedupe === action.enabled) return state
+      return { ...state, noaaEncDedupe: action.enabled }
+    case 'setNoaaEncScaleBand':
+      if (state.noaaEncScaleBand === action.band) return state
+      return { ...state, noaaEncScaleBand: action.band }
+    case 'setNoaaEncIncludeWrecks':
+      if (state.noaaEncIncludeWrecks === action.enabled) return state
+      return { ...state, noaaEncIncludeWrecks: action.enabled }
+    case 'setNoaaEncIncludeObstructions':
+      if (state.noaaEncIncludeObstructions === action.enabled) return state
+      return { ...state, noaaEncIncludeObstructions: action.enabled }
+    case 'setNoaaEncIncludeRocks':
+      if (state.noaaEncIncludeRocks === action.enabled) return state
+      return { ...state, noaaEncIncludeRocks: action.enabled }
   }
 }
