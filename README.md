@@ -15,22 +15,22 @@ hazard alarms. Pairs well with sibling plugins such as
 > Built on the foundation of [`signalk-activecaptain-resources`](https://github.com/KvotheBloodless/signalk-activecaptain-resources)
 > by Paul Willems and the Signal K community.
 
-## What's New in v0.4.2
+## What's New in v0.4.3
 
-v0.4.2 is the first release published to npm. It bundles every feature the
-plugin has developed: the four-source point-of-interest aggregate
-(ActiveCaptain, OpenSeaMap, USCG Light List, NOAA ENC Direct), the
-position-aware proximity-hazard alarms, the route-corridor hazard scan,
-the React configuration panel, the per-source earliest-year filter, the
-per-bbox refresh-debounce cache on every at-runtime source (with a
-`poiTypes`-aware key on ActiveCaptain so a chart-display request never
-starves the proximity-alarm scan of Hazards), a sharded on-disk store
-plus spatial tile index for the 57.7 k-record USCG Light List, per-source
-merge radii, SignalK-conformant per-output `$source` brands, and a
-multi-agent audit cleanup pass.
+A bug-fix release. The minimum-rating filter on the ActiveCaptain card
+treated a never-reviewed marina as a 0-star marina, so picking
+`minimumRating: 2` was hiding brand-new marinas alongside the
+low-quality ones; the popup also rendered a meaningless "0/5 ⭐ from
+(0 reviews)" line for those. Both are fixed: a zero-review
+reviewSummary is now treated as unrated everywhere. v0.4.3 also
+reclassifies the plugin under the SignalK Appstore's Chart Plotters
+and Notifications categories (the previous Utility classification
+buried it alongside log players and calibration tools), adds
+discoverability keywords for npm search, and bumps the GitHub Actions
+runners ahead of the Node.js 20 deprecation.
 
-See the [v0.4.2 changelog entry](CHANGELOG.md#v042) and the
-[v0.4.2 release](https://github.com/NearlCrews/signalk-crows-nest/releases/tag/v0.4.2).
+See the [v0.4.3 changelog entry](CHANGELOG.md#v043) and the
+[v0.4.3 release](https://github.com/NearlCrews/signalk-crows-nest/releases/tag/v0.4.3).
 [Full release history](CHANGELOG.md).
 
 ## Features

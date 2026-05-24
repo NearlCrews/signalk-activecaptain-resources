@@ -157,12 +157,22 @@ export function createActiveCaptainClient (
           },
           name: poi.name
         }
-        // Carry the review score through when the list response includes one.
-        // A point of interest with no reviews has no reviewSummary, so rating
-        // and reviewCount are left off the summary entirely.
-        if (poi.reviewSummary != null) {
-          summary.rating = poi.reviewSummary.averageRating
-          summary.reviewCount = poi.reviewSummary.numberOfReviews
+        // Carry the review score through ONLY when the wire actually
+        // carries reviews. The AC API sometimes returns
+        // `reviewSummary: { averageRating: 0, numberOfReviews: 0 }`
+        // for a ratable point of interest that has not been reviewed
+        // yet; that "0/5" is a placeholder, not a real rating, and
+        // would otherwise (a) be hidden by the minimum-rating filter
+        // exactly like an actual 0-star marina, surprising the user,
+        // and (b) be rendered as "0/5 ⭐ from (0 reviews)" in the
+        // popup, which is meaningless data. Treat it as "unrated":
+        // leave both fields off the summary, so the filter drops it
+        // when the user wants quality-only AND the popup omits the
+        // rating section entirely.
+        const reviewSummary = poi.reviewSummary
+        if (reviewSummary != null && reviewSummary.numberOfReviews > 0) {
+          summary.rating = reviewSummary.averageRating
+          summary.reviewCount = reviewSummary.numberOfReviews
         }
         return summary
       })

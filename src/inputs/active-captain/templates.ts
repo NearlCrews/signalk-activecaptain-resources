@@ -54,7 +54,7 @@ export const HEADER_PARTIAL = `<hr/>
 
 {{> notes data.pointOfInterest.notes}}
 
-{{#if data.reviewSummary}}{{> review data.reviewSummary id=data.pointOfInterest.id}}{{/if}}
+{{#if data.reviewSummary.numberOfReviews}}{{> review data.reviewSummary id=data.pointOfInterest.id}}{{/if}}
 {{#if data.featuredReview.text}}{{> featuredReview data.featuredReview}}{{/if}}`
 
 /** Footer partial: data attribution and the contribute link. */

@@ -119,6 +119,37 @@ test('listPointsOfInterest carries the reviewSummary rating into the summary', a
   )
 })
 
+test('listPointsOfInterest treats a zero-review reviewSummary as unrated, not as a 0/5 rating', async () => {
+  // The AC API sometimes returns `reviewSummary: { averageRating: 0,
+  // numberOfReviews: 0 }` for a marina that has not been reviewed
+  // yet. That zero is a placeholder, not a real rating: the summary
+  // must NOT carry `rating: 0`, otherwise the minimum-rating filter
+  // would either incorrectly include it (when minimumRating is 0) or
+  // drop it under exactly the same code path that hides a genuine
+  // 0-star marina, and the popup would render a meaningless "0/5 ⭐
+  // from (0 reviews)" line.
+  await withMockFetch(
+    () => jsonResponse({
+      pointsOfInterest: [
+        {
+          id: '99',
+          poiType: 'Marina',
+          mapLocation: { latitude: 1, longitude: 2 },
+          name: 'Brand new marina, no reviews yet',
+          reviewSummary: { averageRating: 0, numberOfReviews: 0 }
+        }
+      ]
+    }),
+    async () => {
+      const client = createActiveCaptainClient(silentLog, fastLimits)
+      const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
+      assert.equal(result.length, 1)
+      assert.equal(result[0].rating, undefined, 'rating is undefined when there are no reviews')
+      assert.equal(result[0].reviewCount, undefined, 'reviewCount is undefined when there are no reviews')
+    }
+  )
+})
+
 test('listPointsOfInterest resolves with an empty array for an empty result', async () => {
   await withMockFetch(
     () => jsonResponse({ pointsOfInterest: [] }),

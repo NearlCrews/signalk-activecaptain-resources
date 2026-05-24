@@ -5,18 +5,32 @@
 > development milestones that preceded this publication. Their content is
 > incorporated into the `v0.4.2` release.
 
-### Unreleased
+<a id="v043"></a>
 
-In-development changes since `v0.4.2`. Will roll into the next published
-release.
+### v0.4.3 (2026/05/24) - rating-filter fix and Appstore classification
 
-#### CI
+A bug-fix release. The minimum-rating filter on the ActiveCaptain card
+treated a never-reviewed marina as a 0-star marina, so a user who
+picked `minimumRating: 2` was hiding both real low-quality marinas
+AND brand-new ones. Also reclassifies the plugin under the SignalK
+Appstore's Chart Plotters and Notifications categories instead of
+the catch-all Utility category, and bumps the GitHub Actions runner
+versions ahead of the Node.js 20 deprecation.
 
-- Bump `actions/checkout` and `actions/setup-node` from v4 to v6 across
-  every workflow (`ci.yml`, `eslint.yml`, `npm-publish.yml`). The v4
-  releases run on Node.js 20, which GitHub flagged for deprecation in
-  the v0.4.2 publish run; v6 runs on Node.js 24 and clears the warning
-  ahead of the June 2026 hard cutover.
+#### Bug fixes
+
+- **ActiveCaptain "0/5" rating bug.** The AC summary API sometimes
+  returned `reviewSummary: { averageRating: 0, numberOfReviews: 0 }`
+  for a marina that had not been reviewed yet. The plugin took that
+  placeholder as a real 0-star rating, with two visible symptoms:
+  the minimum-rating filter dropped these never-reviewed marinas
+  exactly like genuine 0-star marinas, and the popup rendered a
+  meaningless "0/5 ⭐ from (0 reviews)" line. Both the client and
+  the popup template now treat a zero-review reviewSummary as
+  unrated: the rating filter leaves the marina visible at
+  `minimumRating: 0` and hides it at any positive threshold (the
+  same as any unrated ratable POI), and the popup omits the rating
+  section entirely.
 
 #### SignalK Appstore classification
 
@@ -25,12 +39,22 @@ release.
   `signalk-category-chart-plotters` (the notes resources feed
   Freeboard-SK and other chart plotters) and
   `signalk-category-notifications` (the proximity and route-corridor
-  hazard alarms). The plugin will appear under both Appstore
-  category filters starting with the next published release.
+  hazard alarms). The plugin now appears under both Appstore
+  category filters.
 - Add discoverability keywords for npm search (`activecaptain`,
   `openseamap`, `uscg`, `noaa`, `freeboard`, `points-of-interest`,
   `notes`, `chart-overlay`, `proximity-alarm`, `route-corridor`,
   `marina`, `anchorage`, `hazard`).
+- Add the missing trailing period to the package.json `description`.
+
+#### CI
+
+- Bump `actions/checkout` and `actions/setup-node` from v4 to v6
+  across every workflow (`ci.yml`, `eslint.yml`,
+  `npm-publish.yml`). The v4 releases run on Node.js 20, which
+  GitHub flagged for deprecation in the v0.4.2 publish run; v6 runs
+  on Node.js 24 and clears the warning ahead of the June 2026 hard
+  cutover.
 
 <a id="v042"></a>
 
