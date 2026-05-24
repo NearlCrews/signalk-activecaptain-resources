@@ -212,7 +212,19 @@ export function createUscgLightListSource (
       }
       return view
     },
-    cacheSize: () => Object.keys(store.snapshot().records).length,
+    // `index.records` is a `Record<llnr, LightListRecord>`. Reading
+    // the entry count via `Object.keys(...).length` allocates a fresh
+    // array of every key (57.7 k strings) per status poll, which the
+    // status snapshot then triggers every 5 s. The DistrictMeta entries
+    // already carry the per-page record count; sum them for an O(K)
+    // count where K is the number of districts (37 today), avoiding
+    // the per-poll 57.7 k-element allocation.
+    cacheSize: () => {
+      const districts = store.snapshot().districts
+      let total = 0
+      for (const key in districts) total += districts[key].recordCount
+      return total
+    },
     close: () => {
       // The refresh scheduler is owned by the input module: it chains its own
       // teardown onto this close. The source itself holds no resources to

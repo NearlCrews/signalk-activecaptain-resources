@@ -1,7 +1,14 @@
 /**
- * The Alerts zone of the configuration panel: the proximity hazard alarm and
- * the route-corridor hazard scan, grouped under one heading. These are
- * source-agnostic: they alarm on hazards from every enabled data source.
+ * The Alerts zone of the configuration panel: the proximity hazard alarm
+ * and the route-corridor hazard scan, grouped under one collapsible
+ * section. These are source-agnostic: they alarm on hazards from every
+ * enabled data source.
+ *
+ * Collapsed by default so the panel reads cleanly when no alarm is
+ * configured (a vessel that just wants the chart overlay should not
+ * scroll past two empty alarm fieldsets to get to the footer). The
+ * fieldsets stay mounted while collapsed so an in-progress numeric
+ * draft survives a collapse-and-expand round trip.
  */
 
 import type * as React from 'react'
@@ -11,10 +18,10 @@ import {
   DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
   DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
 } from '../normalize-config.js'
-import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import ProximityAlarmFields from './ProximityAlarmFields.js'
 import RouteHazardScanFields from './RouteHazardScanFields.js'
+import SectionBox from './SectionBox.js'
 
 interface Props {
   state: PluginConfig
@@ -23,9 +30,15 @@ interface Props {
 
 /** The Alerts section shown in the configuration panel. */
 export default function AlertsSection ({ state, dispatch }: Props): React.ReactElement {
+  // Default-expanded only when the section has nothing to reveal: if
+  // either alarm is already enabled, open the section so the operator
+  // can see the live settings at a glance. SectionBox reads
+  // defaultExpanded once on mount, which matches the
+  // initial-state-from-saved-config semantic we want here.
+  const alertsConfigured =
+    state.enableProximityAlarms === true || state.enableRouteHazardScan === true
   return (
-    <section>
-      <h2 style={S.sectionHeading}>Alerts</h2>
+    <SectionBox cardId='alerts' title='Alerts' defaultExpanded={alertsConfigured}>
       <ProximityAlarmFields
         enabled={state.enableProximityAlarms === true}
         radiusMeters={state.proximityAlarmRadiusMeters ?? DEFAULT_PROXIMITY_ALARM_RADIUS_METERS}
@@ -38,6 +51,6 @@ export default function AlertsSection ({ state, dispatch }: Props): React.ReactE
         onToggleEnabled={(enabled) => dispatch({ type: 'setRouteHazardScanEnabled', enabled })}
         onChangeWidth={(meters) => dispatch({ type: 'setRouteCorridorWidth', meters })}
       />
-    </section>
+    </SectionBox>
   )
 }

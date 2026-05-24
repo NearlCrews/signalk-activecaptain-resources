@@ -62,7 +62,14 @@ export function useStatus (): UseStatusResult {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const body = await response.json() as StatusSnapshot
         if (!canceled.current) {
-          setStatus(body)
+          // Reuse the previous snapshot reference when the payload is
+          // byte-identical, so a downstream useMemo keyed on `status`
+          // (DataSourcesSection.useStatusBySource, the per-card status
+          // prop) keeps stable identity across polls and the four
+          // DataSourceCards do not re-render once per 5 s for no
+          // user-visible change. JSON.stringify is the cheap canonical
+          // comparison for a snapshot in the kilobyte range.
+          setStatus((prev) => prev !== null && JSON.stringify(prev) === JSON.stringify(body) ? prev : body)
           setError(null)
         }
       } catch (e) {

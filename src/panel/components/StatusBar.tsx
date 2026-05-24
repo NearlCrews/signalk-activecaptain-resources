@@ -1,8 +1,14 @@
 /**
- * Live status bar: one reachability row per enabled POI source (name, a
- * reachability dot, and the last successful list fetch), the cached POI count,
- * and any recent errors. Driven entirely by the StatusSnapshot polled from the
- * plugin.
+ * Live status bar: a small bordered card at the top of the panel that
+ * lists one row per enabled POI source (name, reachability dot + label,
+ * and the relative time of the last list fetch), plus any recent
+ * errors. Driven entirely by the StatusSnapshot polled from the plugin.
+ *
+ * The bar reports source HEALTH, not the count returned by the most
+ * recent list call. The count is just "what fell inside the
+ * chart-plotter's last bounding-box query" and is meaningless until
+ * the chart is panned, so showing it here (or in the per-card pill)
+ * reads as misleading.
  */
 
 import type * as React from 'react'
@@ -17,18 +23,26 @@ function apiState (reachable: boolean | null): { dot: React.CSSProperties, label
   return { dot: S.dotOff, label: 'not yet contacted' }
 }
 
-/** One compact reachability row for a single POI source. */
+/**
+ * One row in the status grid: dot, source name, state, last-fetch
+ * time. Wrapped in a `display: contents` div so the four spans flow
+ * directly into the parent grid's four columns AND the ARIA role
+ * exposes one row per source. The contents wrapper also pins the
+ * 4-cells-per-source contract: a future fifth cell would land outside
+ * this wrapper, making any drift visible.
+ */
 function SourceRow ({ source }: { source: SourceStatus }): React.ReactElement {
   const api = apiState(source.apiReachable)
   const fetched = source.lastListFetch === null
     ? 'no fetch yet'
-    : `${relativeTime(source.lastListFetch.at)} (${source.lastListFetch.poiCount} POIs)`
+    : `updated ${relativeTime(source.lastListFetch.at)}`
   return (
-    <span style={S.statusApi}>
+    <div style={S.statusGridRow} role='row'>
       <span style={{ ...S.dot, ...api.dot }} aria-hidden='true' />
-      <span style={S.statValue}>{source.name}</span>
-      <span style={S.statLabel}>{`${api.label}, ${fetched}`}</span>
-    </span>
+      <span style={S.statusGridName}>{source.name}</span>
+      <span style={S.statusGridState}>{api.label}</span>
+      <span style={S.statusGridFetch}>{fetched}</span>
+    </div>
   )
 }
 
@@ -38,11 +52,20 @@ interface Props {
 
 /** The status bar shown at the top of the configuration panel. */
 export default function StatusBar ({ status }: Props): React.ReactElement {
+  // The loading state and the populated state both render the title
+  // plus a fixed-height body region. The body reserves a min-height so
+  // the bar does not visibly grow when the first poll resolves and
+  // swaps the loading line for the source-health grid.
   if (status === null) {
     return (
       <div style={S.statusBar} role='status'>
-        <span style={{ ...S.dot, ...S.dotOff }} aria-hidden='true' />
-        <span>Loading status...</span>
+        <span style={S.statusBarTitle}>Plugin status</span>
+        <div style={S.statusBarBody}>
+          <span style={S.statusBarLoading}>
+            <span style={{ ...S.dot, ...S.dotOff }} aria-hidden='true' />
+            Loading status...
+          </span>
+        </div>
       </div>
     )
   }
@@ -51,16 +74,19 @@ export default function StatusBar ({ status }: Props): React.ReactElement {
 
   return (
     <div style={S.statusBar} role='status'>
-      {sources.length === 0
-        ? <span style={S.statLabel}>No POI source is enabled</span>
-        : sources.map((source) => <SourceRow key={source.source} source={source} />)}
-      <span>
-        <span style={S.statLabel}>Cached POIs</span>
-        <span style={S.statValue}>{status.cachedPoiCount}</span>
-      </span>
+      <span style={S.statusBarTitle}>Plugin status</span>
+      <div style={S.statusBarBody}>
+        {sources.length === 0
+          ? <span style={S.statusBarEmpty}>No data source enabled yet. Open a card below and toggle one on.</span>
+          : (
+            <div style={S.statusGrid} role='table' aria-label='Per-source health'>
+              {sources.map((source) => <SourceRow key={source.source} source={source} />)}
+            </div>
+            )}
+      </div>
       {recentErrors.length > 0
         ? (
-          <ul style={S.statusErrors}>
+          <ul style={S.statusErrors} aria-label='Recent errors'>
             {recentErrors.map((err, index) => (
               <li key={`${err.at}-${index}`} style={S.statusErrorItem}>
                 <span style={S.statusErrorTime}>{relativeTime(err.at)}</span>

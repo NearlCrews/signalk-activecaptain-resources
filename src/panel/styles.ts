@@ -118,28 +118,88 @@ export const S = {
     padding: '16px 0'
   },
 
-  // Status bar at the top of the panel.
+  // Status bar at the top of the panel: a vertical stack with the
+  // section title, a per-source health grid, and any recent errors. No
+  // numeric POI counts: the count from a single bbox query is contextual
+  // to that query and reads as misleading in an at-a-glance indicator.
   statusBar: {
     display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 18,
-    padding: '12px 16px',
+    flexDirection: 'column',
+    gap: 10,
+    padding: '12px 14px',
     background: 'var(--ac-surface-muted)',
     border: '1px solid var(--ac-border)',
     borderRadius: 10,
     marginBottom: 16,
     fontSize: 13
   },
-  statusApi: { display: 'flex', alignItems: 'center', gap: 8 },
+  statusBarTitle: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: 'var(--ac-text)'
+  },
+  /**
+   * Wrapper for the variable body of the status bar (loading line OR
+   * the per-source health grid OR the empty-state copy). The
+   * min-height reserves space for ~4 grid rows so the bar does not
+   * visibly grow when the first status poll resolves and swaps a
+   * one-line loading state for the multi-row grid.
+   */
+  statusBarBody: {
+    minHeight: 80
+  },
+  statusBarLoading: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    color: 'var(--ac-text-muted)'
+  },
+  statusBarEmpty: {
+    color: 'var(--ac-text-muted)'
+  },
+  // Per-source health grid: four columns (dot, name, state, last fetch).
+  // One row per source so the columns align across sources and the eye
+  // can scan a single field down the list. The name column uses
+  // `minmax(0, auto)` so a long source name (NOAA ENC's ~50 char title)
+  // can shrink and ellipsize on a narrow Signal K admin sidebar
+  // instead of forcing horizontal overflow on the whole bar.
+  statusGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'auto minmax(0, auto) auto 1fr',
+    columnGap: 12,
+    rowGap: 4,
+    alignItems: 'center'
+  },
+  // Each SourceRow becomes one logical row by wrapping its four cells
+  // in a `display: contents` div with `role='row'`: the div carries the
+  // ARIA row semantic without participating in layout, so the grid
+  // still places the cells in its four columns AND assistive tech sees
+  // one row per source. The contents-wrapper also pins the 4-cells
+  // contract: a future fifth cell would land outside this row, making
+  // the drift visible.
+  statusGridRow: {
+    display: 'contents'
+  },
+  statusGridName: {
+    fontWeight: 600,
+    color: 'var(--ac-text)',
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  statusGridState: {
+    color: 'var(--ac-text-muted)'
+  },
+  statusGridFetch: {
+    color: 'var(--ac-text-muted)',
+    textAlign: 'right'
+  },
   dot: { width: 10, height: 10, borderRadius: '50%', display: 'inline-block', flexShrink: 0 },
   dotOk: { background: 'var(--ac-ok)' },
   dotOff: { background: 'var(--ac-off)' },
   dotError: { background: 'var(--ac-danger-fg)' },
-  statLabel: { color: 'var(--ac-text-muted)' },
-  statValue: { fontWeight: 600, marginLeft: 4 },
   statusErrors: {
-    flexBasis: '100%',
     margin: 0,
     padding: 0,
     listStyle: 'none',
@@ -373,30 +433,74 @@ export const S = {
     padding: '0 14px 6px',
     marginTop: 4
   },
-  // Body visible-state for a collapsed card. The body stays mounted so a
-  // half-typed NumberField draft survives a collapse-and-expand round
-  // trip; `display: none` removes it from the layout AND skips paint cost,
-  // matching the visual effect of a conditional render without unmounting
-  // the subtree.
-  sourceCardBodyHidden: {
+  /**
+   * Shared collapsed-body token: applied to a body region that should
+   * stay mounted (so an in-progress NumberField draft survives) while
+   * being hidden from layout and paint. Reused by both DataSourceCard
+   * and SectionBox so the two collapsible patterns share one
+   * hide-behavior primitive: a future change (e.g. switching to
+   * `visibility: hidden` to preserve focus across collapse) lands in
+   * one place.
+   */
+  collapsedBody: {
     display: 'none'
   },
 
-  // Panel section heading bar (Data sources, Alerts): a muted-surface row
-  // with a normal-case title, replacing the smaller all-caps tracked label.
-  // Matches the emitter-cannon plugin's section header so a user familiar
-  // with that panel sees the same affordances.
-  sectionHeading: {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: 13,
-    fontWeight: 600,
-    color: 'var(--ac-text)',
+  /**
+   * Outer container for a top-level panel section (Data sources,
+   * Alerts). A single bordered box that wraps both the disclosure
+   * header and the section body, so the data-source cards and the
+   * alarm fieldsets read as contained inside their section rather
+   * than as loose siblings of a heading.
+   */
+  sectionBox: {
     background: 'var(--ac-surface-muted)',
     border: '1px solid var(--ac-border)',
-    borderRadius: 8,
-    padding: '8px 12px',
-    margin: '20px 0 10px'
+    borderRadius: 10,
+    marginBottom: 16,
+    overflow: 'hidden'
+  },
+  /**
+   * Wrapper for the disclosure button: the outer element is an `<h2>`
+   * so screen readers expose the section title as a real heading
+   * landmark (H key / VO+Cmd+H navigation lands on it). The browser's
+   * default h2 margin and font scale are overridden here so the
+   * heading reads as a button row, not as a large typographic header.
+   */
+  sectionBoxHeading: {
+    margin: 0,
+    padding: 0,
+    fontSize: 14,
+    fontWeight: 600
+  },
+  sectionBoxHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    padding: '10px 14px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    textAlign: 'left',
+    color: 'var(--ac-text)',
+    font: 'inherit'
+  },
+  sectionBoxTitle: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: 'var(--ac-text)',
+    flex: 1,
+    minWidth: 0
+  },
+  sectionBoxChevron: {
+    fontSize: 12,
+    color: 'var(--ac-text-faint)',
+    flexShrink: 0
+  },
+  sectionBoxBody: {
+    padding: '0 12px 12px',
+    background: 'var(--ac-surface-muted)'
   },
 
   // A compact pill rendered inside a source-card header to surface live

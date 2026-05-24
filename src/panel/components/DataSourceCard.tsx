@@ -121,7 +121,7 @@ export default function DataSourceCard ({
           draft state survives a collapse-and-expand round trip. */}
       <div
         id={bodyId(cardId)}
-        style={expanded ? S.sourceCardBody : S.sourceCardBodyHidden}
+        style={expanded ? S.sourceCardBody : S.collapsedBody}
         aria-hidden={!expanded}
       >
         {children}

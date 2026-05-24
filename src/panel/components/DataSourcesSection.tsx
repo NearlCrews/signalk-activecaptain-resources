@@ -27,13 +27,13 @@ import {
   DEFAULT_NOAA_ENC_SCALE_BAND,
   DEFAULT_USCG_LIGHT_LIST_REFRESH_HOURS
 } from '../normalize-config.js'
-import { S } from '../styles.js'
 import type { PluginConfig } from '../../shared/types.js'
 import type { SourceStatus, StatusSnapshot } from '../../status/status-types.js'
 import ActiveCaptainSource from './ActiveCaptainSource.js'
 import DataSourceCard from './DataSourceCard.js'
 import NoaaEncSource, { BAND_LABELS } from './NoaaEncSource.js'
 import OpenSeaMapSource from './OpenSeaMapSource.js'
+import SectionBox from './SectionBox.js'
 import UscgLightListSource from './UscgLightListSource.js'
 
 export type { SourceSlug }
@@ -124,8 +124,7 @@ export default function DataSourcesSection (
 ): React.ReactElement {
   const statusBySource = useStatusBySource(status)
   return (
-    <section>
-      <h2 style={S.sectionHeading}>Data sources</h2>
+    <SectionBox cardId='data-sources' title='Data sources' defaultExpanded>
       <DataSourceCard
         cardId={ACTIVE_CAPTAIN_SOURCE_ID}
         name='Garmin ActiveCaptain'
@@ -173,6 +172,6 @@ export default function DataSourcesSection (
       >
         <NoaaEncSource state={state} dispatch={dispatch} />
       </DataSourceCard>
-    </section>
+    </SectionBox>
   )
 }

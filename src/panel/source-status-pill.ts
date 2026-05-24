@@ -48,9 +48,20 @@ export function pillContent (status: SourceStatus, variant: PillVariant): PillCo
     return { glyph: '…', label: 'idle', title: `${status.name}: awaiting first request` }
   }
   const fetch = status.lastListFetch as Exclude<SourceStatus['lastListFetch'], null>
+  // The pill reports source HEALTH, not the count from the last fetch:
+  // the count is just "what fell inside the chart-plotter's most recent
+  // bounding-box query", which is meaningless until you pan the chart.
+  // A user who sees "✓ 0 POI" on every source could reasonably think
+  // nothing is selected, when in fact the sources are healthy and the
+  // chart simply hasn't zoomed to anywhere with markers yet. The pill
+  // says "ok"; the longer "N POIs in last fetch, M minutes ago" lives
+  // in the hover/aria title.
+  const countText = fetch.poiCount === 1
+    ? '1 POI in last fetch'
+    : `${fetch.poiCount} POIs in last fetch`
   return {
     glyph: '✓',
-    label: `${fetch.poiCount} POI`,
-    title: `${status.name}: last fetch ${relativeTime(fetch.at)}`
+    label: 'ok',
+    title: `${status.name}: ${countText}, ${relativeTime(fetch.at)}`
   }
 }

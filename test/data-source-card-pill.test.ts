@@ -64,7 +64,7 @@ test('pillContent for the error variant shows the bang glyph and the failure too
   assert.equal(content.title, 'NOAA ENC: last request failed')
 })
 
-test('pillContent for the ok variant shows the check glyph, the POI count, and a relative-time tooltip', () => {
+test('pillContent for the ok variant shows the check glyph, a short "ok" label, and a tooltip with the last-fetch count + relative time', () => {
   const content = pillContent(
     status({
       name: 'USCG Light List',
@@ -73,7 +73,36 @@ test('pillContent for the ok variant shows the check glyph, the POI count, and a
     'ok'
   )
   assert.equal(content.glyph, '✓')
-  assert.equal(content.label, '17 POI')
-  assert.match(content.title, /^USCG Light List: last fetch /)
+  assert.equal(content.label, 'ok')
+  assert.match(content.title, /^USCG Light List: 17 POIs in last fetch, /)
   assert.match(content.title, /ago$/)
+})
+
+test('pillContent for the ok variant keeps the "ok" label when the last fetch returned zero POIs', () => {
+  // The count from a single bbox query is meaningless until you pan
+  // the chart; reporting "✓ 0 POI" on the pill would read as confusing
+  // negative ("nothing selected?") when in fact the source is healthy
+  // and the chart simply has not zoomed to a position with markers.
+  // The count moves into the title tooltip.
+  const content = pillContent(
+    status({
+      name: 'Garmin ActiveCaptain',
+      lastListFetch: { at: new Date().toISOString(), poiCount: 0 }
+    }),
+    'ok'
+  )
+  assert.equal(content.glyph, '✓')
+  assert.equal(content.label, 'ok')
+  assert.match(content.title, /^Garmin ActiveCaptain: 0 POIs in last fetch, /)
+})
+
+test('pillContent singularizes "1 POI" in the title tooltip', () => {
+  const content = pillContent(
+    status({
+      name: 'OpenSeaMap',
+      lastListFetch: { at: new Date().toISOString(), poiCount: 1 }
+    }),
+    'ok'
+  )
+  assert.match(content.title, /^OpenSeaMap: 1 POI in last fetch, /)
 })
