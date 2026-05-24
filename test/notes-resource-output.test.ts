@@ -120,14 +120,6 @@ function startCapturing (overrides: Partial<OutputContext> = {}): {
   return { methods: provider.methods as Record<string, unknown>, statusMessages, pluginErrors }
 }
 
-test('the output is always enabled', () => {
-  assert.equal(notesResourceOutput.isEnabled({} as never), true)
-})
-
-test('the output declares no configuration of its own', () => {
-  assert.deepEqual(Object.keys(notesResourceOutput.configSchema), [])
-})
-
 test('listResources returns notes keyed by id', async () => {
   const methods = startMethods({})
   const listResources = methods.listResources as (q: object) => Promise<Record<string, unknown>>

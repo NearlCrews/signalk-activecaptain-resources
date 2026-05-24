@@ -91,14 +91,17 @@ export const NOAA_ENC_SCALE_BANDS = [
 export { DEFAULT_MINIMUM_YEAR, MAX_YEAR, MIN_YEAR } from '../shared/year-filter.js'
 import { clampMinimumYear } from '../shared/year-filter.js'
 
-/**
- * Bounds and default for the per-bbox debounce window on the two
- * at-runtime sources (NOAA ENC, OpenSeaMap). Mirrors the schema declared in
- * `noaa-enc-input.ts` and `openseamap-input.ts`.
- */
-export const MIN_REFRESH_SECONDS = 0
-export const MAX_REFRESH_SECONDS = 600
-export const DEFAULT_REFRESH_SECONDS = 30
+// The bbox-debounce bounds, default, and clamp helper are owned by
+// src/shared/bbox-debounce.ts so the panel and the three input modules
+// consume the same source of truth. Re-exported here under the legacy
+// REFRESH_SECONDS names so panel components that already import from
+// normalize-config do not need a second import line.
+export {
+  MIN_BBOX_DEBOUNCE_SECONDS as MIN_REFRESH_SECONDS,
+  MAX_BBOX_DEBOUNCE_SECONDS as MAX_REFRESH_SECONDS,
+  DEFAULT_BBOX_DEBOUNCE_SECONDS as DEFAULT_REFRESH_SECONDS
+} from '../shared/bbox-debounce.js'
+import { clampBboxDebounceSeconds } from '../shared/bbox-debounce.js'
 
 /**
  * Coerce the admin UI's untyped `configuration` prop into a fully populated
@@ -236,18 +239,11 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
   config.uscgLightListMinimumUpdateYear = clampMinimumYear(raw.uscgLightListMinimumUpdateYear)
   config.noaaEncMinimumSurveyYear = clampMinimumYear(raw.noaaEncMinimumSurveyYear)
 
-  // Per-bbox debounce windows for every source. Default 30 s.
-  config.openSeaMapRefreshSeconds = clampRefreshSeconds(raw.openSeaMapRefreshSeconds)
-  config.noaaEncRefreshSeconds = clampRefreshSeconds(raw.noaaEncRefreshSeconds)
-  config.activeCaptainRefreshSeconds = clampRefreshSeconds(raw.activeCaptainRefreshSeconds)
+  // Per-bbox debounce windows for every source. Default 30 s. Delegated
+  // to the shared clamp in src/shared/bbox-debounce.ts.
+  config.openSeaMapRefreshSeconds = clampBboxDebounceSeconds(raw.openSeaMapRefreshSeconds)
+  config.noaaEncRefreshSeconds = clampBboxDebounceSeconds(raw.noaaEncRefreshSeconds)
+  config.activeCaptainRefreshSeconds = clampBboxDebounceSeconds(raw.activeCaptainRefreshSeconds)
 
   return config
-}
-
-/** Clamp a raw refresh-seconds value, falling back to the default on garbage. */
-function clampRefreshSeconds (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_REFRESH_SECONDS
-  if (raw < MIN_REFRESH_SECONDS) return MIN_REFRESH_SECONDS
-  if (raw > MAX_REFRESH_SECONDS) return MAX_REFRESH_SECONDS
-  return Math.trunc(raw)
 }

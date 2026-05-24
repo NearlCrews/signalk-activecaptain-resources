@@ -54,33 +54,35 @@ export default function AlarmFieldset ({
   numberValue,
   onChangeNumber
 }: Props): React.ReactElement {
+  // The outer <section> wrapper that used to sit around the fieldset is
+  // gone: AlertsSection already provides the section landmark, and the
+  // extra nested section made screen-reader landmark navigation noisier
+  // without adding any visual structure.
   return (
-    <section style={S.groupsSection}>
-      <fieldset style={S.group}>
-        <legend style={S.groupTitle}>{title}</legend>
-        <label style={S.checkboxRow}>
-          <input
-            type='checkbox'
-            style={S.checkbox}
-            checked={enabled}
-            onChange={(e) => onToggleEnabled(e.target.checked)}
-          />
-          {toggleLabel}
-        </label>
-        <p style={S.hint}>{toggleHint}</p>
-        <NumberField
-          id={numberFieldId}
-          label={numberLabel}
-          hint={numberHint}
-          value={numberValue}
-          onChange={onChangeNumber}
-          min={numberMin}
-          step={numberStep}
-          integer
-          disabled={!enabled}
-          dense
+    <fieldset style={S.group}>
+      <legend style={S.groupTitle}>{title}</legend>
+      <label style={S.checkboxRow}>
+        <input
+          type='checkbox'
+          style={S.checkbox}
+          checked={enabled}
+          onChange={(e) => onToggleEnabled(e.target.checked)}
         />
-      </fieldset>
-    </section>
+        {toggleLabel}
+      </label>
+      <p style={S.hint}>{toggleHint}</p>
+      <NumberField
+        id={numberFieldId}
+        label={numberLabel}
+        hint={numberHint}
+        value={numberValue}
+        onChange={onChangeNumber}
+        min={numberMin}
+        step={numberStep}
+        integer
+        disabled={!enabled}
+        dense
+      />
+    </fieldset>
   )
 }

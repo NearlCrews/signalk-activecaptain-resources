@@ -21,10 +21,15 @@
  */
 
 import { distanceMeters } from '../geo/position-utilities.js'
+import { ACTIVE_CAPTAIN_SOURCE_ID } from '../shared/source-ids.js'
 import type { PoiSummary } from '../shared/types.js'
 
-/** The fixed base source. Non-base POIs dedupe against ActiveCaptain POIs. */
-export const BASE_SOURCE_ID = 'activecaptain'
+/**
+ * The fixed base source: non-base POIs dedupe against ActiveCaptain. Aliased
+ * to {@link ACTIVE_CAPTAIN_SOURCE_ID} so a future rename remains a single
+ * edit in one place.
+ */
+const BASE_SOURCE_ID = ACTIVE_CAPTAIN_SOURCE_ID
 
 /**
  * Default merge radius, in meters, when a caller does not specify one. Real

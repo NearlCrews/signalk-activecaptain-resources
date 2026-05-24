@@ -1,7 +1,7 @@
 /**
- * Per-bbox debounce cache for at-runtime POI sources (NOAA ENC, OpenSeaMap).
+ * Per-bbox debounce cache for POI sources.
  *
- * Both sources hit the upstream on every `listPointsOfInterest` call. The
+ * Every source hits its upstream on every `listPointsOfInterest` call. The
  * position-monitor scan path is already throttled at the monitor (vessel
  * moved at least 100 m and at least 60 s elapsed), but the chart-display
  * path through the notes-resource output is one upstream request per
@@ -12,26 +12,59 @@
  *
  * Off-sentinel matches the rest of the codebase: `ttlSeconds <= 0` disables
  * the cache (the wrapped fetcher is always called). The TTL is measured in
- * seconds because the typical chart-plotter cadence is sub-minute, not
- * sub-hour.
+ * seconds because the typical chart-plotter cadence is sub-minute.
  *
- * The cache is per-source: NOAA ENC and OpenSeaMap each instantiate their
- * own. They share the `MAX_BBOX_CACHE_ENTRIES` ceiling from
- * `src/shared/cache.ts` so a runaway zoom-pan never exhausts memory.
+ * The cache is per-source: ActiveCaptain, NOAA ENC, and OpenSeaMap each
+ * instantiate their own. They share the `MAX_BBOX_CACHE_ENTRIES` ceiling
+ * from `src/shared/cache.ts` so a runaway zoom-pan never exhausts memory.
+ *
+ * This module also owns the canonical refresh-period bounds, default, and
+ * clamp helper (`MIN_BBOX_DEBOUNCE_SECONDS`,
+ * `MAX_BBOX_DEBOUNCE_SECONDS`, `DEFAULT_BBOX_DEBOUNCE_SECONDS`,
+ * `clampBboxDebounceSeconds`). Each input module's config-schema fragment
+ * and the panel's normalize-config use them, so a change to the bounds is
+ * one edit, not four.
  */
 
 import { LRUCache } from 'lru-cache'
 import type { Bbox } from './types.js'
 
+/** Default per-bbox debounce window, in seconds. */
+export const DEFAULT_BBOX_DEBOUNCE_SECONDS = 30
+
 /**
- * A bbox debounce cache. `get` returns the cached summaries when the bbox
+ * Smallest configurable value. `0` is the off sentinel (no caching), so the
+ * minimum below the off sentinel does not exist; the minimum is itself `0`.
+ */
+export const MIN_BBOX_DEBOUNCE_SECONDS = 0
+
+/**
+ * Largest configurable value. A 10 min cap is plenty for the chart-plotter
+ * cadence (sub-minute typical) and protects against a hand-edited config
+ * value that would otherwise effectively disable upstream querying.
+ */
+export const MAX_BBOX_DEBOUNCE_SECONDS = 600
+
+/**
+ * Clamp a raw refresh-seconds value into the supported range, falling back
+ * to {@link DEFAULT_BBOX_DEBOUNCE_SECONDS} on any non-numeric or
+ * non-finite input.
+ */
+export function clampBboxDebounceSeconds (raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return DEFAULT_BBOX_DEBOUNCE_SECONDS
+  }
+  if (raw < MIN_BBOX_DEBOUNCE_SECONDS) return MIN_BBOX_DEBOUNCE_SECONDS
+  if (raw > MAX_BBOX_DEBOUNCE_SECONDS) return MAX_BBOX_DEBOUNCE_SECONDS
+  return Math.trunc(raw)
+}
+
+/**
+ * A bbox debounce cache. `get` returns the cached value when the bbox
  * has been seen within the TTL; otherwise it calls `fetch` and caches the
- * result. The value type is generic so each source caches its own summary
- * shape, but in practice this is always `PoiSummary[]`.
+ * result. The value type is generic so each source caches its own shape.
  */
 export interface BboxDebounceCache<T> {
-  /** Number of entries currently held, exposed for status snapshots. */
-  size: () => number
   /**
    * Return the cached value for `bbox` (and the optional `extraKey`) when
    * it is fresh, otherwise call `fetch`, cache its result, and return it.
@@ -49,8 +82,6 @@ export interface BboxDebounceCache<T> {
  * Build the cache key for a bbox and an optional extra discriminator. Four
  * decimal places (about 11 m) is coarse enough to collapse sub-pixel jitter
  * from Freeboard's bbox math yet fine enough to keep zoom levels distinct.
- * The extra key is included verbatim, so a source whose upstream filters on
- * a request argument can keep one caller's request from poisoning another's.
  */
 function bboxKey (bbox: Bbox, extraKey?: string): string {
   const base =
@@ -58,38 +89,40 @@ function bboxKey (bbox: Bbox, extraKey?: string): string {
   return extraKey === undefined ? base : `${base}|${extraKey}`
 }
 
-interface Entry<T> {
-  fetchedAt: number
-  value: T
-}
-
 /**
  * Create a debounce cache with the given TTL (in seconds) and entry limit.
  * `ttlSeconds <= 0` disables the cache: `get` always calls `fetch`.
- * `now` is injectable for tests; production callers leave it at the default.
+ *
+ * The cache wraps `LRUCache` with its built-in `ttl` option so per-entry
+ * expiry, eviction, and size accounting all happen inside one library
+ * with no per-entry wrapper object of our own.
  */
-export function createBboxDebounceCache<T> (
+export function createBboxDebounceCache<T extends NonNullable<unknown>> (
   ttlSeconds: number,
-  maxEntries: number,
-  now: () => number = Date.now
+  maxEntries: number
 ): BboxDebounceCache<T> {
   const ttlMs = Math.max(0, ttlSeconds) * 1000
-  const cache = new LRUCache<string, Entry<T>>({ max: maxEntries })
+  // ttl: 0 would tell LRUCache to keep entries forever, which is the
+  // opposite of what `ttlSeconds <= 0` means in this module's contract.
+  // So when ttlSeconds is the off sentinel, build a 1-entry cache that we
+  // never read from and short-circuit `get` to always call the fetcher.
+  const cache = ttlMs > 0
+    ? new LRUCache<string, T>({ max: maxEntries, ttl: ttlMs })
+    : null
   return {
-    size: () => cache.size,
     get: async (bbox, fetch, extraKey) => {
-      if (ttlMs <= 0) {
+      if (cache === null) {
         return await fetch()
       }
       const key = bboxKey(bbox, extraKey)
       const hit = cache.get(key)
-      if (hit !== undefined && now() - hit.fetchedAt < ttlMs) {
-        return hit.value
+      if (hit !== undefined) {
+        return hit
       }
       const value = await fetch()
-      cache.set(key, { fetchedAt: now(), value })
+      cache.set(key, value)
       return value
     },
-    clear: () => { cache.clear() }
+    clear: () => { cache?.clear() }
   }
 }

@@ -21,16 +21,22 @@ export default function ActiveCaptainPoiTypes ({ config, onToggle, onSetAll }: P
     (group) => group.options.some((option) => config[option.flag] === true)
   )
 
+  // The whole selector lives inside one outer `Import layers` fieldset so
+  // the ActiveCaptain card carries the same bordered "layers" container
+  // every other source card uses (Seamark groups for OpenSeaMap, Hazard
+  // layers for NOAA ENC). The four sub-group fieldsets sit inside it.
   return (
-    <section style={S.groupsSection}>
-      <div style={S.groupsHeader}>
-        <span style={S.groupsTitle}>POI types to import</span>
-        <button type='button' style={S.btnBulk} onClick={() => onSetAll(true)}>All</button>
-        <button type='button' style={S.btnBulk} onClick={() => onSetAll(false)}>None</button>
-      </div>
+    <fieldset style={S.group}>
+      <legend style={S.groupTitle}>
+        Import layers
+        <span style={S.bulkButtons}>
+          <button type='button' style={S.btnBulk} onClick={() => onSetAll(true)}>All</button>
+          <button type='button' style={S.btnBulk} onClick={() => onSetAll(false)}>None</button>
+        </span>
+      </legend>
       {ACTIVE_CAPTAIN_POI_TYPE_GROUPS.map((group) => (
-        <fieldset key={group.title} style={S.group}>
-          <legend style={S.groupTitle}>{group.title}</legend>
+        <fieldset key={group.title} style={S.subGroup}>
+          <legend style={S.subGroupTitle}>{group.title}</legend>
           <div style={S.checkboxGrid}>
             {group.options.map((option) => (
               <label key={option.flag} style={S.checkboxLabel}>
@@ -54,6 +60,6 @@ export default function ActiveCaptainPoiTypes ({ config, onToggle, onSetAll }: P
             at least one to narrow the import.
           </p>
           )}
-    </section>
+    </fieldset>
   )
 }

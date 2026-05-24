@@ -9,7 +9,7 @@
  * server unregisters it on stop, so `stop()` here is a no-op.
  */
 
-import type { ResourceProviderMethods } from '@signalk/server-api'
+import type { ResourceProviderMethods, SourceRef } from '@signalk/server-api'
 import type { OutputContext, OutputHandle, OutputModule } from '../output.js'
 import { buildNoteResource, readProperty } from './note-builder.js'
 import { resolveBbox } from './resource-query.js'
@@ -19,6 +19,21 @@ import type { PoiSummary } from '../../shared/types.js'
 
 /** The SignalK resource type this output provides. */
 const RESOURCE_TYPE = 'notes'
+
+/**
+ * Error thrown for read-only resource methods (`setResource` and
+ * `deleteResource`). Carrying `statusCode: 405` (Method Not Allowed)
+ * tells signalk-server's resource HTTP layer to return 405 instead of a
+ * generic 500, which clients like Freeboard-SK rely on to distinguish
+ * an unsupported method from a transient server bug.
+ */
+class MethodNotAllowedError extends Error {
+  readonly statusCode = 405
+  constructor (message: string) {
+    super(message)
+    this.name = 'MethodNotAllowedError'
+  }
+}
 
 /** Build the resource-provider methods bound to one plugin run's context. */
 function buildMethods (context: OutputContext): ResourceProviderMethods {
@@ -102,14 +117,14 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       if (value === undefined) {
         throw new Error(`Resource ${id} has no property ${property}`)
       }
-      return { value, timestamp: note.timestamp, $source: PLUGIN_ID }
+      return { value, timestamp: note.timestamp, $source: PLUGIN_ID as SourceRef }
     },
 
     setResource: (): Promise<void> =>
-      Promise.reject(new Error('Crow\'s nest notes resources are read-only')),
+      Promise.reject(new MethodNotAllowedError('Crow\'s nest notes resources are read-only')),
 
     deleteResource: (): Promise<void> =>
-      Promise.reject(new Error('Crow\'s nest notes resources are read-only'))
+      Promise.reject(new MethodNotAllowedError('Crow\'s nest notes resources are read-only'))
   }
 }
 
@@ -120,14 +135,14 @@ export const notesResourceOutput: OutputModule = {
   configSchema: {},
   isEnabled: () => true,
   start: (context: OutputContext): OutputHandle => {
-    try {
-      context.app.registerResourceProvider({
-        type: RESOURCE_TYPE,
-        methods: buildMethods(context)
-      })
-    } catch (error) {
-      context.app.error(`Cannot register as a ${RESOURCE_TYPE} resource provider: ${String(error)}`)
-    }
+    // Let the registration error propagate so the output registry marks
+    // this output as failed and surfaces it via setPluginError. Swallowing
+    // it here would let the plugin report "Ready" while the core data
+    // path is dead.
+    context.app.registerResourceProvider({
+      type: RESOURCE_TYPE,
+      methods: buildMethods(context)
+    })
     // The SignalK server unregisters resource providers on plugin stop.
     return { stop: () => {} }
   }

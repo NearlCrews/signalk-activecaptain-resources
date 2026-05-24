@@ -104,10 +104,12 @@ caching duration, or restart the plugin, if you need fresher data.
 ## Two markers for the same harbour or hazard
 
 When more than one source reports the same physical feature, the plugin
-merges them into one note (see the OpenSeaMap dedupe in `README.md`).
-The default merge radius is 150 meters; widen the "Merge radius" field in
-the OpenSeaMap card if duplicates still appear close together, or tighten
-it if genuinely separate neighbors are being merged.
+merges them into one note (see the per-source dedupe in `README.md`).
+The default merge radius is 150 meters; widen the "Merge radius" field on
+the matching source card (OpenSeaMap, USCG Light List, or NOAA ENC) if
+duplicates still appear close together, or tighten it if genuinely
+separate neighbors are being merged. The radius is per-source, so a tight
+USCG merge can coexist with a looser OpenSeaMap merge.
 
 ## Too many old or low-confidence features on the chart
 

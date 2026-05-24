@@ -14,3 +14,16 @@
 export function toFiniteNumber (value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
+
+/**
+ * Narrow an unknown value into a strictly positive finite `number`, or
+ * return `undefined` when it is not. The three input modules' optional
+ * config-key validators all want this exact shape (a positive merge
+ * radius, never zero or negative): a non-positive value means "fall back
+ * to the source's default" rather than "off."
+ */
+export function positiveFiniteNumber (value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : undefined
+}

@@ -123,8 +123,8 @@ docs/                     # Project documentation
 .github/                  # Community files, issue templates, and CI workflows
 ```
 
-`dist/`, `public/`, and `assets/` are the directories published to npm (see
-the `files` field in `package.json`).
+`dist/` and `public/` are the directories published to npm (see the `files`
+field in `package.json`).
 
 ## Testing
 

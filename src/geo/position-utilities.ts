@@ -204,7 +204,7 @@ function initialBearingRad (a: Position, b: Position): number {
  * measured along the leg; it is negative when the foot lies behind the start
  * and exceeds the leg length when the foot lies beyond the end.
  */
-export interface TrackProjection {
+interface TrackProjection {
   crossTrackMeters: number
   alongTrackMeters: number
 }

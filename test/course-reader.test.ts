@@ -351,19 +351,6 @@ test('getRouteAhead returns a null vesselPosition when there is no fix', async (
   reader.stop()
 })
 
-test('getRouteAhead unwraps a wrapped vessel position value', async () => {
-  const { app } = createMockApp({
-    course: courseWithRoute('/resources/routes/route-1', 0, false),
-    resource: routeResource(THREE_LEG_ROUTE),
-    selfPaths: { 'navigation.position': { value: { latitude: 49, longitude: 9 } } }
-  })
-  const reader = createCourseReader({ app })
-  await flush()
-
-  assert.deepEqual(reader.getRouteAhead()?.vesselPosition, { latitude: 49, longitude: 9 })
-  reader.stop()
-})
-
 test('getRouteAhead stays null when getCourse rejects', async () => {
   const { app } = createMockApp({
     course: async () => { throw new Error('course unavailable') }
@@ -524,22 +511,6 @@ test('getVesselState reads position and speed over ground', () => {
 
   assert.deepEqual(state.position, { latitude: 49, longitude: 9 })
   assert.equal(state.speedOverGround, 5.4)
-  reader.stop()
-})
-
-test('getVesselState unwraps wrapped data model values', () => {
-  const { app } = createMockApp({
-    course: courseWithoutRoute(),
-    selfPaths: {
-      'navigation.position': { value: { latitude: 49, longitude: 9 } },
-      'navigation.speedOverGround': { value: 3.1 }
-    }
-  })
-  const reader = createCourseReader({ app })
-  const state = reader.getVesselState()
-
-  assert.deepEqual(state.position, { latitude: 49, longitude: 9 })
-  assert.equal(state.speedOverGround, 3.1)
   reader.stop()
 })
 

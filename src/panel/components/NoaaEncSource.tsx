@@ -56,69 +56,67 @@ export default function NoaaEncSource ({ state, dispatch }: Props): React.ReactE
 
   return (
     <>
-      <div style={S.fieldRow}>
-        <label htmlFor={BAND_FIELD_ID} style={S.label}>Chart scale band</label>
-        <select
-          id={BAND_FIELD_ID}
-          style={S.input}
-          value={band}
-          onChange={(e) => dispatch({ type: 'setNoaaEncScaleBand', band: e.target.value })}
-        >
-          {NOAA_ENC_SCALE_BANDS.map((bandId) => (
-            <option key={bandId} value={bandId}>{BAND_LABELS[bandId]}</option>
-          ))}
-        </select>
-      </div>
-      <p style={S.hintBelow}>
-        Which ENC chart scale to query. Overview returns large-area features
-        only; berthing returns the densest, finest detail. Coastal is the
-        recommended default for most underway use.
-      </p>
-      <section style={S.groupsSection}>
-        <fieldset style={S.group}>
-          <legend style={S.groupTitle}>Hazard layers to import</legend>
-          <div style={S.checkboxGrid}>
-            <label style={S.checkboxLabel}>
-              <input
-                type='checkbox'
-                style={S.checkbox}
-                checked={includeWrecks}
-                onChange={(e) => dispatch({ type: 'setNoaaEncIncludeWrecks', enabled: e.target.checked })}
-              />
-              Wrecks
-            </label>
-            <label style={S.checkboxLabel}>
-              <input
-                type='checkbox'
-                style={S.checkbox}
-                checked={includeObstructions}
-                onChange={(e) => dispatch({ type: 'setNoaaEncIncludeObstructions', enabled: e.target.checked })}
-              />
-              Obstructions
-            </label>
-            <label style={S.checkboxLabel}>
-              <input
-                type='checkbox'
-                style={S.checkbox}
-                checked={includeRocks}
-                onChange={(e) => dispatch({ type: 'setNoaaEncIncludeRocks', enabled: e.target.checked })}
-              />
-              Underwater rocks
-            </label>
-          </div>
-          {!includeWrecks && !includeObstructions && !includeRocks && (
-            <p style={S.hint}>
-              Choose at least one layer; with all three off the source is
-              enabled but imports nothing.
-            </p>
-          )}
+      <fieldset style={S.group}>
+        <legend style={S.groupTitle}>Import layers</legend>
+        <div style={S.fieldRow}>
+          <label htmlFor={BAND_FIELD_ID} style={S.label}>Chart scale band</label>
+          <select
+            id={BAND_FIELD_ID}
+            style={S.input}
+            value={band}
+            onChange={(e) => dispatch({ type: 'setNoaaEncScaleBand', band: e.target.value })}
+          >
+            {NOAA_ENC_SCALE_BANDS.map((bandId) => (
+              <option key={bandId} value={bandId}>{BAND_LABELS[bandId]}</option>
+            ))}
+          </select>
+        </div>
+        <p style={S.hintBelow}>
+          Which ENC chart scale to query. Overview returns large-area features
+          only; berthing returns the densest, finest detail. Coastal is the
+          recommended default for most underway use.
+        </p>
+        <div style={S.checkboxGrid}>
+          <label style={S.checkboxLabel}>
+            <input
+              type='checkbox'
+              style={S.checkbox}
+              checked={includeWrecks}
+              onChange={(e) => dispatch({ type: 'setNoaaEncIncludeWrecks', enabled: e.target.checked })}
+            />
+            Wrecks
+          </label>
+          <label style={S.checkboxLabel}>
+            <input
+              type='checkbox'
+              style={S.checkbox}
+              checked={includeObstructions}
+              onChange={(e) => dispatch({ type: 'setNoaaEncIncludeObstructions', enabled: e.target.checked })}
+            />
+            Obstructions
+          </label>
+          <label style={S.checkboxLabel}>
+            <input
+              type='checkbox'
+              style={S.checkbox}
+              checked={includeRocks}
+              onChange={(e) => dispatch({ type: 'setNoaaEncIncludeRocks', enabled: e.target.checked })}
+            />
+            Underwater rocks
+          </label>
+        </div>
+        {!includeWrecks && !includeObstructions && !includeRocks && (
           <p style={S.hint}>
-            Underwater rocks default off because a coastal-band query can
-            return tens of thousands of rocks, which slows the chart plotter
-            and obscures other hazards.
+            Choose at least one layer; with all three off the source is
+            enabled but imports nothing.
           </p>
-        </fieldset>
-      </section>
+        )}
+        <p style={S.hint}>
+          Underwater rocks default off because a coastal-band query can
+          return tens of thousands of rocks, which slows the chart plotter
+          and obscures other hazards.
+        </p>
+      </fieldset>
       <fieldset style={S.group}>
         <legend style={S.groupTitle}>Refresh and freshness</legend>
         <RefreshSecondsField

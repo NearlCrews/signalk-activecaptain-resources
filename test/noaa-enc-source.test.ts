@@ -11,11 +11,9 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  createNoaaEncSource,
-  NOAA_ENC_SOURCE_ID
-} from '../src/inputs/noaa-enc/noaa-enc-source.js'
+import { createNoaaEncSource } from '../src/inputs/noaa-enc/noaa-enc-source.js'
 import type { EncFeature, EncLayerKey, ScaleBand } from '../src/inputs/noaa-enc/enc-direct-types.js'
+import { NOAA_ENC_SOURCE_ID } from '../src/shared/source-ids.js'
 
 interface FakeStatus {
   events: string[]
@@ -239,13 +237,16 @@ test('listPointsOfInterest rejects when every enabled layer query fails', async 
   assert.equal(errorEvents.length, 2, 'each failed layer recorded its own error')
 })
 
-test('getDetails does NOT record detail success on a cache hit (apiReachable stays as-is)', async () => {
-  // A cache hit is not evidence of upstream reachability: a stale
-  // apiReachable=false must not flip to true purely because the user
-  // clicked a previously loaded marker.
+test('getDetails on a cache hit serves the view, skips the upstream, and records no detail-success', async () => {
+  // The cached path: (a) returns the prepared view, (b) makes no
+  // queryById call, and (c) records no detail-success event (the cache
+  // hit is not evidence of upstream reachability and must not flip a
+  // stale apiReachable=false to true). All three properties of the
+  // cache-hit branch in one test.
+  let queryByIdCalls = 0
   const client: FakeClient = {
     queryLayer: async () => ({ features: [namedWreck] }),
-    queryById: async () => namedWreck
+    queryById: async () => { queryByIdCalls++; return namedWreck }
   }
   const { events, status } = fakeStatus()
   const source = createNoaaEncSource({
@@ -262,7 +263,17 @@ test('getDetails does NOT record detail success on a cache hit (apiReachable sta
   await source.listPointsOfInterest(
     { south: 41, west: -72, north: 43, east: -70 }, '')
   events.length = 0
-  await source.getDetails('wreck_12345')
+  const view = await source.getDetails('wreck_12345')
+  assert.equal(view.source, NOAA_ENC_SOURCE_ID)
+  assert.equal(view.name, 'SS Test')
+  assert.equal(view.type, 'Hazard')
+  assert.equal(view.skIcon, 'hazard')
+  assert.ok(view.description !== undefined)
+  assert.ok(view.description.includes('dangerous wreck'))
+  assert.ok(view.description.includes('not intended for primary navigation'))
+  // The CC0 attribution footer must be appended to the description.
+  assert.ok(view.description.includes(view.attribution))
+  assert.equal(queryByIdCalls, 0, 'a cache hit must not re-query the upstream')
   assert.equal(
     events.filter(e => e.startsWith('detail-ok')).length, 0,
     'a cache hit must not record a detail success'
@@ -291,39 +302,6 @@ test('getDetails records detail success only on a cache miss that hits the upstr
     events.some(e => e === `detail-ok:${NOAA_ENC_SOURCE_ID}`),
     'a network-fetched detail records a detail success'
   )
-})
-
-test('getDetails serves from the cache on hit and never re-queries the upstream', async () => {
-  let queryByIdCalls = 0
-  const client: FakeClient = {
-    queryLayer: async () => ({ features: [namedWreck] }),
-    queryById: async () => { queryByIdCalls++; return namedWreck }
-  }
-  const { status } = fakeStatus()
-  const source = createNoaaEncSource({
-    client: client as never,
-    band: 'coastal',
-    includeWrecks: true,
-    includeObstructions: false,
-    includeRocks: false,
-    minimumYear: 0,
-    refreshSeconds: 0,
-    status: status as never,
-    getCurrentPosition: () => undefined
-  })
-  await source.listPointsOfInterest(
-    { south: 41, west: -72, north: 43, east: -70 }, '')
-  const view = await source.getDetails('wreck_12345')
-  assert.equal(view.source, NOAA_ENC_SOURCE_ID)
-  assert.equal(view.name, 'SS Test')
-  assert.equal(view.type, 'Hazard')
-  assert.equal(view.skIcon, 'hazard')
-  assert.ok(view.description !== undefined)
-  assert.ok(view.description.includes('dangerous wreck'))
-  assert.ok(view.description.includes('not intended for primary navigation'))
-  // The CC0 attribution footer must be appended to the description.
-  assert.ok(view.description.includes(view.attribution))
-  assert.equal(queryByIdCalls, 0)
 })
 
 test('getDetails fetches by objectId on a cache miss and caches the result', async () => {

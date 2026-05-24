@@ -33,6 +33,13 @@ import type { PoiSummary, Position } from '../../shared/types.js'
 const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.crowsNest.hazard.'
 
 /**
+ * `$source` suffix appended to the plugin id, so consumers filtering by
+ * source can tell proximity alarms from the route-corridor output even
+ * though both come from this plugin.
+ */
+const SOURCE_SUFFIX = 'proximity'
+
+/**
  * Hysteresis margin: an active alarm clears only once the hazard is this
  * multiple of the alarm radius away. The gap between the raise distance and
  * the clear distance stops an alarm chattering when a hazard sits right on
@@ -75,6 +82,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
   const tracker = createNotificationTracker<{ name: string }>({
     app,
     pathPrefix: NOTIFICATION_PATH_PREFIX,
+    sourceSuffix: SOURCE_SUFFIX,
     buildClearValue: ({ name }) => ({
       state: 'normal',
       method: [],
@@ -91,7 +99,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
       message: `Hazard "${name}" is ${Math.round(distance)} m away`,
       timestamp: new Date().toISOString()
     }
-    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
+    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value, SOURCE_SUFFIX)
     tracker.set(poiId, { name })
     app.debug(`Proximity alarm raised for hazard ${poiId} ("${name}") at ${Math.round(distance)} m`)
   }

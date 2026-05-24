@@ -108,3 +108,23 @@ test('resolveBbox does not resolve a blank position to Null Island', () => {
   )
   assert.equal(resolveBbox({ position: ['', ''], distance: 3000 }), null)
 })
+
+test('resolveBbox passes through an antimeridian-crossing bbox without reordering it', () => {
+  // A vessel near 179.5 E in the Aleutians gets a viewport with east < west.
+  // The bbox-string form is GeoJSON order [west, south, east, north]: the
+  // resolver must preserve `east < west` for the downstream tile-grid
+  // antimeridian split, not normalize it to two valid sub-boxes here.
+  const wrap = resolveBbox({ bbox: '178.5,51,-178.5,53' })
+  assert.notEqual(wrap, null)
+  assert.equal(wrap?.west, 178.5)
+  assert.equal(wrap?.east, -178.5)
+  assert.equal(wrap?.south, 51)
+  assert.equal(wrap?.north, 53)
+})
+
+test('resolveBbox preserves an antimeridian-crossing bbox supplied as an array', () => {
+  const wrap = resolveBbox({ bbox: [178.5, 51, -178.5, 53] })
+  assert.notEqual(wrap, null)
+  assert.equal(wrap?.west, 178.5)
+  assert.equal(wrap?.east, -178.5)
+})

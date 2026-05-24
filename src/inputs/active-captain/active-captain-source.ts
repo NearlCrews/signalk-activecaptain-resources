@@ -29,10 +29,6 @@ import { MAX_BBOX_CACHE_ENTRIES } from '../../shared/cache.js'
 import type { PoiDetailView, PoiSummary, PoiType } from '../../shared/types.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
-// The stable source id is defined in `src/shared/source-ids.ts` so the
-// browser-bundled panel can import it without pulling in this module's
-// node-only dependencies.
-export { ACTIVE_CAPTAIN_SOURCE_ID } from '../../shared/source-ids.js'
 import { ACTIVE_CAPTAIN_SOURCE_ID } from '../../shared/source-ids.js'
 
 /** Human-readable attribution credit for ActiveCaptain data. */

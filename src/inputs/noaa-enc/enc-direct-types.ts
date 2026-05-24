@@ -58,13 +58,6 @@ export interface EncFeature {
   properties: Record<string, unknown>
 }
 
-/** The GeoJSON FeatureCollection ArcGIS returns from a `/query` request. */
-export interface EncFeatureCollection {
-  type: 'FeatureCollection'
-  features: EncFeature[]
-  exceededTransferLimit?: boolean
-}
-
 /**
  * Numeric ArcGIS layer ids per scale band. Discovered live from the ENC Direct
  * MapServer endpoints in Task 3.2 of the implementation plan; every entry was

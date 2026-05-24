@@ -12,7 +12,7 @@
  */
 
 import type * as React from 'react'
-import type { Dispatch } from 'react'
+import { useMemo, type Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
 import { POI_TYPE_FLAGS } from '../../shared/poi-type-selection.js'
 import { SEAMARK_GROUP_REFS } from '../../shared/seamark-groups.js'
@@ -100,15 +100,29 @@ function noaaEncSummary (state: PluginConfig): string {
   return appendSinceYear(`${label} band, ${layerList}`, state.noaaEncMinimumSurveyYear)
 }
 
-/** Look up the per-source status entry by source slug. */
-function statusFor (snapshot: StatusSnapshot | null, sourceId: SourceSlug): SourceStatus | undefined {
-  return snapshot?.sources.find((entry) => entry.source === sourceId)
+/**
+ * Index the per-source status entries by slug. Built once per status
+ * snapshot via useMemo so the per-card lookup is O(1) and so a card's
+ * `status` prop keeps referential equality across renders when the
+ * snapshot itself does not change.
+ */
+function useStatusBySource (
+  snapshot: StatusSnapshot | null
+): ReadonlyMap<string, SourceStatus> {
+  return useMemo(() => {
+    const map = new Map<string, SourceStatus>()
+    if (snapshot !== null) {
+      for (const entry of snapshot.sources) map.set(entry.source, entry)
+    }
+    return map
+  }, [snapshot])
 }
 
 /** The per-source accordion shown in the configuration panel. */
 export default function DataSourcesSection (
   { state, dispatch, status, expanded, onToggleExpanded }: Props
 ): React.ReactElement {
+  const statusBySource = useStatusBySource(status)
   return (
     <section>
       <h2 style={S.sectionHeading}>Data sources</h2>
@@ -119,7 +133,7 @@ export default function DataSourcesSection (
         summary={activeCaptainSummary(state)}
         expanded={expanded[ACTIVE_CAPTAIN_SOURCE_ID] === true}
         onToggleExpanded={onToggleExpanded}
-        status={statusFor(status, ACTIVE_CAPTAIN_SOURCE_ID)}
+        status={statusBySource.get(ACTIVE_CAPTAIN_SOURCE_ID)}
       >
         <ActiveCaptainSource state={state} dispatch={dispatch} />
       </DataSourceCard>
@@ -131,7 +145,7 @@ export default function DataSourcesSection (
         expanded={expanded[OPENSEAMAP_SOURCE_ID] === true}
         onToggleExpanded={onToggleExpanded}
         onToggleEnabled={(enabled) => dispatch({ type: 'setOpenSeaMapEnabled', enabled })}
-        status={statusFor(status, OPENSEAMAP_SOURCE_ID)}
+        status={statusBySource.get(OPENSEAMAP_SOURCE_ID)}
       >
         <OpenSeaMapSource state={state} dispatch={dispatch} />
       </DataSourceCard>
@@ -143,7 +157,7 @@ export default function DataSourcesSection (
         expanded={expanded[USCG_LIGHT_LIST_SOURCE_ID] === true}
         onToggleExpanded={onToggleExpanded}
         onToggleEnabled={(enabled) => dispatch({ type: 'setUscgLightListEnabled', enabled })}
-        status={statusFor(status, USCG_LIGHT_LIST_SOURCE_ID)}
+        status={statusBySource.get(USCG_LIGHT_LIST_SOURCE_ID)}
       >
         <UscgLightListSource state={state} dispatch={dispatch} />
       </DataSourceCard>
@@ -155,7 +169,7 @@ export default function DataSourcesSection (
         expanded={expanded[NOAA_ENC_SOURCE_ID] === true}
         onToggleExpanded={onToggleExpanded}
         onToggleEnabled={(enabled) => dispatch({ type: 'setNoaaEncEnabled', enabled })}
-        status={statusFor(status, NOAA_ENC_SOURCE_ID)}
+        status={statusBySource.get(NOAA_ENC_SOURCE_ID)}
       >
         <NoaaEncSource state={state} dispatch={dispatch} />
       </DataSourceCard>

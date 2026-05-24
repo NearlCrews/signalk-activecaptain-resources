@@ -15,9 +15,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   createUscgLightListSource,
-  DISTRICT_PAGES,
-  USCG_LIGHT_LIST_SOURCE_ID
+  DISTRICT_PAGES
 } from '../src/inputs/uscg-light-list/uscg-light-list-source.js'
+import { USCG_LIGHT_LIST_SOURCE_ID } from '../src/shared/source-ids.js'
 import { createLightListStore } from '../src/inputs/uscg-light-list/light-list-store.js'
 import type {
   DownloadResult,

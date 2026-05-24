@@ -120,18 +120,6 @@ export interface CourseReader {
 }
 
 /**
- * Unwrap one `{ value: ... }` layer, if present. `getSelfPath` returns the
- * leaf value directly on current servers, but some versions wrap it in a data
- * model node, so a caller tries both the raw value and this unwrapped form.
- */
-function unwrapValue (raw: unknown): unknown {
-  if (raw !== null && typeof raw === 'object' && 'value' in raw) {
-    return (raw as { value: unknown }).value
-  }
-  return undefined
-}
-
-/**
  * Narrow a GeoJSON coordinate entry (`[longitude, latitude, altitude?]`) into a
  * `Position`, or return `null` when it is not a usable pair. GeoJSON orders a
  * coordinate longitude first; the altitude, when present, is dropped.
@@ -230,7 +218,7 @@ export function createCourseReader (config: CourseReaderConfig): CourseReader {
       app.debug(`Course reader could not read ${SELF_POSITION_PATH}: ${String(error)}`)
       return null
     }
-    return toPosition(raw) ?? toPosition(unwrapValue(raw))
+    return toPosition(raw)
   }
 
   /** Read speed over ground, in m/s, from the data model, or `null` when unavailable. */
@@ -242,7 +230,7 @@ export function createCourseReader (config: CourseReaderConfig): CourseReader {
       app.debug(`Course reader could not read ${SELF_SOG_PATH}: ${String(error)}`)
       return null
     }
-    return toFiniteNumber(raw) ?? toFiniteNumber(unwrapValue(raw))
+    return toFiniteNumber(raw)
   }
 
   function getVesselState (): VesselState {

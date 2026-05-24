@@ -9,8 +9,15 @@
  */
 
 import { createActiveCaptainClient } from './active-captain-client.js'
-import { createActiveCaptainSource, ACTIVE_CAPTAIN_SOURCE_ID } from './active-captain-source.js'
+import { createActiveCaptainSource } from './active-captain-source.js'
 import type { InputContext, InputModule } from '../poi-source.js'
+import {
+  clampBboxDebounceSeconds,
+  DEFAULT_BBOX_DEBOUNCE_SECONDS,
+  MAX_BBOX_DEBOUNCE_SECONDS,
+  MIN_BBOX_DEBOUNCE_SECONDS
+} from '../../shared/bbox-debounce.js'
+import { ACTIVE_CAPTAIN_SOURCE_ID } from '../../shared/source-ids.js'
 
 /** Default caching window, in minutes, when configuration omits it. */
 const DEFAULT_CACHING_DURATION_MINUTES = 60
@@ -20,15 +27,6 @@ const DEFAULT_MINIMUM_RATING = 0
 
 /** Highest rating the ActiveCaptain review scale reaches. */
 const MAX_RATING = 5
-
-/**
- * Default and bounds for the per-bbox debounce window. Matches the
- * NOAA ENC and OpenSeaMap defaults so every source behaves the same
- * way out of the box.
- */
-const DEFAULT_REFRESH_SECONDS = 30
-const MIN_REFRESH_SECONDS = 0
-const MAX_REFRESH_SECONDS = 600
 
 /** The cache-duration, minimum-rating, and POI-type-toggle config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
@@ -40,9 +38,9 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   activeCaptainRefreshSeconds: {
     type: 'number',
     title: 'ActiveCaptain bbox-debounce window, in seconds (0 to query Garmin on every list call)',
-    default: DEFAULT_REFRESH_SECONDS,
-    minimum: MIN_REFRESH_SECONDS,
-    maximum: MAX_REFRESH_SECONDS
+    default: DEFAULT_BBOX_DEBOUNCE_SECONDS,
+    minimum: MIN_BBOX_DEBOUNCE_SECONDS,
+    maximum: MAX_BBOX_DEBOUNCE_SECONDS
   },
   minimumRating: {
     type: 'number',
@@ -79,14 +77,6 @@ function resolveMinimumRating (raw: unknown): number {
   return Math.min(raw, MAX_RATING)
 }
 
-/** Clamp a raw refresh-seconds value, falling back to the default on garbage. */
-function resolveRefreshSeconds (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_REFRESH_SECONDS
-  if (raw < MIN_REFRESH_SECONDS) return MIN_REFRESH_SECONDS
-  if (raw > MAX_REFRESH_SECONDS) return MAX_REFRESH_SECONDS
-  return Math.trunc(raw)
-}
-
 /** The ActiveCaptain input module. */
 export const activeCaptainInput: InputModule = {
   id: ACTIVE_CAPTAIN_SOURCE_ID,
@@ -99,7 +89,7 @@ export const activeCaptainInput: InputModule = {
       client: createActiveCaptainClient(app),
       cachingDurationMinutes: resolveCachingDuration(config.cachingDurationMinutes),
       minimumRating: resolveMinimumRating(config.minimumRating),
-      refreshSeconds: resolveRefreshSeconds(config.activeCaptainRefreshSeconds),
+      refreshSeconds: clampBboxDebounceSeconds(config.activeCaptainRefreshSeconds),
       dataDir,
       status,
       app

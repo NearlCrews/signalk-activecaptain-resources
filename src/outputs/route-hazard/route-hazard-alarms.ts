@@ -29,6 +29,13 @@ import type { CorridorPoi } from '../../shared/types.js'
 /** Path prefix for the per-point route notification, completed with the POI id. */
 const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.crowsNest.route.'
 
+/**
+ * `$source` suffix appended to the plugin id, so consumers filtering by
+ * source can tell route-corridor alarms from the proximity output even
+ * though both come from this plugin.
+ */
+const SOURCE_SUFFIX = 'route'
+
 /** Meters in a kilometer, the threshold above which a distance is shown in km. */
 const METERS_PER_KM = 1000
 
@@ -98,6 +105,7 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
   const tracker = createNotificationTracker<{ name: string, message: string }>({
     app,
     pathPrefix: NOTIFICATION_PATH_PREFIX,
+    sourceSuffix: SOURCE_SUFFIX,
     buildClearValue: ({ name }) => ({
       state: 'normal',
       method: [],
@@ -124,7 +132,7 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
       message,
       timestamp: new Date().toISOString()
     }
-    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value)
+    emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value, SOURCE_SUFFIX)
   }
 
   function evaluate (corridorPois: CorridorPoi[]): void {

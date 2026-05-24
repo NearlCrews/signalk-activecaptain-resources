@@ -11,8 +11,12 @@ test('isEnabled tracks the openSeaMapEnabled toggle', () => {
 })
 
 test('the config fragment carries the enable, endpoint, seamark-group, dedupe, radius, minimum-year, and refresh-seconds keys', () => {
-  const keys = Object.keys(openSeaMapInput.configSchema)
-  assert.deepEqual(keys, [
+  // Asserted as a set, not an ordered list: the test cares that every key
+  // exists in the schema, not that the input module declares them in a
+  // particular order. A future re-grouping would otherwise fail this test
+  // for purely cosmetic reasons.
+  const keys = new Set(Object.keys(openSeaMapInput.configSchema))
+  for (const expected of [
     'openSeaMapEnabled',
     'openSeaMapEndpoint',
     'openSeaMapSeamarkGroups',
@@ -20,7 +24,9 @@ test('the config fragment carries the enable, endpoint, seamark-group, dedupe, r
     'openSeaMapDedupeRadiusMeters',
     'openSeaMapMinimumYear',
     'openSeaMapRefreshSeconds'
-  ])
+  ]) {
+    assert.ok(keys.has(expected), `expected schema to include "${expected}"`)
+  }
 })
 
 test('the seamark-groups schema enum and default are derived from the shared id list', () => {

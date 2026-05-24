@@ -24,10 +24,6 @@ import type { Bbox, PoiDetailView, PoiSummary, PoiType } from '../../shared/type
 import { filterByMinimumYear } from '../../shared/year-filter.js'
 import type { PluginStatus } from '../../status/plugin-status.js'
 
-// The stable source id is defined in `src/shared/source-ids.ts` so the
-// browser-bundled panel can import it without pulling in this module's
-// node-only dependencies.
-export { OPENSEAMAP_SOURCE_ID } from '../../shared/source-ids.js'
 import { OPENSEAMAP_SOURCE_ID } from '../../shared/source-ids.js'
 
 /**
@@ -35,7 +31,7 @@ import { OPENSEAMAP_SOURCE_ID } from '../../shared/source-ids.js'
  * requires this to be visible wherever the data is shown, so it is rendered
  * into every detail description, not just the README.
  */
-export const OPENSEAMAP_ATTRIBUTION = '© OpenStreetMap contributors (ODbL)'
+const OPENSEAMAP_ATTRIBUTION = '© OpenStreetMap contributors (ODbL)'
 
 /** Prefix of an OpenStreetMap element page, completed with `type/id`. */
 const OSM_ELEMENT_URL_PREFIX = 'https://www.openstreetmap.org/'

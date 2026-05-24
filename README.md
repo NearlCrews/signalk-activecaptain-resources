@@ -27,7 +27,9 @@ plugin has developed: the four-source point-of-interest aggregate
 (ActiveCaptain, OpenSeaMap, USCG Light List, NOAA ENC Direct), the
 position-aware proximity-hazard alarms, the route-corridor hazard scan, the
 React configuration panel, the per-source earliest-year filter, and the
-per-bbox refresh-debounce cache for the two at-runtime sources.
+per-bbox refresh-debounce cache for every at-runtime source (the cache key
+for ActiveCaptain includes the requested POI types, so a chart-display
+request never starves a proximity-alarm scan of Hazards).
 
 See the [v0.4.2 changelog entry](CHANGELOG.md#v042) and the
 [v0.4.2 release](https://github.com/NearlCrews/signalk-crows-nest/releases/tag/v0.4.2).
@@ -84,17 +86,22 @@ The plugin ships its own configuration panel. In place of the generic settings
 form it shows a per-source status bar (each enabled source's API reachability
 and last fetch, the cached point-of-interest count, and recent errors), a
 per-source accordion of collapsible data-source cards, and an Alerts section.
-The ActiveCaptain card holds its cache-duration field, its point-of-interest
-type toggles in labeled groups with All and None buttons, and the rating
-filter; the OpenSeaMap card holds its Overpass endpoint, its seamark feature
-groups, and its dedupe toggle. The Alerts section holds the proximity and route
-hazard alarm controls, which consume the merged point-of-interest set.
+Each data-source card groups its options into bordered fieldsets: import
+layers, refresh and freshness (per-bbox debounce window plus the source's
+earliest-year filter or its detail-cache duration), filters (where the
+source has any, such as ActiveCaptain's minimum rating), and merge with
+ActiveCaptain (the dedupe toggle and the per-source merge radius). The
+collapsed row shows a one-line summary, a live-status pill reporting the
+source's last-fetch outcome, and a "Disabled" prefix when the enable toggle
+is off. The Alerts section holds the proximity and route-hazard alarm
+controls, which consume the merged point-of-interest set.
 
 The following options are available:
 
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
-| How long to cache data from Active Captain in minutes | number | 60 | Longer caching means less data traffic; shorter caching means more up to date data. |
+| How long to cache data from Active Captain in minutes | number | 60 | Detail cache TTL for the per-POI Garmin detail responses; longer caching means less data traffic, shorter caching means more up-to-date data. |
+| ActiveCaptain bbox-debounce window, in seconds | number | 30 | How long to reuse the most recent ActiveCaptain bbox result for the same chart viewport before re-querying Garmin. The cache key includes the requested POI-type filter so a chart-display request never starves the proximity-alarm scan. 0 disables the cache. |
 | Include marinas | boolean | true | Include marina points of interest. |
 | Include anchorages | boolean | true | Include anchorage points of interest. |
 | Include hazards | boolean | true | Include hazard points of interest. |
@@ -123,6 +130,7 @@ The following options are available:
 | Import points of interest from the USCG Light List | boolean | false | Enable the USCG Light List source (US Aids to Navigation; US waters only). |
 | Merge USCG Light List points of interest that duplicate an ActiveCaptain marker | boolean | true | Merge a Light List point into a co-located ActiveCaptain point of the same type, recording both sources on the surviving note. |
 | USCG Light List background refresh period, in hours | number | 6 | How often the plugin re-downloads the NAVCEN district files. Range: 1 to 168 hours. |
+| Merge radius for USCG Light List points of interest, in meters | number | 150 | Per-source merge radius applied when the Light List dedupe toggle is on. Tighten for crisp navaid alignment against the ActiveCaptain base, widen if duplicate markers still appear. |
 | Earliest USCG Light List update year | number | 0 | Hide records whose last USCG modification date is older than this year. 0 disables the filter; records with no recorded modification date are always included. |
 | Import wrecks, obstructions, and rocks from NOAA ENC Direct | boolean | false | Enable the NOAA ENC Direct source (US authoritative chart hazards; US waters only). |
 | Merge NOAA ENC points of interest that duplicate an ActiveCaptain marker | boolean | true | Merge a NOAA ENC point into a co-located ActiveCaptain point of the same type, recording both sources on the surviving note. |
@@ -130,6 +138,7 @@ The following options are available:
 | Include NOAA ENC wrecks | boolean | true | Import the wrecks layer in NOAA ENC list queries. |
 | Include NOAA ENC obstructions | boolean | true | Import the obstructions layer in NOAA ENC list queries. |
 | Include NOAA ENC underwater rocks | boolean | false | Import the underwater rocks layer. Off by default: a coastal-band query can return tens of thousands of rocks. |
+| Merge radius for NOAA ENC points of interest, in meters | number | 150 | Per-source merge radius applied when the NOAA ENC dedupe toggle is on. Tighten for crisp wreck alignment against the ActiveCaptain base, widen if duplicate markers still appear. |
 | NOAA ENC bbox-debounce window, in seconds | number | 30 | How long to reuse the most recent ENC Direct result for the same chart viewport before re-querying. 0 disables the cache. NOAA refreshes ENC data weekly, so a sub-minute cadence here protects the ArcGIS service from a Freeboard refresh burst on a stationary view. |
 | Earliest NOAA ENC survey year | number | 0 | Hide features whose `SORDAT` hydrographic survey date is older than this year. 0 disables the filter; features with no recorded survey date are always included. The survey date is often decades old for stable features (a wreck found in a 1950s lead-line survey vs a 2020s multibeam survey), so this is a data-confidence filter. |
 

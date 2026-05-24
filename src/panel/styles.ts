@@ -80,6 +80,15 @@ export const THEME_STYLE = `
   border-color: var(--ac-border) !important;
   cursor: not-allowed !important;
 }
+/* Pointer feedback for non-disabled buttons (the All/None bulk pills,
+   the footer Save/Discard pair). Inline styles cannot express :hover;
+   this rule keeps the affordance consistent across themes. */
+.ac-config-panel button:not(:disabled):hover {
+  background: var(--ac-surface-raised);
+}
+.ac-config-panel button:not(:disabled):active {
+  background: var(--ac-border);
+}
 /* The browser-default <legend> layout cuts into the fieldset's top border,
    producing a visible notch in the rounded border. Floating the legend
    lifts it out of the border into a normal block above the fieldset
@@ -240,6 +249,35 @@ export const S = {
     letterSpacing: 0.4,
     color: 'var(--ac-text-faint)',
     margin: '0 0 8px'
+  },
+  /**
+   * Inner-fieldset shell, used for the four POI-type sub-groups inside the
+   * outer "Import layers" fieldset on the ActiveCaptain card. Trimmed
+   * border and padding so a sub-group reads as a child of the outer
+   * fieldset and not as a peer card.
+   */
+  subGroup: {
+    background: 'var(--ac-surface)',
+    border: '1px solid var(--ac-border)',
+    borderRadius: 6,
+    padding: '8px 12px',
+    marginBottom: 8
+  },
+  subGroupTitle: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'var(--ac-text-muted)',
+    margin: '0 0 6px'
+  },
+  /**
+   * Inline cluster of bulk-action pill buttons (All / None), placed
+   * inside the outer fieldset's legend so they sit next to the title.
+   */
+  bulkButtons: {
+    display: 'inline-flex',
+    gap: 6,
+    marginLeft: 10,
+    verticalAlign: 'middle'
   },
   checkboxGrid: {
     display: 'grid',

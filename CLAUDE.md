@@ -148,6 +148,10 @@ self-contained module registered on one line in `src/index.ts`.
     plugin: `types.ts` (the cross-module type contracts; ActiveCaptain-only
     wire types live next to the ActiveCaptain input, not here),
     `plugin-id.ts` (the plugin id, shared by plugin and panel),
+    `source-ids.ts` (the four PoiSource id constants and the `SourceSlug`
+    union, shared by the input modules and the panel — extracted so the
+    browser-bundled panel can import them without pulling in any
+    node-only dependencies the source modules reach),
     `poi-type-selection.ts` (maps the config POI-type toggles to the
     `poiTypes` string the aggregate source uses), `seamark-groups.ts` (the
     OpenSeaMap seamark group ids and labels, the single source of truth
@@ -155,41 +159,62 @@ self-contained module registered on one line in `src/index.ts`.
     panel), `us-waters.ts` (the `isInUsWaters` gate the US-only inputs read
     to skip outbound HTTP outside US waters), `attribution.ts` (the
     source-agnostic attribution footer rendered into every detail HTML,
-    using the `crows-nest-attribution` CSS class), `notification-path.ts`
+    using the `crows-nest-attribution` CSS class), `bbox-debounce.ts`
+    (the per-bbox LRU debounce cache, plus the canonical
+    `DEFAULT_BBOX_DEBOUNCE_SECONDS` / `MIN_BBOX_DEBOUNCE_SECONDS` /
+    `MAX_BBOX_DEBOUNCE_SECONDS` bounds and the `clampBboxDebounceSeconds`
+    helper that every input module and the panel's normalize-config
+    consume), `map-link.ts` (the OpenSeaMap-marker fallback deep link
+    USCG Light List and NOAA ENC popups use, since neither upstream
+    viewer supports per-feature deep links), `notification-path.ts`
     (builds path-safe SignalK notification deltas, shared by the alarm
-    outputs), `notification-tracker.ts` (raise/clear bookkeeping shared by
-    the proximity and route-hazard outputs), `year-filter.ts` (the
-    `filterByMinimumYear` helper plus the shared `MIN_YEAR` / `MAX_YEAR` /
-    `DEFAULT_MINIMUM_YEAR` bounds and the `clampMinimumYear` helper every
-    opting-in source uses for its earliest-year filter), `numbers.ts` (the
-    `toFiniteNumber` narrowing helper), `cache.ts` (the
-    `MAX_POI_CACHE_ENTRIES` ceiling shared by the per-source detail caches),
-    and `time.ts` (the `MS_PER_MINUTE` and `MS_PER_HOUR` constants).
+    outputs, with a `sourceSuffix` arg so proximity and route alarms get
+    distinct `$source` brands), `notification-tracker.ts` (raise/clear
+    bookkeeping shared by the proximity and route-hazard outputs),
+    `year-filter.ts` (the `filterByMinimumYear` helper plus the shared
+    `MIN_YEAR` / `MAX_YEAR` / `DEFAULT_MINIMUM_YEAR` bounds and the
+    `clampMinimumYear` helper every opting-in source uses for its
+    earliest-year filter), `numbers.ts` (the `toFiniteNumber` and
+    `positiveFiniteNumber` narrowing helpers), `cache.ts` (the
+    `MAX_POI_CACHE_ENTRIES` and `MAX_BBOX_CACHE_ENTRIES` ceilings shared
+    by the per-source detail and bbox caches), and `time.ts` (the
+    `MS_PER_MINUTE` and `MS_PER_HOUR` constants).
   - `panel/` - federated React configuration panel. Root and reducer:
     `index.tsx` (Module Federation entry), `PluginConfigurationPanel.tsx`,
-    `config-reducer.ts`, `normalize-config.ts`, plus the UI-metadata modules
-    `active-captain-poi-types.ts`, `styles.ts`, and `relative-time.ts`.
+    `config-reducer.ts`, `normalize-config.ts`, plus the UI-metadata
+    modules `active-captain-poi-types.ts`, `styles.ts`, `relative-time.ts`,
+    and `source-status-pill.ts` (the pure `pillVariant` + `pillContent`
+    helpers used by the per-source live-status pill on each card header,
+    in a non-tsx module so the unit tests import it without JSX).
     `hooks/` holds `use-config`, `use-status`, and `use-number-draft` (the
     raw-text draft state for clearable numeric inputs). `components/` holds
     the layout pieces: `StatusBar`, `FooterBar`, `DataSourcesSection`
     (the per-source accordion shell), `DataSourceCard` (one collapsible
-    card), `ActiveCaptainSource`, `OpenSeaMapSource`, `UscgLightListSource`,
-    and `NoaaEncSource` (the per-source card bodies), `AlertsSection` (the
-    proximity and route-hazard controls); plus the per-field input
-    components `CacheDurationField`, `EndpointUrlField`, `NumberField` (the
-    shared label-plus-input-plus-hint row), `AlarmFieldset` (the
+    card, with an in-header live-status pill and a body that stays mounted
+    via `display: none` so an in-progress NumberField draft survives a
+    collapse-and-expand round trip), `ActiveCaptainSource`,
+    `OpenSeaMapSource`, `UscgLightListSource`, and `NoaaEncSource` (the
+    per-source card bodies), `AlertsSection` (the proximity and
+    route-hazard controls); plus the per-field input components
+    `CacheDurationField`, `EndpointUrlField`, `NumberField` (the shared
+    label-plus-input-plus-hint row), `AlarmFieldset` (the
     toggle-plus-numeric layout shared by both alarm controls),
     `RatingFilterField`, `MinimumYearField` (the shared earliest-year
     NumberField wrapper used by each opting-in source card),
-    `ProximityAlarmFields`, `RouteHazardScanFields`, `ActiveCaptainPoiTypes`,
-    and `SeamarkGroups`. The panel is a per-source accordion: a collapsible
-    card per data source, then an Alerts section.
+    `RefreshSecondsField` (the shared NumberField wrapper for the
+    bbox-debounce period on at-runtime sources),
+    `MergeWithActiveCaptain` (the shared dedupe-toggle + merge-radius
+    fieldset used by every non-base card), `ProximityAlarmFields`,
+    `RouteHazardScanFields`, `ActiveCaptainPoiTypes`, and `SeamarkGroups`.
+    The panel is a per-source accordion: a collapsible card per data
+    source, then an Alerts section. Disclosure state lives at the panel
+    root so the four card bodies share one stable map.
 - `test/` - `node:test` test suite, run through `tsx`.
 - `docs/` - project documentation: the development guide, troubleshooting, the
   Garmin API research notes, decision records, and maintainer notes.
 - `dist/` and `public/` - compiled plugin and bundled panel. Generated, not
-  committed. They, together with the committed `assets/` directory, are
-  published to npm (see the `files` field in `package.json`).
+  committed. They are the directories published to npm (see the `files`
+  field in `package.json`).
 
 ## Toolchain
 

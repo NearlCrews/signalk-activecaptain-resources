@@ -31,6 +31,11 @@ export interface NotificationTrackerConfig<T> {
   app: NotificationTrackerApp
   /** Notification path prefix, completed with the sanitized POI id. */
   pathPrefix: string
+  /**
+   * Optional `$source` suffix appended to the plugin id, so the clear
+   * delta shares the per-output `$source` brand the raise carries.
+   */
+  sourceSuffix?: string
   /** Build the `state: 'normal'` notification value for an entry being cleared. */
   buildClearValue: (entry: T) => NotificationValue
   /** Optional debug log emitted on each clear, given the POI id and entry. */
@@ -60,7 +65,7 @@ export interface NotificationTracker<T> {
 export function createNotificationTracker<T> (
   config: NotificationTrackerConfig<T>
 ): NotificationTracker<T> {
-  const { app, pathPrefix, buildClearValue, describeClear } = config
+  const { app, pathPrefix, sourceSuffix, buildClearValue, describeClear } = config
   const active = new Map<string, T>()
 
   function clear (poiId: string): void {
@@ -68,7 +73,7 @@ export function createNotificationTracker<T> (
     if (entry === undefined) {
       return
     }
-    emitNotification(app, pathPrefix, poiId, buildClearValue(entry))
+    emitNotification(app, pathPrefix, poiId, buildClearValue(entry), sourceSuffix)
     active.delete(poiId)
     if (describeClear !== undefined) {
       app.debug(describeClear(poiId, entry))

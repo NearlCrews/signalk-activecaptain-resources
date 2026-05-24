@@ -29,7 +29,7 @@
 
 import type * as React from 'react'
 import { S } from '../styles.js'
-import { relativeTime } from '../relative-time.js'
+import { pillContent, pillVariant } from '../source-status-pill.js'
 import type { SourceStatus } from '../../status/status-types.js'
 
 interface Props {
@@ -155,38 +155,21 @@ function SourceStatusPill ({ status }: { status: SourceStatus }): React.ReactEle
       ? PILL_IDLE
       : S.sourceStatusPill
   const { glyph, label, title } = pillContent(status, variant)
+  // role="status" makes the pill a polite live region so screen readers
+  // announce state changes when they arrive (e.g. the first fetch
+  // completing). aria-label carries the longer "last fetch N min ago"
+  // context that a sighted user reads from the title tooltip; the visible
+  // glyph + label is decorative once the longer label is set, so the
+  // span text is hidden from the AT.
   return (
-    <span style={pillStyle} title={title}>
-      {glyph} {label}
+    <span style={pillStyle} role='status' aria-label={title} title={title}>
+      <span aria-hidden='true'>{glyph} {label}</span>
     </span>
   )
 }
 
-/** Classify a SourceStatus into one of the three pill variants. */
-function pillVariant (status: SourceStatus): 'idle' | 'ok' | 'error' {
-  if (status.apiReachable === false) return 'error'
-  if (status.lastListFetch === null) return 'idle'
-  return 'ok'
-}
-
-/** Compose the glyph, label, and tooltip for a pill in the given state. */
-function pillContent (
-  status: SourceStatus,
-  variant: 'idle' | 'ok' | 'error'
-): { glyph: string, label: string, title: string } {
-  if (variant === 'error') {
-    return { glyph: '!', label: 'error', title: `${status.name}: last request failed` }
-  }
-  if (variant === 'idle') {
-    return { glyph: '…', label: 'idle', title: `${status.name}: awaiting first request` }
-  }
-  const fetch = status.lastListFetch as Exclude<SourceStatus['lastListFetch'], null>
-  return {
-    glyph: '✓',
-    label: `${fetch.poiCount} POI`,
-    title: `${status.name}: last fetch ${relativeTime(fetch.at)}`
-  }
-}
+// pillVariant + pillContent are in `../source-status-pill.ts` so the
+// unit tests can import them without bringing in JSX.
 
 // Pre-computed style objects for the non-default pill variants, so React
 // sees a stable identity across renders rather than a fresh spread per

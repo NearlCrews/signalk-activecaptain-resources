@@ -9,11 +9,19 @@
  * issues no list query against NOAA until it returns.
  */
 
-import { createNoaaEncSource, NOAA_ENC_SOURCE_ID } from './noaa-enc-source.js'
+import { createNoaaEncSource } from './noaa-enc-source.js'
 import { createEncDirectClient } from './enc-direct-client.js'
 import type { ScaleBand } from './enc-direct-types.js'
 import { DEFAULT_DEDUPE_RADIUS_METERS } from '../dedupe-pois.js'
 import type { InputContext, InputModule } from '../poi-source.js'
+import {
+  clampBboxDebounceSeconds,
+  DEFAULT_BBOX_DEBOUNCE_SECONDS,
+  MAX_BBOX_DEBOUNCE_SECONDS,
+  MIN_BBOX_DEBOUNCE_SECONDS
+} from '../../shared/bbox-debounce.js'
+import { positiveFiniteNumber } from '../../shared/numbers.js'
+import { NOAA_ENC_SOURCE_ID } from '../../shared/source-ids.js'
 import type { PluginConfig } from '../../shared/types.js'
 import {
   clampMinimumYear,
@@ -29,18 +37,6 @@ const SCALE_BANDS: readonly ScaleBand[] = [
 
 /** Default scale band when the configuration omits one. */
 const DEFAULT_SCALE_BAND: ScaleBand = 'coastal'
-
-/**
- * Default and bounds for the per-bbox debounce period. The default of 30 s
- * matches a reasonable Freeboard refresh cadence: a stationary user can pan
- * around the same viewport without re-firing ENC requests every keystroke,
- * but a user who has moved to a new view sees fresh data within seconds.
- * The bounds prevent a hand-edited config from disabling all queries (high
- * bound) or asking for an impractical sub-second debounce (low bound).
- */
-const DEFAULT_REFRESH_SECONDS = 30
-const MIN_REFRESH_SECONDS = 0
-const MAX_REFRESH_SECONDS = 600
 
 /** The enable, dedupe, scale-band, and per-layer config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
@@ -91,18 +87,10 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   noaaEncRefreshSeconds: {
     type: 'number',
     title: 'NOAA ENC bbox-debounce window, in seconds (0 to query upstream on every list call)',
-    default: DEFAULT_REFRESH_SECONDS,
-    minimum: MIN_REFRESH_SECONDS,
-    maximum: MAX_REFRESH_SECONDS
+    default: DEFAULT_BBOX_DEBOUNCE_SECONDS,
+    minimum: MIN_BBOX_DEBOUNCE_SECONDS,
+    maximum: MAX_BBOX_DEBOUNCE_SECONDS
   }
-}
-
-/** Clamp a raw refresh-seconds value, falling back to the default on garbage. */
-function resolveRefreshSeconds (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_REFRESH_SECONDS
-  if (raw < MIN_REFRESH_SECONDS) return MIN_REFRESH_SECONDS
-  if (raw > MAX_REFRESH_SECONDS) return MAX_REFRESH_SECONDS
-  return Math.trunc(raw)
 }
 
 /** Resolve the scale band from raw config, falling back to the default. */
@@ -126,10 +114,8 @@ export const noaaEncInput: InputModule = {
   // matching the OpenSeaMap and Light List inputs.
   isDedupeEnabled: (config: PluginConfig) => config.noaaEncDedupe !== false,
   // Per-source merge radius surfaced on the NOAA card.
-  dedupeRadiusMeters: (config: PluginConfig) => {
-    const value = config.noaaEncDedupeRadiusMeters
-    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
-  },
+  dedupeRadiusMeters: (config: PluginConfig) =>
+    positiveFiniteNumber(config.noaaEncDedupeRadiusMeters),
   createSource: (context: InputContext) => {
     const { config, status, getCurrentPosition } = context
     return createNoaaEncSource({
@@ -142,7 +128,7 @@ export const noaaEncInput: InputModule = {
       includeObstructions: config.noaaEncIncludeObstructions !== false,
       includeRocks: config.noaaEncIncludeRocks === true,
       minimumYear: clampMinimumYear(config.noaaEncMinimumSurveyYear),
-      refreshSeconds: resolveRefreshSeconds(config.noaaEncRefreshSeconds),
+      refreshSeconds: clampBboxDebounceSeconds(config.noaaEncRefreshSeconds),
       status,
       getCurrentPosition
     })

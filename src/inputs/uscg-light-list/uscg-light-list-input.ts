@@ -9,14 +9,13 @@
  * NAVCEN until it returns.
  */
 
-import {
-  createUscgLightListSource,
-  USCG_LIGHT_LIST_SOURCE_ID
-} from './uscg-light-list-source.js'
+import { createUscgLightListSource } from './uscg-light-list-source.js'
 import type { UscgLightListSource } from './uscg-light-list-source.js'
 import { createLightListClient } from './light-list-client.js'
 import { createLightListStore } from './light-list-store.js'
 import type { InputContext, InputModule } from '../poi-source.js'
+import { positiveFiniteNumber } from '../../shared/numbers.js'
+import { USCG_LIGHT_LIST_SOURCE_ID } from '../../shared/source-ids.js'
 import { MS_PER_HOUR } from '../../shared/time.js'
 import type { PluginConfig } from '../../shared/types.js'
 import { DEFAULT_DEDUPE_RADIUS_METERS } from '../dedupe-pois.js'
@@ -95,10 +94,8 @@ export const uscgLightListInput: InputModule = {
   // it off, matching the OpenSeaMap input.
   isDedupeEnabled: (config: PluginConfig) => config.uscgLightListDedupe !== false,
   // Per-source merge radius surfaced on the USCG card.
-  dedupeRadiusMeters: (config: PluginConfig) => {
-    const value = config.uscgLightListDedupeRadiusMeters
-    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
-  },
+  dedupeRadiusMeters: (config: PluginConfig) =>
+    positiveFiniteNumber(config.uscgLightListDedupeRadiusMeters),
   createSource: (context: InputContext) => {
     const { app, config, status, dataDir, getCurrentPosition } = context
     const client = createLightListClient()

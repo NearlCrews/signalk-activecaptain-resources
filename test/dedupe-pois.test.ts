@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dedupeAgainstBase, BASE_SOURCE_ID } from '../src/inputs/dedupe-pois.js'
+import { dedupeAgainstBase } from '../src/inputs/dedupe-pois.js'
+import { ACTIVE_CAPTAIN_SOURCE_ID as BASE_SOURCE_ID } from '../src/shared/source-ids.js'
 import type { PoiSummary, PoiType } from '../src/shared/types.js'
 
 /** Build a POI at a latitude/longitude with the given source and type. */

@@ -1,0 +1,56 @@
+/**
+ * Pure helpers for the per-source status pill rendered by
+ * `DataSourceCard.tsx`. Lives in its own non-TSX module so the unit
+ * tests can import the variant + content logic without pulling in any
+ * React JSX (the test tsconfig has `--jsx` off by design: source code
+ * targets the panel tsconfig, tests target the node tsconfig).
+ */
+
+import { relativeTime } from './relative-time.js'
+import type { SourceStatus } from '../status/status-types.js'
+
+/** The three variants the status pill renders in. */
+export type PillVariant = 'idle' | 'ok' | 'error'
+
+/** The display content of a status pill: the glyph, the short label, and the long tooltip. */
+export interface PillContent {
+  glyph: string
+  label: string
+  title: string
+}
+
+/**
+ * Classify a SourceStatus into one of the three pill variants:
+ *  - `'error'` whenever the most recent attempt failed (apiReachable=false),
+ *  - `'idle'` when no list fetch has resolved yet (lastListFetch=null), and
+ *  - `'ok'` otherwise.
+ *
+ * The error branch outranks idle: a source with a failed most-recent
+ * attempt but a still-cached stale prior fetch still reads as in error.
+ */
+export function pillVariant (status: SourceStatus): PillVariant {
+  if (status.apiReachable === false) return 'error'
+  if (status.lastListFetch === null) return 'idle'
+  return 'ok'
+}
+
+/**
+ * Compose the visible glyph + short label and the longer tooltip text
+ * for a pill in the given state. The `ok` tooltip includes a relative
+ * "last fetch N minutes ago" reading so a stale snapshot is visible on
+ * hover.
+ */
+export function pillContent (status: SourceStatus, variant: PillVariant): PillContent {
+  if (variant === 'error') {
+    return { glyph: '!', label: 'error', title: `${status.name}: last request failed` }
+  }
+  if (variant === 'idle') {
+    return { glyph: '…', label: 'idle', title: `${status.name}: awaiting first request` }
+  }
+  const fetch = status.lastListFetch as Exclude<SourceStatus['lastListFetch'], null>
+  return {
+    glyph: '✓',
+    label: `${fetch.poiCount} POI`,
+    title: `${status.name}: last fetch ${relativeTime(fetch.at)}`
+  }
+}

@@ -62,16 +62,24 @@ export interface NotificationEmitterApp {
  * context), carrying the plugin id as `$source`, the value's own `timestamp`,
  * and one path/value pair. The path is `pathPrefix` completed with the
  * path-safe POI id, and `value` is the per-output notification object.
+ *
+ * `sourceSuffix` differentiates the `$source` per alarm output, so consumers
+ * filtering by `$source` can tell a proximity alarm from a route-corridor
+ * one even though both come from this plugin. The suffix follows the
+ * SignalK convention of `<plugin-id>.<feature>`, e.g. the proximity output
+ * passes `'proximity'` to yield `signalk-crows-nest.proximity`.
  */
 export function emitNotification (
   app: NotificationEmitterApp,
   pathPrefix: string,
   poiId: string,
-  value: NotificationValue
+  value: NotificationValue,
+  sourceSuffix?: string
 ): void {
+  const $source = (sourceSuffix === undefined ? PLUGIN_ID : `${PLUGIN_ID}.${sourceSuffix}`) as SourceRef
   app.handleMessage(PLUGIN_ID, {
     updates: [{
-      $source: PLUGIN_ID as SourceRef,
+      $source,
       timestamp: value.timestamp as Timestamp,
       values: [{
         path: `${pathPrefix}${sanitizePoiId(poiId)}` as Path,

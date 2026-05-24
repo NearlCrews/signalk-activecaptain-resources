@@ -9,7 +9,8 @@
  */
 
 import type { InputContext, InputModule, PoiSource } from './poi-source.js'
-import { BASE_SOURCE_ID, dedupeAgainstBase } from './dedupe-pois.js'
+import { dedupeAgainstBase } from './dedupe-pois.js'
+import { ACTIVE_CAPTAIN_SOURCE_ID } from '../shared/source-ids.js'
 import type { PoiSummary } from '../shared/types.js'
 
 /** Public surface of the input registry. */
@@ -46,9 +47,9 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
       // radius surfaced on its card. Sources that omit the contract use
       // DEFAULT_DEDUPE_RADIUS_METERS via the dedupe pass's fallback.
       const dedupeRadiusBySource = new Map<string, number>()
-      if (enabled.some((module) => module.id === BASE_SOURCE_ID)) {
+      if (enabled.some((module) => module.id === ACTIVE_CAPTAIN_SOURCE_ID)) {
         for (const module of enabled) {
-          if (module.id !== BASE_SOURCE_ID && module.isDedupeEnabled?.(context.config) === true) {
+          if (module.id !== ACTIVE_CAPTAIN_SOURCE_ID && module.isDedupeEnabled?.(context.config) === true) {
             dedupeSources.add(module.id)
             const radius = module.dedupeRadiusMeters?.(context.config)
             if (radius !== undefined) {
@@ -123,8 +124,8 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
           }
           return await source.getDetails(rawId)
         },
-        cacheSize: () => [...sources.values()].reduce((sum, s) => sum + s.cacheSize(), 0),
-        close: () => { for (const s of sources.values()) s.close() }
+        cacheSize: () => sourceList.reduce((sum, s) => sum + s.cacheSize(), 0),
+        close: () => { for (const s of sourceList) s.close() }
       }
     }
   }
