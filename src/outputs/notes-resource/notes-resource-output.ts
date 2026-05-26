@@ -21,19 +21,13 @@ import type { PoiSummary } from '../../shared/types.js'
 const RESOURCE_TYPE = 'notes'
 
 /**
- * Error thrown for read-only resource methods (`setResource` and
- * `deleteResource`). Carrying `statusCode: 405` (Method Not Allowed)
- * tells signalk-server's resource HTTP layer to return 405 instead of a
- * generic 500, which clients like Freeboard-SK rely on to distinguish
- * an unsupported method from a transient server bug.
+ * Error message thrown by the read-only resource methods. The SignalK
+ * resources REST layer hardcodes the HTTP status for thrown errors (400 on
+ * POST, 404 on PUT, 400 on DELETE) and does not read any `statusCode`
+ * field off the error, so the wire status is fixed by the server; this
+ * message is what reaches the client body either way.
  */
-class MethodNotAllowedError extends Error {
-  readonly statusCode = 405
-  constructor (message: string) {
-    super(message)
-    this.name = 'MethodNotAllowedError'
-  }
-}
+const READ_ONLY_MESSAGE = "Crow's nest notes resources are read-only"
 
 /** Build the resource-provider methods bound to one plugin run's context. */
 function buildMethods (context: OutputContext): ResourceProviderMethods {
@@ -121,10 +115,10 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
     },
 
     setResource: (): Promise<void> =>
-      Promise.reject(new MethodNotAllowedError('Crow\'s nest notes resources are read-only')),
+      Promise.reject(new Error(READ_ONLY_MESSAGE)),
 
     deleteResource: (): Promise<void> =>
-      Promise.reject(new MethodNotAllowedError('Crow\'s nest notes resources are read-only'))
+      Promise.reject(new Error(READ_ONLY_MESSAGE))
   }
 }
 

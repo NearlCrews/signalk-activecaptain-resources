@@ -13,12 +13,12 @@
  * detail outcomes to the source's cache listener.
  */
 
-import { assertResponseOk, createHttpClient, type RateLimitOptions } from '../http-client.js'
+import { assertResponseOk, createHttpClient, type RateLimitOptions, type Sleep } from '../http-client.js'
 import type { Bbox, PoiSummary, Logger } from '../../shared/types.js'
 import type { PoiDetails, PoiListResponse } from './active-captain-types.js'
 
 export { HttpError } from '../http-client.js'
-export type { RateLimitOptions } from '../http-client.js'
+export type { RateLimitOptions, Sleep } from '../http-client.js'
 
 /**
  * A list entry as produced by the client. It carries every `PoiSummary` field
@@ -88,16 +88,20 @@ export interface ActiveCaptainClient {
  * @param log     Logging surface used for diagnostics.
  * @param options Optional rate-limit overrides. Mainly used by tests to keep
  *                them fast; production callers can pass just the logger.
+ * @param sleep   Optional sleep-injection so tests can capture the requested
+ *                Retry-After wait without paying it on the wall clock.
+ *                Production callers pass nothing.
  */
 export function createActiveCaptainClient (
   log: Logger,
-  options: Partial<RateLimitOptions> = {}
+  options: Partial<RateLimitOptions> = {},
+  sleep?: Sleep
 ): ActiveCaptainClient {
   const http = createHttpClient(log, {
     label: 'ActiveCaptain',
     requestTimeoutMs: REQUEST_TIMEOUT_MS,
     defaults: DEFAULTS
-  }, options)
+  }, options, sleep)
 
   async function listPointsOfInterest (bbox: Bbox, poiTypes: string): Promise<ClientPoiSummary[]> {
     const url = `${BASE_URL}/community/api/v1/points-of-interest/bbox`

@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report a bug. Please fill out the sections below so the issue can be reproduced and triaged.
-        For usage questions, please use [Discussions](https://github.com/KvotheBloodless/signalk-activecaptain-resources/discussions) instead.
+        For usage questions, please use [Discussions](https://github.com/NearlCrews/signalk-crows-nest/discussions) instead.
 
   - type: textarea
     id: description

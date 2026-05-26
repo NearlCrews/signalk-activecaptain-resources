@@ -30,7 +30,6 @@ test('buildNoteResource omits timestamp and description when not supplied', () =
   assert.equal(note.timestamp, undefined)
   assert.equal(note.description, undefined)
   assert.deepEqual(note.properties, {
-    readOnly: true,
     skIcon: 'marina',
     source: SAMPLE_SOURCE,
     attribution: SAMPLE_ATTRIBUTION

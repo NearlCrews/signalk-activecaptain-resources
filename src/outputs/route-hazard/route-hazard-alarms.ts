@@ -110,7 +110,7 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
       state: 'normal',
       method: [],
       message: `"${name}" is no longer on the route ahead`,
-      timestamp: new Date().toISOString()
+      createdAt: new Date().toISOString()
     }),
     describeClear: (poiId, { name }) => `Route hazard alarm cleared for ${poiId} ("${name}")`
   })
@@ -130,7 +130,7 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
       state: 'warn',
       method: ['visual'],
       message,
-      timestamp: new Date().toISOString()
+      createdAt: new Date().toISOString()
     }
     emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value, SOURCE_SUFFIX)
   }

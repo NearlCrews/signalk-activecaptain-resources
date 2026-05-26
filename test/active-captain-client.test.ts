@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createActiveCaptainClient, type RateLimitOptions } from '../src/inputs/active-captain/active-captain-client.js'
+import { createActiveCaptainClient, type RateLimitOptions, type Sleep } from '../src/inputs/active-captain/active-captain-client.js'
 import type { Bbox } from '../src/shared/types.js'
 
 /** A logger that discards output, keeping test runs quiet. */
@@ -435,8 +435,23 @@ test('the request queue caps in-flight requests at maxConcurrency', async () => 
   )
 })
 
+/**
+ * Build a recording sleep injection. Each call resolves immediately and
+ * pushes the requested ms into `waits`, so a test can assert the wait the
+ * client asked for without paying it on the wall clock.
+ */
+function recordingSleep (): { sleep: Sleep, waits: number[] } {
+  const waits: number[] = []
+  return {
+    waits,
+    sleep: async (ms: number) => {
+      waits.push(ms)
+    }
+  }
+}
+
 test('a 429 Retry-After header in seconds is honored before the retry', async () => {
-  const start = Date.now()
+  const { sleep, waits } = recordingSleep()
   await withMockFetch(
     callIndex => callIndex === 0
       ? jsonResponse({ message: 'slow down' }, 429, { 'Retry-After': '1' })
@@ -444,21 +459,25 @@ test('a 429 Retry-After header in seconds is honored before the retry', async ()
     async calls => {
       const client = createActiveCaptainClient(silentLog, {
         minDelayMs: 0, backoffBaseMs: 1, maxBackoffMs: 5000, maxRetries: 2
-      })
+      }, sleep)
       const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
       assert.deepEqual(result, [])
       assert.equal(calls.count, 2)
     }
   )
-  // A 1-second Retry-After must delay the retry; backoff alone would be
-  // sub-millisecond with backoffBaseMs 1.
-  assert.ok(Date.now() - start >= 700, 'expected the retry to wait ~1s for Retry-After')
+  // The recorded wait is the value the client asked the sleeper for, not the
+  // observed wall-clock elapsed time. A 1 s Retry-After must produce a
+  // ~1000 ms wait; backoff alone with backoffBaseMs 1 would be sub-ms.
+  assert.equal(waits.length, 1, 'one sleep call between the two requests')
+  assert.equal(waits[0], 1000, 'expected the retry to wait exactly 1 s for Retry-After')
 })
 
 test('a 429 Retry-After header as an HTTP date is honored before the retry', async () => {
-  const start = Date.now()
-  // An HTTP date carries whole-second precision; two seconds ahead leaves a
-  // wait of at least one second once the sub-second part is truncated.
+  const { sleep, waits } = recordingSleep()
+  // An HTTP date carries whole-second precision; two seconds ahead leaves
+  // a wait of about 1.x s once the sub-second part is truncated by the
+  // parser. The exact value depends on event-loop timing, so the assertion
+  // brackets it loosely (between half a second and just over two seconds).
   const retryAt = new Date(Date.now() + 2000).toUTCString()
   await withMockFetch(
     callIndex => callIndex === 0
@@ -467,17 +486,19 @@ test('a 429 Retry-After header as an HTTP date is honored before the retry', asy
     async calls => {
       const client = createActiveCaptainClient(silentLog, {
         minDelayMs: 0, backoffBaseMs: 1, maxBackoffMs: 5000, maxRetries: 2
-      })
+      }, sleep)
       const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
       assert.deepEqual(result, [])
       assert.equal(calls.count, 2)
     }
   )
-  assert.ok(Date.now() - start >= 800, 'expected the retry to wait for the HTTP-date Retry-After')
+  assert.equal(waits.length, 1)
+  assert.ok(waits[0] >= 500 && waits[0] <= 2100,
+    `expected ~1-2 s HTTP-date Retry-After wait, got ${waits[0]} ms`)
 })
 
 test('a huge Retry-After value is capped at maxRetryAfterMs', async () => {
-  const start = Date.now()
+  const { sleep, waits } = recordingSleep()
   await withMockFetch(
     callIndex => callIndex === 0
       ? jsonResponse({ message: 'slow down' }, 429, { 'Retry-After': '99999' })
@@ -489,15 +510,16 @@ test('a huge Retry-After value is capped at maxRetryAfterMs', async () => {
         maxBackoffMs: 30,
         maxRetryAfterMs: 50,
         maxRetries: 2
-      })
+      }, sleep)
       const result = await client.listPointsOfInterest(sampleBbox, 'Marina')
       assert.deepEqual(result, [])
       assert.equal(calls.count, 2)
     }
   )
   // 99999 seconds would stall for over a day if honored literally; the cap
-  // holds the wait down to maxRetryAfterMs (50 ms here). The cap is
+  // pulls the wait down to maxRetryAfterMs (50 ms here). The cap is
   // decoupled from maxBackoffMs so a real Overpass-style cooldown
   // (60-120 s) is not truncated into another instant 429.
-  assert.ok(Date.now() - start < 2000, 'expected the huge Retry-After to be capped')
+  assert.equal(waits.length, 1)
+  assert.equal(waits[0], 50, 'expected the huge Retry-After to be capped at maxRetryAfterMs')
 })

@@ -82,11 +82,18 @@ export interface BboxDebounceCache<T> {
  * Build the cache key for a bbox and an optional extra discriminator. Four
  * decimal places (about 11 m) is coarse enough to collapse sub-pixel jitter
  * from Freeboard's bbox math yet fine enough to keep zoom levels distinct.
+ *
+ * `extraKey` is escaped before joining so a future caller whose discriminator
+ * happens to contain a literal `|` cannot collide with another caller's
+ * bbox-plus-remainder. Backslashes inside the discriminator are escaped first
+ * to keep the escaping unambiguous.
  */
 function bboxKey (bbox: Bbox, extraKey?: string): string {
   const base =
     `${bbox.south.toFixed(4)}_${bbox.west.toFixed(4)}_${bbox.north.toFixed(4)}_${bbox.east.toFixed(4)}`
-  return extraKey === undefined ? base : `${base}|${extraKey}`
+  if (extraKey === undefined) return base
+  const escaped = extraKey.replace(/\\/g, '\\\\').replace(/\|/g, '\\|')
+  return `${base}|${escaped}`
 }
 
 /**

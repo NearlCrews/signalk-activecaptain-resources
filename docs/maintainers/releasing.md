@@ -16,8 +16,11 @@ token, or a Granular token with publish and read access to this package).
 Secret names are case-insensitive in GitHub Actions, but `NPM_TOKEN` is the
 canonical form.
 
-The package's `files` field publishes `dist/` and `public/`; source, tests,
-and docs are not shipped to npm.
+The package's `files` field publishes `dist/`, `public/`, and `assets/`;
+source, tests, and docs are not shipped to npm. The `assets/` directory
+carries the SignalK admin-UI icon set (the master SVG plus the four
+rasterized PNGs); the `build:icons` script also copies them under
+`public/assets/icons/` so the admin's `express.static` mount can serve them.
 
 ## Checklist
 

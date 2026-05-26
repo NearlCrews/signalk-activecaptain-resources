@@ -16,15 +16,20 @@ import { PLUGIN_ID } from './plugin-id.js'
  * Common shape of a notification value the plugin's alarm outputs emit. Each
  * output narrows the `state` union to the severities it raises (the proximity
  * alarm uses `alarm`, the route-hazard scan uses `warn`), but the cleared
- * state, the method array, the human-readable message, and the timestamp are
- * the same across both outputs. This is a superset of the SignalK
- * `Notification` shape: it also carries the `timestamp`, per the Tier 1 design.
+ * state, the method array, the human-readable message, and the
+ * notification-creation timestamp are the same across both outputs.
+ *
+ * The optional `createdAt` field matches the SignalK Notification spec's
+ * optional `createdAt`, so a strict server-side validator does not reject
+ * the value as having an unknown field. The wire `timestamp` on the outer
+ * Update is set from this value too, so a consumer that reads the standard
+ * Update.timestamp gets the same instant.
  */
 export interface NotificationValue {
   state: 'alarm' | 'warn' | 'normal'
   method: Array<'visual' | 'sound'>
   message: string
-  timestamp: string
+  createdAt: string
 }
 
 /**
@@ -80,7 +85,7 @@ export function emitNotification (
   app.handleMessage(PLUGIN_ID, {
     updates: [{
       $source,
-      timestamp: value.timestamp as Timestamp,
+      timestamp: value.createdAt as Timestamp,
       values: [{
         path: `${pathPrefix}${sanitizePoiId(poiId)}` as Path,
         value

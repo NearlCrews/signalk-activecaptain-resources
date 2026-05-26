@@ -69,8 +69,9 @@ full browser reload of the admin UI so it re-fetches the panel bundle.
 ## The status section shows errors or a stale fetch time
 
 The status section reports each enabled source's API reachability and last
-successful fetch time, the total cached POI count, and the most recent
-global errors. Recent errors there are real: they are the failures the
+successful fetch time, plus the most recent global errors. Each card's pill
+shows the source's health (ok, idle, or error), not a rolling POI count: a
+per-fetch count would look broken on a stable source. Recent errors there are real: they are the failures the
 plugin recorded while talking to a source's API. Common causes are a lost
 internet connection, Cloudflare throttling the ActiveCaptain community API,
 or an overloaded Overpass endpoint. The plugin retries `429` and `5xx`

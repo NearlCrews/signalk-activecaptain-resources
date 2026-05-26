@@ -36,6 +36,32 @@ export interface NumberDraft {
 }
 
 /**
+ * Compute the numeric value a raw draft string should commit to, applying the
+ * empty/fallback rule, the parse-failure fallback, the integer-truncation
+ * option, and the min/max clamp. Extracted from {@link useNumberDraft} as a
+ * pure function so the parsing and clamping rules can be unit-tested under
+ * node:test without React testing infrastructure.
+ *
+ * The hook's state-management bits (the draft buffer and the external-change
+ * detector) remain in the hook because they depend on React state.
+ */
+export function commitNumberDraft (raw: string, options: NumberDraftOptions): number {
+  const fallback = options.fallback ?? options.min
+  if (raw.trim() === '') {
+    return fallback
+  }
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  let next = parsed
+  if (options.integer === true) next = Math.trunc(next)
+  if (options.max !== undefined && next > options.max) next = options.max
+  if (next < options.min) next = options.min
+  return next
+}
+
+/**
  * Drive a controlled numeric input with a draft-while-editing buffer. `value`
  * is the committed number; `onChange` receives the clamped value for every
  * keystroke (so the parent's state stays in sync as the user types).
@@ -63,33 +89,15 @@ export function useNumberDraft (
     setDraft(null)
   }, [value])
 
-  const commit = (raw: string): void => {
-    const fallback = options.fallback ?? options.min
-    let next: number
-    if (raw.trim() === '') {
-      next = fallback
-    } else {
-      const parsed = Number(raw)
-      if (!Number.isFinite(parsed)) {
-        next = fallback
-      } else {
-        next = parsed
-        if (options.integer === true) next = Math.trunc(next)
-        if (options.max !== undefined && next > options.max) next = options.max
-        if (next < options.min) next = options.min
-      }
-    }
-    // Tag this committed value so the external-change-detector recognizes
-    // the next render's `value` as ours and leaves the draft in place.
-    lastCommittedFromHere.current = next
-    onChange(next)
-  }
-
   return {
     display: draft ?? String(value),
     handleChange: (raw) => {
       setDraft(raw)
-      commit(raw)
+      const next = commitNumberDraft(raw, options)
+      // Tag this committed value so the external-change-detector recognizes
+      // the next render's `value` as ours and leaves the draft in place.
+      lastCommittedFromHere.current = next
+      onChange(next)
     },
     handleBlur: () => setDraft(null)
   }

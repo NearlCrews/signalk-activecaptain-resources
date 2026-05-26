@@ -20,6 +20,7 @@ npm install
 npm run build         # Build the plugin and the configuration panel
 npm run build:plugin  # Compile src/ (excluding src/panel/) to dist/ with tsc
 npm run build:panel   # Bundle the React panel to public/ with webpack
+npm run build:icons   # Copy the SignalK admin-UI icon set into public/assets/icons/
 npm test              # Run the test suite under test/
 npm run typecheck     # Type-check the plugin, panel, and tests (no emit)
 npm run lint          # Lint with ESLint 9 and neostandard
@@ -123,8 +124,11 @@ docs/                     # Project documentation
 .github/                  # Community files, issue templates, and CI workflows
 ```
 
-`dist/` and `public/` are the directories published to npm (see the `files`
-field in `package.json`).
+`dist/`, `public/`, and `assets/` are the directories published to npm (see
+the `files` field in `package.json`). `assets/icons/` holds the SignalK
+admin-UI icon set (the master SVG and the four rasterized PNGs), and the
+`build:icons` script copies them under `public/assets/icons/` so the SignalK
+admin's `express.static` mount can serve them at runtime.
 
 ## Testing
 

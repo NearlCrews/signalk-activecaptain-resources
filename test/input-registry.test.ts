@@ -262,6 +262,89 @@ test('close closes every source', () => {
   assert.deepEqual(closed.sort(), ['sourceA', 'sourceB'])
 })
 
+test('listPointsOfInterest times out a slow source, ships the others, and records the slow source as skipped', async () => {
+  // The slow source's promise never resolves; the fast source returns
+  // immediately. The aggregate's per-source timeout wins the race for
+  // the slow source and ships the fast source's POIs alone. A short
+  // override on the registry's perSourceListTimeoutMs makes the test
+  // resolve in well under a second rather than waiting the production 5 s.
+  const skips: Array<{ source: string, reason: string }> = []
+  const fetches: Array<{ source: string, count: number }> = []
+  const slow = stubModule('slow', true, stubSource('slow', {
+    list: () => new Promise<PoiSummary[]>(() => {})
+  }))
+  const fast = stubModule('fast', true, stubSource('fast', {
+    list: async () => [summary('1', 'fast'), summary('2', 'fast')]
+  }))
+  const ctx = {
+    app: { debug: () => {} },
+    config: {},
+    dataDir: '/tmp',
+    status: {
+      recordListFetch: (source: string, count: number) => fetches.push({ source, count }),
+      recordDetailSuccess: () => {},
+      recordError: () => {},
+      recordSkipped: (source: string, reason: string) => skips.push({ source, reason }),
+      wasJustSkipped: () => false
+    }
+  } as never
+  const registry = createInputRegistry([slow, fast], { perSourceListTimeoutMs: 25 })
+  const source = registry.createSource(ctx)
+  const list = await source.listPointsOfInterest(SAMPLE_BBOX, '')
+  assert.deepEqual(
+    list.map((poi) => poi.id).sort(),
+    ['fast-1', 'fast-2'],
+    'the fast source ships immediately; the slow source contributes nothing this call'
+  )
+  assert.deepEqual(fetches, [{ source: 'fast', count: 2 }], 'only the fast source records a list fetch')
+  assert.equal(skips.length, 1)
+  assert.equal(skips[0].source, 'slow')
+  assert.match(skips[0].reason, /exceeded|timed out/i)
+})
+
+test('listPointsOfInterest does not throw when every source times out', async () => {
+  // If every source times out, the aggregate ships an empty partial result
+  // rather than rejecting: the background fetches keep running and the
+  // chart plotter's next refresh will see their populated bbox-debounce
+  // caches.
+  const stuck = stubModule('stuck', true, stubSource('stuck', {
+    list: () => new Promise<PoiSummary[]>(() => {})
+  }))
+  const ctx = {
+    app: { debug: () => {} },
+    config: {},
+    dataDir: '/tmp',
+    status: silentStatus
+  } as never
+  const registry = createInputRegistry([stuck], { perSourceListTimeoutMs: 25 })
+  const list = await registry.createSource(ctx).listPointsOfInterest(SAMPLE_BBOX, '')
+  assert.deepEqual(list, [])
+})
+
+test('listPointsOfInterest clones each summary position so a downstream mutation does not corrupt the cached entry', async () => {
+  // The bbox-debounce caches share the same PoiSummary[] across hits, so the
+  // aggregate must clone each `position` object when it rewrites the id;
+  // otherwise a chart-plotter consumer that mutates `note.position` (a
+  // projection step, say) would silently corrupt the cached entry for the
+  // next caller.
+  const sharedPosition = { latitude: 12.34, longitude: 56.78 }
+  const a = stubModule('sourceA', true, stubSource('sourceA', {
+    list: async () => [{
+      ...summary('1', 'sourceA'),
+      position: sharedPosition
+    }]
+  }))
+  const source = createInputRegistry([a]).createSource(context)
+  const list = await source.listPointsOfInterest(SAMPLE_BBOX, '')
+  assert.equal(list.length, 1)
+  assert.notStrictEqual(
+    list[0].position,
+    sharedPosition,
+    'the merged summary carries its own position object'
+  )
+  assert.deepEqual(list[0].position, sharedPosition, 'with the same coordinates')
+})
+
 test('listPointsOfInterest does NOT record a list fetch when a source returned empty due to skip', async () => {
   // The aggregate must distinguish "fetched zero POIs" (a real, recordable
   // outcome) from "did not bother, skipped" (the source returned empty after

@@ -18,7 +18,7 @@ test('raises an alarm for a hazard within the radius', () => {
   assert.deepEqual(captured[0].value.method, ['visual', 'sound'])
   assert.ok(captured[0].value.message.includes('Submerged rock'), 'message names the hazard')
   assert.ok(/\d+\s*m/.test(captured[0].value.message), 'message reports the distance')
-  assert.ok(captured[0].value.timestamp.length > 0, 'a timestamp is present')
+  assert.ok(captured[0].value.createdAt.length > 0, 'a createdAt timestamp is present')
 })
 
 test('does not raise an alarm for a hazard outside the radius', () => {

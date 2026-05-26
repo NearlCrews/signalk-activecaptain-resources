@@ -188,7 +188,9 @@ self-contained module registered on one line in `src/index.ts`.
     in a non-tsx module so the unit tests import it without JSX).
     `hooks/` holds `use-config`, `use-status`, and `use-number-draft` (the
     raw-text draft state for clearable numeric inputs). `components/` holds
-    the layout pieces: `StatusBar`, `FooterBar`, `DataSourcesSection`
+    the layout pieces: `SectionBox` (the shared collapsible-section
+    primitive: section heading, chevron, focus-restore on collapse), and
+    on top of it `StatusBar`, `FooterBar`, `DataSourcesSection`
     (the per-source accordion shell), `DataSourceCard` (one collapsible
     card, with an in-header live-status pill and a body that stays mounted
     via `display: none` so an in-progress NumberField draft survives a

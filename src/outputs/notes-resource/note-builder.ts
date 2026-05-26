@@ -45,7 +45,11 @@ export interface NoteResourceInput {
  */
 export function buildNoteResource (input: NoteResourceInput): Record<string, unknown> {
   const { name, position, skIcon, url, source, attribution, sources, timestamp, description } = input
-  const properties: Record<string, unknown> = { readOnly: true, skIcon, source, attribution }
+  // `readOnly` is intentionally NOT set in properties: it is not a standard
+  // SignalK notes property and a strict server-side validator could strip
+  // it. The read-only contract is enforced by the resource provider's
+  // setResource/deleteResource methods, which reject every write.
+  const properties: Record<string, unknown> = { skIcon, source, attribution }
   // More than one contributing source is a corroboration signal: the same
   // physical feature was reported independently by each listed source.
   if (sources !== undefined && sources.length > 1) {

@@ -197,17 +197,28 @@ export interface HttpClient {
 }
 
 /**
+ * A `setTimeout`-driven millisecond sleep. The default `sleep` implementation
+ * for {@link createHttpClient}; injectable for tests.
+ */
+export type Sleep = (ms: number) => Promise<void>
+
+/**
  * Build a rate-limited HTTP client.
  *
  * @param log     Logging surface used for retry diagnostics.
  * @param config  Per-client identity, timeout, and rate-limit defaults.
  * @param options Optional rate-limit overrides; fields not set fall back to
  *                {@link HttpClientConfig.defaults}.
+ * @param sleep   Optional millisecond-sleep injection. Defaults to a
+ *                `setTimeout`-driven sleep; tests pass a spy that records the
+ *                requested ms and resolves immediately, so timing-sensitive
+ *                tests can assert the requested wait instead of waiting it.
  */
 export function createHttpClient (
   log: Logger,
   config: HttpClientConfig,
-  options: Partial<RateLimitOptions> = {}
+  options: Partial<RateLimitOptions> = {},
+  sleep: Sleep = delay
 ): HttpClient {
   const limits: RateLimitOptions = {
     maxConcurrency: options.maxConcurrency ?? config.defaults.maxConcurrency,
@@ -262,7 +273,7 @@ export function createHttpClient (
         )
         // Release the socket: the retried response body is never read.
         await response.body?.cancel()
-        await delay(wait)
+        await sleep(wait)
         attempt++
       } catch (error) {
         // Do not retry once the client is closed, and do not retry past the
@@ -275,7 +286,7 @@ export function createHttpClient (
           `${config.label} request to ${url} failed (${String(error)}), ` +
           `retrying in ${Math.round(wait)}ms (attempt ${attempt + 1}/${limits.maxRetries})`
         )
-        await delay(wait)
+        await sleep(wait)
         attempt++
       }
     }

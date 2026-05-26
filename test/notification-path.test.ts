@@ -27,7 +27,7 @@ test('emitNotification builds the shared notification delta', () => {
     state: 'alarm',
     method: ['visual', 'sound'],
     message: 'Rock ahead',
-    timestamp: '2026-05-22T00:00:00.000Z'
+    createdAt: '2026-05-22T00:00:00.000Z'
   }
 
   emitNotification(app, 'notifications.navigation.crowsNest.hazard.', 'h1', value)
@@ -67,7 +67,7 @@ test('emitNotification sanitizes the POI id embedded in the path', () => {
       state: 'normal',
       method: [],
       message: 'cleared',
-      timestamp: '2026-05-22T00:00:00.000Z'
+      createdAt: '2026-05-22T00:00:00.000Z'
     }
   )
 

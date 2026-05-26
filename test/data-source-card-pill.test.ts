@@ -68,6 +68,7 @@ test('pillContent for the ok variant shows the check glyph, a short "ok" label, 
   const content = pillContent(
     status({
       name: 'USCG Light List',
+      apiReachable: true,
       lastListFetch: { at: new Date(Date.now() - 5 * 60_000).toISOString(), poiCount: 17 }
     }),
     'ok'
@@ -87,6 +88,7 @@ test('pillContent for the ok variant keeps the "ok" label when the last fetch re
   const content = pillContent(
     status({
       name: 'Garmin ActiveCaptain',
+      apiReachable: true,
       lastListFetch: { at: new Date().toISOString(), poiCount: 0 }
     }),
     'ok'
@@ -100,6 +102,7 @@ test('pillContent singularizes "1 POI" in the title tooltip', () => {
   const content = pillContent(
     status({
       name: 'OpenSeaMap',
+      apiReachable: true,
       lastListFetch: { at: new Date().toISOString(), poiCount: 1 }
     }),
     'ok'

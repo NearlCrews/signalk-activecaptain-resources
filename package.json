@@ -1,6 +1,6 @@
 {
   "name": "signalk-crows-nest",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Imports Garmin ActiveCaptain, OpenSeaMap, USCG Light List, and NOAA ENC Direct points of interest as Signal K notes resources, with proximity and route-corridor hazard alarms.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,7 +13,7 @@
     "build": "npm run build:plugin && npm run build:panel && npm run build:icons",
     "build:plugin": "tsc",
     "build:panel": "webpack --config webpack.config.cjs",
-    "build:icons": "mkdir -p public/assets/icons && cp assets/icons/icon.svg assets/icons/icon-72.png assets/icons/icon-96.png assets/icons/icon-192.png assets/icons/icon-512.png public/assets/icons/",
+    "build:icons": "mkdir -p public/assets/icons && cp assets/icons/icon.svg assets/icons/icon-*.png public/assets/icons/",
     "watch:panel": "webpack --watch --mode development --config webpack.config.cjs",
     "clean": "rm -rf dist public",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.panel.json && tsc --noEmit -p tsconfig.test.json",
@@ -44,7 +44,7 @@
   "signalk-plugin-enabled-by-default": false,
   "signalk": {
     "displayName": "Crow's Nest",
-    "appIcon": "./assets/icons/icon-192.png"
+    "appIcon": "assets/icons/icon-192.png"
   },
   "engines": {
     "node": ">=20.3.0"

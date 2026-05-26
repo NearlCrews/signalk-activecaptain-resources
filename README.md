@@ -15,22 +15,21 @@ hazard alarms. Pairs well with sibling plugins such as
 > Built on the foundation of [`signalk-activecaptain-resources`](https://github.com/KvotheBloodless/signalk-activecaptain-resources)
 > by Paul Willems and the Signal K community.
 
-## What's New in v0.4.3
+## What's New in v0.4.4
 
-A bug-fix release. The minimum-rating filter on the ActiveCaptain card
-treated a never-reviewed marina as a 0-star marina, so picking
-`minimumRating: 2` was hiding brand-new marinas alongside the
-low-quality ones; the popup also rendered a meaningless "0/5 ⭐ from
-(0 reviews)" line for those. Both are fixed: a zero-review
-reviewSummary is now treated as unrated everywhere. v0.4.3 also
-reclassifies the plugin under the SignalK Appstore's Chart Plotters
-and Notifications categories (the previous Utility classification
-buried it alongside log players and calibration tools), adds
-discoverability keywords for npm search, and bumps the GitHub Actions
-runners ahead of the Node.js 20 deprecation.
+A performance and polish release. Chart-load latency on a cold viewport
+drops from 15-30 s to about 5 s by capping each POI source's list
+request at a per-source timeout: a slow Overpass or NOAA ENC query no
+longer holds up the chart while the other sources answer; the slow
+source's POIs appear on the next chart-plotter refresh once its
+bbox-debounce cache is populated. The canonical plugin icon (a crimson
+lookout-in-a-barrel badge over the shared deep-ocean family motif)
+ships in the same release, alongside a three-agent code-review pass
+that landed SignalK conformance, correctness, and UI/docs/test cleanup
+all the way through the nit tier.
 
-See the [v0.4.3 changelog entry](CHANGELOG.md#v043) and the
-[v0.4.3 release](https://github.com/NearlCrews/signalk-crows-nest/releases/tag/v0.4.3).
+See the [v0.4.4 changelog entry](CHANGELOG.md#v044) and the
+[v0.4.4 release](https://github.com/NearlCrews/signalk-crows-nest/releases/tag/v0.4.4).
 [Full release history](CHANGELOG.md).
 
 ## Features

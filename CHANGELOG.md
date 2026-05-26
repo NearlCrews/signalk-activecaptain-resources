@@ -5,10 +5,28 @@
 > development milestones that preceded this publication. Their content is
 > incorporated into the `v0.4.2` release.
 
-### Unreleased
+<a id="v044"></a>
 
-In-development changes since `v0.4.3`. Will roll into the next published
-release.
+### v0.4.4 (2026/05/26) - faster chart loads, plugin icon, audit cleanup
+
+A performance and polish release. The chart-load latency on a cold
+viewport dropped from 15-30 s to about 5 s by capping each POI source's
+list request at a per-source timeout: a slow Overpass or NOAA ENC query
+no longer holds up the chart while the other sources answer. The
+canonical plugin icon ships in the same release, and the v0.4.3
+three-agent code review's findings are folded in (SignalK conformance,
+correctness, and UI/docs/test cleanup, all severities through nit).
+
+#### Performance
+
+- **Per-source list-request timeout in the aggregate registry.** Race
+  each source's `listPointsOfInterest` against a 5 s timeout (configurable
+  on the registry for tests). On timeout the source's POIs are skipped
+  for this call, but the underlying HTTP keeps running so the source's
+  bbox-debounce cache fills; the next chart-plotter refresh sees the
+  populated cache and the source's POIs appear without an extra
+  upstream round-trip. A slow Overpass or NOAA ENC tail-latency outlier
+  no longer blocks the fast sources behind it.
 
 #### Plugin icon
 
@@ -22,17 +40,84 @@ release.
   a crow's-nest silhouette (mast + yardarm + dome-topped barrel with a
   lookout head poking out), reflecting both the project name and the
   lookout-and-alarms role.
-- Wire `signalk.appIcon` to `./assets/icons/icon-192.png` in
-  `package.json`, the single field the SignalK admin UI reads
+- Wire `signalk.appIcon` to `assets/icons/icon-192.png` in
+  `package.json` (no leading `./`, matching the convention every other
+  installed plugin uses), the single field the SignalK admin UI reads
   (`packages/server-admin-ui/src/views/Webapps/Webapp.tsx`).
 - Add a `build:icons` step that copies the icons into
   `public/assets/icons/` so the SignalK `express.static` mount can
   serve them (the mount exposes `public/` only when present, not the
-  package root, per `src/interfaces/webapps.ts:86-90`). Wire the new
-  step into `build`. Tighten `clean` to wipe `public/` recursively so
-  a stale icon file does not linger across builds.
+  package root, per `src/interfaces/webapps.ts:86-90`). The copy uses
+  a glob (`icon-*.png`) so a future icon-size addition does not
+  require editing the script. Wire the new step into `build`.
+  Tighten `clean` to wipe `public/` recursively so a stale icon file
+  does not linger across builds.
 - Ship the canonical master under `assets/` in the npm tarball
   (`files` extended).
+
+#### SignalK conformance and correctness
+
+- **Drop the `MethodNotAllowedError` class** from
+  `notes-resource-output.ts`. The signalk-server resources REST layer
+  hardcodes its HTTP status (400 on POST, 404 on PUT, 400 on DELETE)
+  and never reads a `statusCode` field off the thrown error, so the
+  `statusCode: 405` it carried was dead code. The read-only methods
+  now throw a plain `Error` carrying the same message; the wire
+  status is fixed by the server and the message reaches the client
+  body either way.
+- **Drop `properties.readOnly`** from the notes resource. It was
+  not a standard SignalK notes property and a strict server-side
+  validator could strip it. The read-only contract is enforced by
+  the resource provider's `setResource` / `deleteResource` methods.
+- **Rename `NotificationValue.timestamp` to `createdAt`** so the
+  notification value shape matches the SignalK `Notification` spec's
+  optional `createdAt` field. The wire `timestamp` on the outer
+  Update is still set from this value, so a consumer reading
+  `Update.timestamp` is unchanged.
+- **Clone each summary `position` object in the aggregate's merge.**
+  The per-source bbox-debounce caches share the same `PoiSummary[]`
+  (and `position` objects) across hits, so a downstream consumer
+  that mutates `note.position` would silently corrupt the cached
+  entry for the next caller. The merge now spreads the position
+  alongside the id rewrite.
+- **Tighten the USCG Light List dark-zone recovery.** A page file
+  that decoded to a different record count than the metadata claims
+  now drops its If-Modified-Since / ETag (forcing a 200 OK on next
+  refresh), not just a page file that decoded to zero records: the
+  partial-decode case is also covered.
+- **Short-circuit `app.getCourse()` on a null `activeRoute.href`
+  delta.** The Course API signals route clear with a null value;
+  the course reader now drops the cached polyline synchronously
+  without paying for a getCourse round-trip.
+- **Escape the `|` separator in the bbox-debounce cache key** so a
+  future caller whose extra discriminator happens to contain a
+  literal `|` cannot collide with another caller's bbox + remainder.
+
+#### UI, tests, and docs
+
+- **NOAA ENC empty-state hint** uses the `hintBelow` style variant so
+  the "Choose at least one layer" message and the "Underwater rocks
+  default off" follow-up no longer butt against each other with zero
+  vertical gap.
+- **`useNumberDraft` parser extracted** as a pure `commitNumberDraft`
+  helper, with a node:test suite covering empty / unparsable input,
+  fallback, integer truncation, min / max clamping, and Infinity /
+  NaN handling. The hook's React state-management bits are unchanged.
+- **ActiveCaptain client timing tests** use an injectable `Sleep`
+  spy: the three Retry-After tests now assert the requested wait
+  exactly (1000 ms, capped to maxRetryAfterMs, etc.) rather than
+  observed wall-clock floors, so the suite is no longer flaky on a
+  loaded CI runner.
+- **Per-source status pill fixtures** carry `apiReachable: true` for
+  ok cases, matching what the runtime emits.
+- **Bug report template** now points users to this repo's
+  Discussions, not the upstream fork's.
+- **Docs reflect the assets/ tarball entry and the build:icons
+  step:** `docs/maintainers/releasing.md`, `docs/development.md`,
+  and the architecture map in `CLAUDE.md`. The troubleshooting doc
+  drops the obsolete "cached POI count" line from the status-section
+  description (the panel pill shows health, not a per-fetch count).
+  CLAUDE.md picks up `SectionBox.tsx` in the panel layout list.
 
 <a id="v043"></a>
 

@@ -16,7 +16,7 @@ import type { PoiSummary, PoiType, Position } from '../src/shared/types.js'
 /** Shape of the notification value recorded by {@link createCapturingApp}. */
 export interface CapturedNotification {
   path: string
-  value: { state: string, method: string[], message: string, timestamp: string }
+  value: { state: string, method: string[], message: string, createdAt: string }
 }
 
 /**

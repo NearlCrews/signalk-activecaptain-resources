@@ -87,7 +87,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
       state: 'normal',
       method: [],
       message: `Hazard "${name}" is no longer nearby`,
-      timestamp: new Date().toISOString()
+      createdAt: new Date().toISOString()
     }),
     describeClear: (poiId, { name }) => `Proximity alarm cleared for hazard ${poiId} ("${name}")`
   })
@@ -97,7 +97,7 @@ export function createProximityAlarms (app: AlarmApp, radiusMeters: number): Pro
       state: 'alarm',
       method: ['visual', 'sound'],
       message: `Hazard "${name}" is ${Math.round(distance)} m away`,
-      timestamp: new Date().toISOString()
+      createdAt: new Date().toISOString()
     }
     emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value, SOURCE_SUFFIX)
     tracker.set(poiId, { name })

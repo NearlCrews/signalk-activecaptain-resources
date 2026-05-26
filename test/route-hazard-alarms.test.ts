@@ -37,7 +37,7 @@ test('raises a warn notification when a POI first appears on the route', () => {
   assert.ok(captured[0].value.message.includes('Hazard'), 'message names the POI type')
   assert.ok(captured[0].value.message.includes('800 m'), 'message reports the along-track distance')
   assert.ok(captured[0].value.message.includes('ETA 10 min'), 'message reports the ETA')
-  assert.ok(captured[0].value.timestamp.length > 0, 'a timestamp is present')
+  assert.ok(captured[0].value.createdAt.length > 0, 'a createdAt timestamp is present')
 })
 
 test('omits the ETA when the corridor POI carries no etaSeconds', () => {

@@ -13,6 +13,32 @@ import { dedupeAgainstBase } from './dedupe-pois.js'
 import { ACTIVE_CAPTAIN_SOURCE_ID } from '../shared/source-ids.js'
 import type { PoiSummary } from '../shared/types.js'
 
+/**
+ * Per-source list-request timeout, in milliseconds.
+ *
+ * `Promise.allSettled` waits for the slowest upstream, so an Overpass query
+ * stuck behind a CDN warm-up can stall the chart for tens of seconds while the
+ * other sources have long since answered. Racing each source against this
+ * timeout caps the aggregate's perceived latency at this value: the fast
+ * sources ship immediately and the slow source's HTTP keeps running in the
+ * background, so its bbox-debounce cache fills and its POIs appear on the
+ * chart plotter's next refresh.
+ *
+ * Chosen to be longer than a healthy ActiveCaptain/NOAA ENC round-trip
+ * (typically under 2 s) but shorter than the Overpass tail-latency outliers
+ * (typically 8 to 20 s) that drive the perceived delay.
+ */
+const DEFAULT_PER_SOURCE_LIST_TIMEOUT_MS = 5000
+
+/**
+ * Race outcome for one source's list request. The timeout branch lets the
+ * aggregate ship a partial result on this call and pick the source up on
+ * the next call once its bbox-debounce cache has been populated.
+ */
+type SourceListOutcome =
+  | { kind: 'value', pois: PoiSummary[] }
+  | { kind: 'timeout' }
+
 /** Public surface of the input registry. */
 export interface InputRegistry {
   /** The registered input modules, in registration order. */
@@ -26,8 +52,24 @@ export interface InputRegistry {
   createSource: (context: InputContext) => PoiSource
 }
 
+/** Options for {@link createInputRegistry}. */
+export interface InputRegistryOptions {
+  /**
+   * Override for the per-source list-request timeout. Default is
+   * {@link DEFAULT_PER_SOURCE_LIST_TIMEOUT_MS}. Tests inject a small value
+   * so the race resolves on the test's real clock rather than the
+   * production 5 s.
+   */
+  perSourceListTimeoutMs?: number
+}
+
 /** Create an input registry over a fixed set of modules. */
-export function createInputRegistry (modules: readonly InputModule[]): InputRegistry {
+export function createInputRegistry (
+  modules: readonly InputModule[],
+  options: InputRegistryOptions = {}
+): InputRegistry {
+  const perSourceListTimeoutMs =
+    options.perSourceListTimeoutMs ?? DEFAULT_PER_SOURCE_LIST_TIMEOUT_MS
   return {
     modules,
     configSchemaFragments: () => modules.map((module) => module.configSchema),
@@ -67,17 +109,78 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
       return {
         id: 'aggregate',
         listPointsOfInterest: async (bbox, poiTypes) => {
+          // Race each source against perSourceListTimeoutMs so a slow
+          // upstream (Overpass tail latency, an ENC ArcGIS round-trip behind
+          // a cold CDN edge) cannot stall the whole chart load: every other
+          // source ships immediately. The timed-out source's underlying
+          // listPointsOfInterest promise is left running, since its
+          // bbox-debounce cache fetcher populates the cache on success; the
+          // next aggregate call then hits the cache and the source's POIs
+          // appear on the chart plotter's next refresh.
           const results = await Promise.allSettled(
-            sourceList.map((s) => s.listPointsOfInterest(bbox, poiTypes)))
+            sourceList.map(async (s, i): Promise<SourceListOutcome> => {
+              const fetchPromise = s.listPointsOfInterest(bbox, poiTypes)
+              // Silent observer for the lingering promise: a rejection that
+              // arrives AFTER the race has already returned its timeout
+              // outcome must not surface as a Node UnhandledPromiseRejection.
+              // Errors that race the timeout to settlement are observed by
+              // Promise.race itself, so this guard only matters for the
+              // post-timeout rejection.
+              fetchPromise.catch(() => {})
+              let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+              try {
+                const outcome = await Promise.race<SourceListOutcome>([
+                  fetchPromise.then((pois): SourceListOutcome => ({ kind: 'value', pois })),
+                  new Promise<SourceListOutcome>((resolve) => {
+                    timeoutHandle = setTimeout(
+                      () => resolve({ kind: 'timeout' }),
+                      perSourceListTimeoutMs
+                    )
+                  })
+                ])
+                if (outcome.kind === 'timeout') {
+                  // Diagnostic observer attached only on the timeout branch:
+                  // the underlying fetch is still running and its eventual
+                  // outcome is now interesting only for plugin debug
+                  // output, since the registry has already returned a
+                  // partial result. Optional-chained so a stub test context
+                  // without `app.debug` does not throw.
+                  fetchPromise.catch((error) => {
+                    context.app.debug?.(
+                      `Source "${sourceIds[i]}" list rejected after timeout was already returned: ${String(error)}`
+                    )
+                  })
+                }
+                return outcome
+              } finally {
+                if (timeoutHandle !== undefined) clearTimeout(timeoutHandle)
+              }
+            }))
           const merged: PoiSummary[] = []
           let anyOk = false
+          // Any source that timed out keeps the chart's hope alive: the
+          // background fetch is still running and the next aggregate call
+          // will see the populated bbox-debounce cache. If every source
+          // either hard-errored or timed out, we still ship the (empty)
+          // partial rather than throw; the all-hard-error case is the only
+          // one that throws below.
+          let anyTimeout = false
           // The aggregate is the only component that knows each source's
           // individual list outcome, so it owns the per-source status
           // recording: a fulfilled source records its own list fetch, a
-          // rejected source records its own error.
+          // rejected source records its own error, a timed-out source is
+          // recorded as skipped.
           results.forEach((result, index) => {
             const sourceId = sourceIds[index]
             if (result.status === 'fulfilled') {
+              if (result.value.kind === 'timeout') {
+                anyTimeout = true
+                context.status.recordSkipped(
+                  sourceId,
+                  `list request exceeded ${Math.round(perSourceListTimeoutMs / 1000)}s; result will appear on next refresh`
+                )
+                return
+              }
               anyOk = true
               // A source that gated itself out (recordSkipped) returns []
               // immediately; treating that as a "fetched zero POIs" success
@@ -85,7 +188,7 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
               // apiReachable to true even though no request was sent. The
               // wasJustSkipped flag distinguishes the two cases.
               if (!context.status.wasJustSkipped(sourceId)) {
-                context.status.recordListFetch(sourceId, result.value.length)
+                context.status.recordListFetch(sourceId, result.value.pois.length)
               }
               // The id rewrite is done via a spread-clone, not an in-place
               // mutation: the per-source bbox-debounce caches now return the
@@ -94,16 +197,27 @@ export function createInputRegistry (modules: readonly InputModule[]): InputRegi
               // tick (`activecaptain-12345` becoming
               // `activecaptain-activecaptain-12345` and so on, breaking
               // detail lookup and proximity-alarm hysteresis).
+              //
+              // The `position` object is cloned for the same reason: the
+              // bbox-debounce caches share the same `PoiSummary[]` (and
+              // therefore the same `position` objects) across hits, and a
+              // downstream consumer that mutates `note.position` (the chart
+              // plotter's projection step, for example) would silently
+              // corrupt the cached entry for the next caller.
               const prefix = `${sourceId}-`
-              for (const poi of result.value) {
-                merged.push({ ...poi, id: prefix + poi.id })
+              for (const poi of result.value.pois) {
+                merged.push({
+                  ...poi,
+                  id: prefix + poi.id,
+                  position: { ...poi.position }
+                })
               }
             } else {
               context.status.recordError(
                 sourceId, `List from "${sourceId}" failed: ${String(result.reason)}`)
             }
           })
-          if (!anyOk) {
+          if (!anyOk && !anyTimeout) {
             throw new Error('Every POI source failed the list request')
           }
           // Merge each dedupe-enabled source's duplicates into the base layer,

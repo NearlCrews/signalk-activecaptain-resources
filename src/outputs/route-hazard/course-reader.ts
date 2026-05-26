@@ -375,13 +375,35 @@ export function createCourseReader (config: CourseReaderConfig): CourseReader {
     }
   }
 
+  /**
+   * Delta handler for the `activeRoute.href` path. A `null` value is the
+   * Course API signalling that the active route has been cleared: there is
+   * no route to resolve, and the cheapest correct response is to drop the
+   * cached polyline synchronously without paying for an `app.getCourse()`
+   * round-trip. Any non-null value falls through to the normal background
+   * refresh.
+   */
+  function onActiveRouteDelta (value: unknown): void {
+    if (stopped) {
+      return
+    }
+    if (value === null) {
+      // Bump the generation so a refresh that resolves later cannot
+      // overwrite the clear, then drop the cached polyline immediately.
+      refreshGeneration += 1
+      currentRoute = null
+      return
+    }
+    scheduleRefresh()
+  }
+
   // Subscriptions are pushed one at a time: if the second `onValue` throws, the
   // catch unwinds the first so a half-built reader does not leak a live
   // subscription with no handle to release it.
   const unsubscribes: Array<() => void> = []
   try {
     unsubscribes.push(
-      app.streambundle.getSelfBus(COURSE_ACTIVE_ROUTE_PATH as Path).onValue(scheduleRefresh)
+      app.streambundle.getSelfBus(COURSE_ACTIVE_ROUTE_PATH as Path).onValue(onActiveRouteDelta)
     )
     unsubscribes.push(
       app.streambundle.getSelfBus(COURSE_NEXT_POINT_PATH as Path).onValue(scheduleRefresh)

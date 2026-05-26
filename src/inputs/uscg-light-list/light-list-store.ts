@@ -295,15 +295,18 @@ export function createLightListStore (dataDir: string): LightListStore {
         for (const record of records) {
           addRecordToIndex(record)
         }
-        // If the metadata says this page should have records but the page
-        // file produced none (missing file, parse failure, truncated
-        // restore), drop the cached If-Modified-Since / ETag for the
-        // page so the next refresh forces a 200 OK rather than getting a
-        // 304 from NAVCEN and leaving the records permanently missing.
-        // Mark metadataDirty so the cleared headers are persisted on the
-        // next flush.
+        // If the page file decoded to a different number of records than
+        // the metadata claims (missing file, parse failure, truncated
+        // restore, or a partial-decode that lost some entries), drop the
+        // cached If-Modified-Since / ETag for the page so the next refresh
+        // forces a 200 OK rather than getting a 304 from NAVCEN and leaving
+        // records permanently missing. Comparing against `meta.recordCount`
+        // (rather than just checking for an empty page) also catches the
+        // partial-decode case, where the page file decoded to some records
+        // but not all of them. Mark metadataDirty so the cleared headers
+        // are persisted on the next flush.
         const meta = index.districts[key]
-        if (meta !== undefined && meta.llnrs.length > 0 && records.length === 0) {
+        if (meta !== undefined && records.length !== meta.recordCount) {
           if (meta.lastModified !== undefined || meta.etag !== undefined) {
             const cleared: DistrictMeta = {
               recordCount: meta.recordCount,
