@@ -5,6 +5,35 @@
 > development milestones that preceded this publication. Their content is
 > incorporated into the `v0.4.2` release.
 
+### Unreleased
+
+In-development changes since `v0.4.3`. Will roll into the next published
+release.
+
+#### Plugin icon
+
+- Add the canonical plugin icon under `assets/icons/icon.svg` (master)
+  with rasterized PNG sizes 72/96/192/512. The icon follows the
+  family pattern shared with `signalk-virtual-weather-sensors`,
+  `signalk-nmea2000-emitter-cannon`, and
+  `signalk-openrouter-companion`: a rounded square with the deep-ocean
+  gradient and three stacked wave lines, plus a project-specific
+  bottom-right circle badge. Crow's Nest's badge is crimson red with
+  a crow's-nest silhouette (mast + yardarm + dome-topped barrel with a
+  lookout head poking out), reflecting both the project name and the
+  lookout-and-alarms role.
+- Wire `signalk.appIcon` to `./assets/icons/icon-192.png` in
+  `package.json`, the single field the SignalK admin UI reads
+  (`packages/server-admin-ui/src/views/Webapps/Webapp.tsx`).
+- Add a `build:icons` step that copies the icons into
+  `public/assets/icons/` so the SignalK `express.static` mount can
+  serve them (the mount exposes `public/` only when present, not the
+  package root, per `src/interfaces/webapps.ts:86-90`). Wire the new
+  step into `build`. Tighten `clean` to wipe `public/` recursively so
+  a stale icon file does not linger across builds.
+- Ship the canonical master under `assets/` in the npm tarball
+  (`files` extended).
+
 <a id="v043"></a>
 
 ### v0.4.3 (2026/05/24) - rating-filter fix and Appstore classification
