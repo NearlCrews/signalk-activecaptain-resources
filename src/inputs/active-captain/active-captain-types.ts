@@ -31,9 +31,16 @@ export interface ReviewSummary {
   numberOfReviews: number
 }
 
-/** A single point of interest as returned by the bounding-box list endpoint. */
+/**
+ * A single point of interest as returned by the bounding-box list endpoint.
+ *
+ * The wire ships `id` as a number on both the list and the detail responses
+ * (see docs/garmin-api.md for the live-verified shape); the client coerces
+ * it to a string in `parseSummaryEntry` for use as a SignalK resource id, so
+ * the rest of the plugin sees a uniform string.
+ */
 export interface PoiListItem {
-  id: string
+  id: number
   poiType: PoiType
   mapLocation: Position
   name: string

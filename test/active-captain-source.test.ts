@@ -80,15 +80,11 @@ test('getDetails returns detail through the cache', async () => {
     assert.equal(view.type, 'Marina')
     assert.equal(view.source, 'activecaptain')
     assert.equal(view.url, 'https://activecaptain.garmin.com/en-US/pois/1')
-    assert.ok(
-      view.description?.includes('Garmin Active Captain'),
-      'the rendered description carries the footer attribution once'
-    )
-    assert.equal(
-      view.description?.split('Garmin Active Captain').length,
-      2,
-      'the description credits ActiveCaptain exactly once, not twice'
-    )
+    // The description no longer carries an inline attribution footer; the
+    // credit rides on `view.attribution` and on the note's structured
+    // `properties.attribution`.
+    assert.equal(view.attribution, 'Data from Garmin ActiveCaptain')
+    assert.doesNotMatch(view.description ?? '', /Data sourced from/)
     assert.equal(source.id, 'activecaptain')
     source.close()
   } finally {

@@ -135,7 +135,11 @@ test('getDetails returns a fully rendered detail view with attribution', async (
     assert.equal(view.type, 'Navigational')
     assert.ok(view.description !== undefined)
     assert.ok(view.description.includes('Visible 015° to 195°'))
-    assert.ok(view.description.includes('crows-nest-attribution'))
+    // The credit no longer rides inline in the description; it lives on
+    // `properties.attribution` of the produced note (covered by the
+    // note-builder tests). This source-level check confirms the inline
+    // footer has been removed.
+    assert.doesNotMatch(view.description, /crows-nest-attribution/)
     assert.ok(events.includes(`detail-ok:${USCG_LIGHT_LIST_SOURCE_ID}`))
   } finally {
     await rm(dir, { recursive: true, force: true })

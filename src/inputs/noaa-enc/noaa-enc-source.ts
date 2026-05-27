@@ -23,9 +23,9 @@ import type { EncFeature, EncLayerKey, ScaleBand } from './enc-direct-types.js'
 import { layerPoiType, layerSkIcon, sordatToIsoTimestamp } from './s57-mapping.js'
 import { renderEncDirectDetail } from './enc-direct-detail.js'
 import type { PoiSource } from '../poi-source.js'
-import { appendAttribution } from '../../shared/attribution.js'
 import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
 import { MAX_BBOX_CACHE_ENTRIES, MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
+import { isValidLatitude, isValidLongitude } from '../../shared/numbers.js'
 import type { Bbox, PoiDetailView, PoiSummary, Position } from '../../shared/types.js'
 import { isInUsWaters } from '../../shared/us-waters.js'
 import { openSeaMapMarkerUrl } from '../../shared/map-link.js'
@@ -101,12 +101,6 @@ function featureObjectId (feature: EncFeature): number | undefined {
   return typeof fromProps === 'number' ? fromProps : undefined
 }
 
-/** Build the registry-side summary id for a feature, e.g. `wreck_12345`. */
-function summaryId (layerKey: EncLayerKey, feature: EncFeature): string {
-  const objectId = featureObjectId(feature)
-  return `${layerKey}_${objectId ?? 'unknown'}`
-}
-
 /** Parse a summary id back into `(layerKey, objectId)` for a getById call. */
 function parseSummaryId (id: string): { layerKey: EncLayerKey, objectId: number } | undefined {
   const underscore = id.indexOf('_')
@@ -136,22 +130,44 @@ function featureName (layerKey: EncLayerKey, feature: EncFeature): string {
  * OpenSeaMap marker. The popup body still names the NOAA chart cell
  * (`DSNM`) and the survey date for cross-reference.
  */
-function viewerUrl (feature: EncFeature): string {
-  const [lon, lat] = feature.geometry.coordinates
+function viewerUrl (lat: number, lon: number): string {
   return openSeaMapMarkerUrl(lat, lon)
 }
 
-/** Build the source-agnostic list summary for one feature. */
-function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary {
-  const [lon, lat] = feature.geometry.coordinates
+/**
+ * Extract the feature's `[longitude, latitude]` pair and validate the range.
+ * Returns null when the geometry is absent, malformed, or carries
+ * out-of-range coordinates: ArcGIS occasionally serves a feature with
+ * `geometry: null` under certain projection failures, and a downstream
+ * `NaN`-position POI would poison the proximity-alarm distance math.
+ */
+function featureLatLon (feature: EncFeature): { lat: number, lon: number } | null {
+  const coords = feature.geometry?.coordinates
+  if (coords === undefined || coords === null) return null
+  const [lon, lat] = coords
+  if (!isValidLatitude(lat) || !isValidLongitude(lon)) return null
+  return { lat, lon }
+}
+
+/**
+ * Build the source-agnostic list summary for one feature. Returns null when
+ * the feature is unusable (no OBJECTID, malformed geometry, out-of-range
+ * coordinates) so the caller can drop the row rather than mint a fake
+ * `<layer>_unknown` id whose click-through 404s.
+ */
+function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary | null {
+  const objectId = featureObjectId(feature)
+  if (objectId === undefined) return null
+  const latLon = featureLatLon(feature)
+  if (latLon === null) return null
   const timestamp = sordatToIsoTimestamp(feature.properties.SORDAT)
   const summary: PoiSummary = {
-    id: summaryId(layerKey, feature),
+    id: `${layerKey}_${objectId}`,
     type: layerPoiType(layerKey),
-    position: { latitude: lat, longitude: lon },
+    position: { latitude: latLon.lat, longitude: latLon.lon },
     name: featureName(layerKey, feature),
     source: NOAA_ENC_SOURCE_ID,
-    url: viewerUrl(feature),
+    url: viewerUrl(latLon.lat, latLon.lon),
     attribution: NOAA_ENC_ATTRIBUTION,
     skIcon: layerSkIcon(layerKey)
   }
@@ -159,20 +175,22 @@ function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary {
   return summary
 }
 
-/** Build the source-agnostic detail view for one cached feature. */
-function toDetailView (cached: CachedFeature): PoiDetailView {
+/**
+ * Build the source-agnostic detail view for one cached feature. Returns
+ * null when the feature's coordinates are unusable; the caller treats this
+ * the same as a cache miss.
+ */
+function toDetailView (cached: CachedFeature): PoiDetailView | null {
   const { layerKey, feature } = cached
-  const [lon, lat] = feature.geometry.coordinates
-  const description = appendAttribution(
-    renderEncDirectDetail(layerKey, feature.properties),
-    NOAA_ENC_ATTRIBUTION
-  )
+  const latLon = featureLatLon(feature)
+  if (latLon === null) return null
+  const description = renderEncDirectDetail(layerKey, feature.properties)
   const timestamp = sordatToIsoTimestamp(feature.properties.SORDAT)
   const view: PoiDetailView = {
     name: featureName(layerKey, feature),
-    position: { latitude: lat, longitude: lon },
+    position: { latitude: latLon.lat, longitude: latLon.lon },
     type: layerPoiType(layerKey),
-    url: viewerUrl(feature),
+    url: viewerUrl(latLon.lat, latLon.lon),
     source: NOAA_ENC_SOURCE_ID,
     attribution: NOAA_ENC_ATTRIBUTION,
     description,
@@ -261,9 +279,13 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
       const summaries: PoiSummary[] = []
       for (const { layerKey, features } of cached) {
         for (const feature of features) {
-          const id = summaryId(layerKey, feature)
-          cache.set(id, { layerKey, feature })
-          summaries.push(toSummary(layerKey, feature))
+          // A feature with no OBJECTID, no geometry, or out-of-range
+          // coordinates is dropped rather than minting an
+          // `<layer>_unknown` marker whose click-through would 404.
+          const summary = toSummary(layerKey, feature)
+          if (summary === null) continue
+          cache.set(summary.id, { layerKey, feature })
+          summaries.push(summary)
         }
       }
       // Year filter is applied source-side so the rest of the pipeline
@@ -277,7 +299,8 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
         // apiReachable=false must not flip to true purely because the user
         // clicked a previously loaded marker. Only a fresh network request
         // updates the status row.
-        return toDetailView(hit)
+        const view = toDetailView(hit)
+        if (view !== null) return view
       }
       const parsed = parseSummaryId(id)
       if (parsed === undefined) {
@@ -290,10 +313,14 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
         if (feature === undefined) {
           throw new Error(`No NOAA ENC feature for "${id}"`)
         }
-        const cached = { layerKey: parsed.layerKey, feature }
-        cache.set(id, cached)
+        const cachedFeature = { layerKey: parsed.layerKey, feature }
+        const view = toDetailView(cachedFeature)
+        if (view === null) {
+          throw new Error(`NOAA ENC feature "${id}" carries no usable geometry`)
+        }
+        cache.set(id, cachedFeature)
         status.recordDetailSuccess(NOAA_ENC_SOURCE_ID)
-        return toDetailView(cached)
+        return view
       } catch (error) {
         status.recordError(
           NOAA_ENC_SOURCE_ID,

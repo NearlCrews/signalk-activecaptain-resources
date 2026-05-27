@@ -4,6 +4,11 @@
  * Several modules need to narrow an `unknown` value off the wire or off the
  * SignalK data model into a finite `number`. A single helper avoids the slight
  * semantic drift that three separate ad-hoc copies were starting to pick up.
+ *
+ * The "not usable" sentinel is `null` across every helper here, matching the
+ * `toPosition` and `resolvePosition`/`resolveExplicitBbox` returns elsewhere.
+ * The `null ?? DEFAULT` idiom still works for the input-module config call
+ * sites that prefer the optional-default pattern.
  */
 
 /**
@@ -17,13 +22,46 @@ export function toFiniteNumber (value: unknown): number | null {
 
 /**
  * Narrow an unknown value into a strictly positive finite `number`, or
- * return `undefined` when it is not. The three input modules' optional
+ * return `null` when it is not. The three input modules' optional
  * config-key validators all want this exact shape (a positive merge
  * radius, never zero or negative): a non-positive value means "fall back
  * to the source's default" rather than "off."
  */
-export function positiveFiniteNumber (value: unknown): number | undefined {
+export function positiveFiniteNumber (value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
     ? value
-    : undefined
+    : null
+}
+
+/** True when `value` is a finite latitude in the standard `[-90, 90]` range. */
+export function isValidLatitude (value: unknown): value is number {
+  return typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value >= -90 &&
+    value <= 90
+}
+
+/** True when `value` is a finite longitude in the standard `[-180, 180]` range. */
+export function isValidLongitude (value: unknown): value is number {
+  return typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value >= -180 &&
+    value <= 180
+}
+
+/**
+ * Lenient truthy interpretation for wire boolean fields that may arrive as
+ * `'1'`, `1`, `'true'`, or `true`. Every other value (including the empty
+ * string, `'0'`, and `null`) is treated as false. The USCG Light List
+ * `INACTIVE` field is the motivating case: the upstream schema describes it
+ * as a string but a future schema bump could ship the boolean as a number
+ * without warning.
+ */
+export function isWireTruthy (value: unknown): boolean {
+  if (value === true || value === 1) return true
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase()
+    return trimmed === '1' || trimmed === 'true'
+  }
+  return false
 }

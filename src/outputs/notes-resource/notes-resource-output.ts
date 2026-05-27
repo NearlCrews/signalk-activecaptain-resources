@@ -85,11 +85,30 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       return resources
     },
 
+    /**
+     * Fetch the full note resource, or one property off it.
+     *
+     * Two failure modes both throw a plain `Error`:
+     *
+     * - The id does not resolve to any POI: the per-source `getDetails`
+     *   throws a source-specific message (`No Light List record for "id"`
+     *   and friends). The SignalK resources REST layer maps any thrown
+     *   error from this method to HTTP 404 for GETs.
+     * - The id resolves but the requested property does not exist: this
+     *   method throws `Resource ${id} has no property ${property}`. The
+     *   wire status is the same (404) because the server collapses both
+     *   conditions onto a single status by method; the message is what
+     *   reaches the client body and distinguishes the two cases.
+     *
+     * A single detail fetch routes to one source, so the resulting note
+     * carries no cross-source corroboration (no `properties.sources`),
+     * even when listResources for the same id would have showed multiple
+     * contributors. This is a known list/detail asymmetry; corroboration
+     * is a list-time-only artifact of the dedupe pass.
+     */
     getResource: async (id: string, property?: string): Promise<object> => {
       app.debug(`Incoming request to get note ${id}${property != null ? ` property ${property}` : ''}`)
       const view = await pois.getDetails(id)
-      // A single detail fetch routes to one source, so a getResource note
-      // carries no cross-source corroboration.
       const note = buildNoteResource({
         name: view.name,
         // Sources return a fresh position per call, so the reference is
@@ -111,7 +130,18 @@ function buildMethods (context: OutputContext): ResourceProviderMethods {
       if (value === undefined) {
         throw new Error(`Resource ${id} has no property ${property}`)
       }
-      return { value, timestamp: note.timestamp, $source: PLUGIN_ID as SourceRef }
+      // Omit `timestamp` from the property-value response when the note has
+      // none. The whole-resource path already follows this rule; mirroring
+      // it here keeps a strict client that asserts `timestamp` is a string
+      // happy on sources whose record carries no date.
+      const response: Record<string, unknown> = {
+        value,
+        $source: PLUGIN_ID as SourceRef
+      }
+      if (note.timestamp !== undefined) {
+        response.timestamp = note.timestamp
+      }
+      return response
     },
 
     setResource: (): Promise<void> =>

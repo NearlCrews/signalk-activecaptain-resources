@@ -22,6 +22,7 @@
 import type { NormalizedDelta, Path } from '@signalk/server-api'
 import { distanceMeters, toPosition, unionBbox } from '../geo/position-utilities.js'
 import type { PositionScanContributor } from '../outputs/output.js'
+import { MS_PER_MINUTE } from '../shared/time.js'
 import type { Bbox, PoiSummary, Position } from '../shared/types.js'
 
 /** The `vessels.self` path the monitor subscribes to. */
@@ -31,7 +32,7 @@ const SELF_POSITION_PATH = 'navigation.position'
 const DEFAULT_MIN_MOVE_METERS = 100
 
 /** Default minimum time, in milliseconds, between ticks. */
-const DEFAULT_MIN_INTERVAL_MS = 60_000
+const DEFAULT_MIN_INTERVAL_MS = MS_PER_MINUTE
 
 /**
  * The minimal Bacon-stream surface the monitor consumes: subscribe to values

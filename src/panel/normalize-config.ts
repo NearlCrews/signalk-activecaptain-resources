@@ -4,6 +4,7 @@
  */
 
 import { POI_TYPE_FLAGS } from '../shared/poi-type-selection.js'
+import { positiveFiniteNumber } from '../shared/numbers.js'
 import { SEAMARK_GROUP_IDS } from '../shared/seamark-groups.js'
 import type { PluginConfig } from '../shared/types.js'
 
@@ -118,11 +119,9 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
     ? configuration as Record<string, unknown>
     : {}
 
-  const minutes = raw.cachingDurationMinutes
   const config: PluginConfig = {
-    cachingDurationMinutes: typeof minutes === 'number' && Number.isFinite(minutes) && minutes > 0
-      ? minutes
-      : DEFAULT_CACHE_DURATION_MINUTES
+    cachingDurationMinutes:
+      positiveFiniteNumber(raw.cachingDurationMinutes) ?? DEFAULT_CACHE_DURATION_MINUTES
   }
   for (const [flag] of POI_TYPE_FLAGS) {
     config[flag] = raw[flag] !== false
@@ -137,21 +136,16 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
 
   // A zero or negative radius would leave the alarm enabled but unable to ever
   // fire, so it is treated as unusable and falls back to the default.
-  const radius = raw.proximityAlarmRadiusMeters
-  config.proximityAlarmRadiusMeters = typeof radius === 'number' && Number.isFinite(radius) && radius > 0
-    ? radius
-    : DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
+  config.proximityAlarmRadiusMeters =
+    positiveFiniteNumber(raw.proximityAlarmRadiusMeters) ?? DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
 
   config.enableRouteHazardScan = raw.enableRouteHazardScan === true
 
   // A zero or negative width would leave the scan enabled but unable to ever
   // flag a point of interest, so it is treated as unusable and falls back to
   // the default.
-  const corridorWidth = raw.routeCorridorWidthMeters
   config.routeCorridorWidthMeters =
-    typeof corridorWidth === 'number' && Number.isFinite(corridorWidth) && corridorWidth > 0
-      ? corridorWidth
-      : DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+    positiveFiniteNumber(raw.routeCorridorWidthMeters) ?? DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
 
   config.openSeaMapEnabled = raw.openSeaMapEnabled === true
 
@@ -178,11 +172,8 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
 
   // A zero or negative dedupe radius would leave dedupe enabled but unable to
   // ever match, so it is treated as unusable and falls back to the default.
-  const dedupeRadius = raw.openSeaMapDedupeRadiusMeters
   config.openSeaMapDedupeRadiusMeters =
-    typeof dedupeRadius === 'number' && Number.isFinite(dedupeRadius) && dedupeRadius > 0
-      ? dedupeRadius
-      : DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
+    positiveFiniteNumber(raw.openSeaMapDedupeRadiusMeters) ?? DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
 
   config.uscgLightListEnabled = raw.uscgLightListEnabled === true
   // Dedupe defaults on, matching the schema: an old config that omits the key
@@ -191,11 +182,8 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
   config.uscgLightListDedupe = raw.uscgLightListDedupe !== false
   // Per-source merge radius. A zero or non-positive value falls back to the
   // shared default rather than leaving dedupe enabled but unable to match.
-  const uscgRadius = raw.uscgLightListDedupeRadiusMeters
   config.uscgLightListDedupeRadiusMeters =
-    typeof uscgRadius === 'number' && Number.isFinite(uscgRadius) && uscgRadius > 0
-      ? uscgRadius
-      : DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
+    positiveFiniteNumber(raw.uscgLightListDedupeRadiusMeters) ?? DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
 
   // A non-numeric, infinite, or out-of-range refresh period falls back to the
   // default rather than letting the scheduler misbehave.
@@ -211,11 +199,8 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
   // Dedupe defaults on, matching the schema: only an explicit false turns it off.
   config.noaaEncDedupe = raw.noaaEncDedupe !== false
   // Per-source merge radius. Same fallback semantic as the USCG key above.
-  const noaaRadius = raw.noaaEncDedupeRadiusMeters
   config.noaaEncDedupeRadiusMeters =
-    typeof noaaRadius === 'number' && Number.isFinite(noaaRadius) && noaaRadius > 0
-      ? noaaRadius
-      : DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
+    positiveFiniteNumber(raw.noaaEncDedupeRadiusMeters) ?? DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS
 
   // A non-string or unknown band falls back to the default rather than leaving
   // the source unable to resolve a layer-id triple.

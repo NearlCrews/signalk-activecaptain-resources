@@ -82,7 +82,7 @@ interface StubInput {
 function createStubInput (): StubInput {
   const sources: Array<{ closeCount: number }> = []
   const module: InputModule = {
-    id: 'stub-input',
+    id: 'stubinput',
     name: 'Stub Input',
     configSchema: {
       cachingDurationMinutes: { type: 'number' },
@@ -93,7 +93,7 @@ function createStubInput (): StubInput {
       const record = { closeCount: 0 }
       sources.push(record)
       return {
-        id: 'stub-input',
+        id: 'stubinput',
         listPointsOfInterest: async () => [],
         getDetails: async () => { throw new Error('unused') },
         cacheSize: () => 7,
@@ -239,7 +239,7 @@ test('the InputContext getCurrentPosition reader is wired to the position monito
   const sources: Array<{ closeCount: number }> = []
   let capturedReader: (() => Position | undefined) | undefined
   const captureModule: InputModule = {
-    id: 'capture-input',
+    id: 'captureinput',
     name: 'Capture Input',
     configSchema: { cachingDurationMinutes: { type: 'number' } },
     isEnabled: () => true,
@@ -248,7 +248,7 @@ test('the InputContext getCurrentPosition reader is wired to the position monito
       const record = { closeCount: 0 }
       sources.push(record)
       return {
-        id: 'capture-input',
+        id: 'captureinput',
         listPointsOfInterest: async () => [],
         getDetails: async () => { throw new Error('unused') },
         cacheSize: () => 0,

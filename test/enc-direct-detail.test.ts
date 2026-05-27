@@ -145,7 +145,7 @@ test('omits the sounding-accuracy parenthetical when SOUACC is null', () => {
   const html = renderEncDirectDetail('wreck', {
     OBJNAM: 'Test', VALSOU: 12.0, SOUACC: null
   })
-  assert.ok(html.includes('12 m'))
+  assert.ok(html.includes('12.0 m'))
   assert.ok(!html.includes('sounding accuracy'))
 })
 

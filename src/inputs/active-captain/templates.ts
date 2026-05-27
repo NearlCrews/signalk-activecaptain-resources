@@ -10,18 +10,21 @@
  * misleading red cross.
  */
 
-/** Root template used for every point-of-interest type. */
+/**
+ * Root template used for every point-of-interest type. Each section block is
+ * marked with Handlebars whitespace-trim sigils (`~`) so an absent section
+ * does not leak the surrounding newline into the rendered HTML.
+ */
 export const POINT_OF_INTEREST_TEMPLATE = `{{> header}}
-{{#hasDockage}}{{> dockage data.dockage}}{{/hasDockage}}
-{{#hasMooring}}{{> mooring data.mooring}}{{/hasMooring}}
-{{#hasContact}}{{> contact data.contact}}{{/hasContact}}
-{{#hasFuel}}{{> fuel data.fuel}}{{/hasFuel}}
-{{#hasAmenities}}{{> amenities data.amenity}}{{/hasAmenities}}
-{{#hasServices}}{{> services data.services}}{{/hasServices}}
-{{#hasRetail}}{{> retail data.retail}}{{/hasRetail}}
-{{#hasNavigation}}{{> navigation data.navigation}}{{/hasNavigation}}
-{{#hasBusiness}}{{> business data.business}}{{/hasBusiness}}
-{{> footer data.pointOfInterest}}`
+{{~#hasDockage}}{{> dockage data.dockage}}{{/hasDockage~}}
+{{~#hasMooring}}{{> mooring data.mooring}}{{/hasMooring~}}
+{{~#hasContact}}{{> contact data.contact}}{{/hasContact~}}
+{{~#hasFuel}}{{> fuel data.fuel}}{{/hasFuel~}}
+{{~#hasAmenities}}{{> amenities data.amenity}}{{/hasAmenities~}}
+{{~#hasServices}}{{> services data.services}}{{/hasServices~}}
+{{~#hasRetail}}{{> retail data.retail}}{{/hasRetail~}}
+{{~#hasNavigation}}{{> navigation data.navigation}}{{/hasNavigation~}}
+{{~#hasBusiness}}{{> business data.business}}{{/hasBusiness~}}`
 
 /**
  * Shared free-form notes block. The context is the notes array itself, so each
@@ -29,13 +32,13 @@ export const POINT_OF_INTEREST_TEMPLATE = `{{> header}}
  * renders nothing. The field id is humanized and the value keeps its line
  * breaks.
  */
-export const NOTES_PARTIAL = `{{#if this}}
+export const NOTES_PARTIAL = `{{~#if this~}}
 <div>
 {{#each this}}
     <p>{{humanize this.field}}: {{multiline this.value}}</p>
 {{/each}}
 </div>
-{{/if}}`
+{{~/if~}}`
 
 /**
  * Header partial: last-updated line, a stale-hazard freshness warning,
@@ -46,8 +49,7 @@ export const NOTES_PARTIAL = `{{#if this}}
  * states how long ago the report was last updated and asks the crew to confirm
  * conditions locally.
  */
-export const HEADER_PARTIAL = `<hr/>
-<sup>last updated {{fromNow data.pointOfInterest.dateLastModified}}</sup><br/>
+export const HEADER_PARTIAL = `<sup>last updated {{fromNow data.pointOfInterest.dateLastModified}}</sup><br/>
 {{#staleHazard}}
 <p>\u{26A0}\u{FE0F} <strong>Hazard report not recently confirmed.</strong> This hazard report was last updated {{fromNow data.pointOfInterest.dateLastModified}} and may no longer reflect conditions on the water. Confirm locally before relying on it.</p>
 {{/staleHazard}}
@@ -56,12 +58,6 @@ export const HEADER_PARTIAL = `<hr/>
 
 {{#if data.reviewSummary.numberOfReviews}}{{> review data.reviewSummary id=data.pointOfInterest.id}}{{/if}}
 {{#if data.featuredReview.text}}{{> featuredReview data.featuredReview}}{{/if}}`
-
-/** Footer partial: data attribution and the contribute link. */
-export const FOOTER_PARTIAL = `<hr/>
-<sup>Data sourced from <a href="https://activecaptain.garmin.com/">Garmin Active Captain</a> via the <a href="https://github.com/NearlCrews/signalk-crows-nest/">signalk-crows-nest plugin</a>.</sup><br/>
-<sub>Something missing or room for improvement?</sub><br/>
-<sup>You are encouraged to <a href="https://activecaptain.garmin.com/en-US/pois/{{id}}">contribute</a>.</sup><br/>`
 
 /** Business partial: payment and opening details for business points. */
 export const BUSINESS_PARTIAL = `<hr/>
@@ -84,7 +80,7 @@ export const DOCKAGE_PARTIAL = `<hr/>
     {{#if transient}}\u{1F6E5}\u{FE0F} {{transient}} berths for visiting vessels<br/>{{/if}}
     {{availabilityLine liveaboard "Liveaboard"}}
     {{availabilityLine secureAccess "Secure access"}}
-    {{availabilityLine securityPatrol "Patrolled"}}
+    {{availabilityLine securityPatrol "Security patrol"}}
 </div>
 {{> notes notes}}`
 
@@ -117,7 +113,7 @@ export const AMENITIES_PARTIAL = `<hr/>
     {{availabilityLine shower "Showers"}}
     {{availabilityLine water "Water"}}
     {{availabilityLine trash "Rubbish disposal"}}
-    {{availabilityLine wifi "Wifi"}}
+    {{availabilityLine wifi "Wi-Fi"}}
 </div>
 {{> notes notes}}`
 
@@ -129,7 +125,7 @@ export const CONTACT_PARTIAL = `<hr/>
     {{#if phone}}\u{260E}\u{FE0F} <a href="tel:{{phone}}">{{phone}}</a><br/>{{/if}}
     {{#if afterHourContact}}\u{1F319} {{afterHourContact}}<br/>{{/if}}
     {{#if email}}\u{1F4E7} <a href="mailto:{{email}}">{{email}}</a><br/>{{/if}}
-    {{#if website}}\u{1F310} <a href="{{website}}">{{website}}</a><br/>{{/if}}
+    {{#if (safeWebsite website)}}\u{1F310} <a href="{{safeWebsite website}}" rel="noopener noreferrer">{{website}}</a><br/>{{/if}}
 </div>`
 
 /** Review partial: aggregate rating and a link to the reviews page. */

@@ -59,11 +59,11 @@ export function seamarkToPoiType (value: string): PoiType {
  * tagged `leisure=marina` is a `Marina`. Everything else is `Unknown`.
  */
 export function elementPoiType (tags: Record<string, string>): PoiType {
-  const seamark = tags['seamark:type']
+  const seamark = tags['seamark:type']?.trim().toLowerCase()
   if (seamark !== undefined && seamark.length > 0) {
     return seamarkToPoiType(seamark)
   }
-  if (tags.leisure === 'marina') {
+  if (tags.leisure?.trim().toLowerCase() === 'marina') {
     return 'Marina'
   }
   return 'Unknown'
@@ -129,11 +129,11 @@ export function seamarkSkIcon (value: string): string {
  * square.
  */
 export function elementSkIcon (tags: Record<string, string>): string {
-  const seamark = tags['seamark:type']
+  const seamark = tags['seamark:type']?.trim().toLowerCase()
   if (seamark !== undefined && seamark.length > 0) {
     return seamarkSkIcon(seamark)
   }
-  if (tags.leisure === 'marina') {
+  if (tags.leisure?.trim().toLowerCase() === 'marina') {
     return 'marina'
   }
   return FALLBACK_SK_ICON

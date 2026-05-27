@@ -315,10 +315,15 @@ requires the developer API and an API key. For the current feature set
   [ActiveCaptain Community Policies](https://activecaptain.garmin.com/en-US/CommunityPolicy)
   and Terms of Use. Data is "as is"; it is navigational reference, not a
   substitute for official charts.
-- Attribution: the plugin already credits "Data sourced from Garmin Active
-  Captain" in its rendered footer and links back to the POI page on
-  `activecaptain.garmin.com`. Keep this. It is the right thing to do and is the
-  norm for displaying ActiveCaptain data.
+- Attribution: the plugin credits "Data from Garmin ActiveCaptain" on every
+  produced note via the structured `properties.attribution` field, alongside
+  `properties.source = 'activecaptain'`, `properties.plugin`, and
+  `properties.pluginRepo`, and the note's `url` links back to the POI page
+  on `activecaptain.garmin.com`. Keep these. They are the right thing to do
+  and they are the norm for displaying ActiveCaptain data; a Signal K client
+  UI is expected to surface the attribution credit (and the link) from
+  these structured fields rather than depend on an inline footer in the
+  description.
 - Be a low-impact consumer: cache aggressively, keep bounding boxes reasonable,
   respect the concurrency/backoff guidance in section 3.3, and send a
   descriptive `User-Agent` so Garmin can identify the traffic.
@@ -347,4 +352,6 @@ requires the developer API and an API key. For the current feature set
   boater-useful summary section, including `services`, `mooring`, `navigation`,
   `retail`, and the `featuredReview`; only the sponsored `businessProgram`
   metadata is left out.
-- Keep the "Data sourced from Garmin Active Captain" attribution.
+- Keep the "Data from Garmin ActiveCaptain" attribution credit, published
+  on every note as `properties.attribution` and corroborated by
+  `properties.source`, `properties.plugin`, and `properties.pluginRepo`.

@@ -18,7 +18,6 @@ import type { LightListStore } from './light-list-store.js'
 import { recordPoiType, recordSkIcon } from './light-list-mapping.js'
 import { renderLightListDetail } from './light-list-detail.js'
 import type { PoiSource } from '../poi-source.js'
-import { appendAttribution } from '../../shared/attribution.js'
 import type { Bbox, PoiDetailView, PoiSummary, Position } from '../../shared/types.js'
 import { isInUsWaters } from '../../shared/us-waters.js'
 import { openSeaMapMarkerUrl } from '../../shared/map-link.js'
@@ -194,8 +193,7 @@ export function createUscgLightListSource (
       if (record === undefined) {
         throw new Error(`No Light List record for "${id}"`)
       }
-      const description = appendAttribution(
-        renderLightListDetail(record), ATTRIBUTION)
+      const description = renderLightListDetail(record)
       status.recordDetailSuccess(USCG_LIGHT_LIST_SOURCE_ID)
       const view: PoiDetailView = {
         name: record.name,

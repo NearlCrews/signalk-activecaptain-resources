@@ -52,9 +52,12 @@ See the [v0.4.4 changelog entry](CHANGELOG.md#v044) and the
 - **Route-corridor hazard scan**: warns about hazards, bridges, and
   locks on the active Course API route ahead, with along-track distance
   and ETA
-- **Rich point detail** rendered to HTML with the source-specific
-  attribution footer (ODbL for OSM, CC0 for NOAA, US Government public
-  domain for USCG)
+- **Rich point detail** rendered to HTML, with the source-specific
+  attribution credit (ODbL for OSM, CC0 for NOAA, US Government public
+  domain for USCG, Garmin ActiveCaptain for the base) published as a
+  structured `properties.attribution` field on every note instead of
+  appended inline to the description, so a Signal K client UI can render
+  it in chrome rather than next to the POI text
 - **Persistent, offline cache** for ActiveCaptain detail responses; the
   USCG Light List index is sharded on disk and queried through an
   in-memory spatial tile index for sub-millisecond bbox lookups

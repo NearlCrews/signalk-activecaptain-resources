@@ -139,10 +139,11 @@ test('getDetails serves a listed element from cache without a by-id query', asyn
   assert.equal(view.type, 'Hazard')
   assert.equal(view.source, 'openseamap')
   assert.equal(view.url, 'https://www.openstreetmap.org/node/123')
-  assert.ok(
-    view.description?.includes('© OpenStreetMap contributors (ODbL)'),
-    'the rendered description carries the ODbL attribution footer'
-  )
+  // The ODbL credit no longer rides inline in the description; it lives on
+  // `properties.attribution` of the produced note (covered by the
+  // note-builder tests). This source-level check confirms the inline
+  // footer has been removed.
+  assert.doesNotMatch(view.description ?? '', /crows-nest-attribution/)
   assert.equal(getByIdCalls(), 0, 'a listed element is served from cache')
   source.close()
 })

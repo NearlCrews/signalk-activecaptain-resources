@@ -466,7 +466,7 @@ import type {
   LightListRecord
 } from './light-list-types.js'
 
-const USER_AGENT = 'signalk-crows-nest (+https://github.com/nlabadie/signalk-crows-nest)'
+const USER_AGENT = 'signalk-crows-nest (+https://github.com/NearlCrews/signalk-crows-nest)'
 
 export interface LightListClient {
   downloadDistrict: (
@@ -1755,7 +1755,7 @@ import {
 } from './enc-direct-types.js'
 import type { Bbox } from '../../shared/types.js'
 
-const USER_AGENT = 'signalk-crows-nest (+https://github.com/nlabadie/signalk-crows-nest)'
+const USER_AGENT = 'signalk-crows-nest (+https://github.com/NearlCrews/signalk-crows-nest)'
 const DEFAULT_BASE_URL = 'https://gis.charttools.noaa.gov'
 const PAGE_SIZE = 1000
 

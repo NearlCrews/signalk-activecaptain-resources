@@ -101,7 +101,6 @@ test('renderDescription renders every populated section of a marina', () => {
   assert.match(html, /27 reviews/)
   assert.match(html, /Friendly staff and calm water/)
   assert.match(html, /reviewed by A Sailor/)
-  assert.match(html, /contribute/)
 })
 
 test('renderDescription renders mooring and navigation for an anchorage', () => {
@@ -139,9 +138,12 @@ test('renderDescription omits sections that are absent', () => {
   assert.doesNotMatch(html, /Retail/)
   assert.doesNotMatch(html, /Mooring/)
   assert.doesNotMatch(html, /Navigation/)
-  // The header and footer always render.
+  // The header always renders.
   assert.match(html, /last updated/)
-  assert.match(html, /contribute/)
+  // The description no longer carries the inline attribution footer: the
+  // credit rides on `properties.attribution` of the note instead.
+  assert.doesNotMatch(html, /Data sourced from/)
+  assert.doesNotMatch(html, /encouraged to/i)
 })
 
 test('renderDescription closes the fuel div correctly (no <//div> typo)', () => {
@@ -307,7 +309,7 @@ test('an Unknown capability renders no line, not a misleading cross', () => {
   poi.amenity = { wifi: 'Yes', shower: 'No', bar: 'Unknown' }
   const html = renderDescription(poi)
 
-  assert.match(html, /✅ Wifi/, 'a Yes value renders a tick')
+  assert.match(html, /✅ Wi-Fi/, 'a Yes value renders a tick')
   assert.match(html, /❌ Showers/, 'a No value renders a cross')
   // An Unknown value must produce no line at all: not a cross, not the label.
   assert.doesNotMatch(html, /Bar/)

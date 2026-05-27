@@ -27,9 +27,8 @@ import {
   type ScaleBand
 } from './enc-direct-types.js'
 import type { Bbox } from '../../shared/types.js'
-
-const USER_AGENT =
-  'signalk-crows-nest (+https://github.com/nlabadie/signalk-crows-nest)'
+import { PLUGIN_USER_AGENT } from '../../shared/plugin-id.js'
+import { MS_PER_MINUTE } from '../../shared/time.js'
 
 const DEFAULT_BASE_URL = 'https://gis.charttools.noaa.gov'
 
@@ -52,7 +51,7 @@ const MAX_PAGES = 200
  * scan tick indefinitely. The shared `http-client.ts` already enforces this
  * for the queued sources; this raw client mirrors the policy.
  */
-const REQUEST_TIMEOUT_MS = 60_000
+const REQUEST_TIMEOUT_MS = MS_PER_MINUTE
 
 export interface EncDirectClient {
   /** Bbox query against one (band, layerKey). Pages internally to completion. */
@@ -152,7 +151,7 @@ export function createEncDirectClient (
   config: EncDirectClientConfig = {}
 ): EncDirectClient {
   const baseUrl = config.baseUrl ?? DEFAULT_BASE_URL
-  const headers = { 'User-Agent': USER_AGENT }
+  const headers = { 'User-Agent': PLUGIN_USER_AGENT }
   return {
     async queryLayer ({ band, layerKey, bbox }) {
       const layerId = LAYER_IDS_BY_BAND[band][layerKey]

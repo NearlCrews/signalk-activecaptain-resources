@@ -153,8 +153,10 @@ export interface PoiSummary {
 /**
  * A source-agnostic, fully rendered point-of-interest detail view. Every
  * `PoiSource.getDetails` returns this shape: the source has already rendered
- * its own detail HTML (with an attribution footer), so the `notes` output
- * builds a note from this without knowing which source produced it.
+ * its own detail HTML, so the `notes` output builds a note from this without
+ * knowing which source produced it. The attribution credit rides on the
+ * `attribution` field (and is republished on the note's structured
+ * `properties.attribution`), not inline in the rendered HTML.
  */
 export interface PoiDetailView {
   /** Display name. */
@@ -169,7 +171,7 @@ export interface PoiDetailView {
   source: string
   /** Human-readable attribution credit for the source. */
   attribution: string
-  /** Rendered HTML description, including the attribution footer. Omitted when none. */
+  /** Rendered HTML description. Omitted when none. */
   description?: string
   /** ISO-8601 UTC last-modified time, omitted when unknown. */
   timestamp?: string

@@ -70,9 +70,11 @@ export interface NotificationEmitterApp {
  *
  * `sourceSuffix` differentiates the `$source` per alarm output, so consumers
  * filtering by `$source` can tell a proximity alarm from a route-corridor
- * one even though both come from this plugin. The suffix follows the
- * SignalK convention of `<plugin-id>.<feature>`, e.g. the proximity output
- * passes `'proximity'` to yield `signalk-crows-nest.proximity`.
+ * one even though both come from this plugin. The suffix is joined to the
+ * plugin id with a dot, matching the pattern in-tree SignalK plugins use
+ * to brand sub-features of one plugin (e.g. `signalk-anchoralarm.alarm`).
+ * An absent or empty suffix yields the plain plugin id with no trailing
+ * dot, so `''` never produces `signalk-crows-nest.`.
  */
 export function emitNotification (
   app: NotificationEmitterApp,
@@ -81,7 +83,9 @@ export function emitNotification (
   value: NotificationValue,
   sourceSuffix?: string
 ): void {
-  const $source = (sourceSuffix === undefined ? PLUGIN_ID : `${PLUGIN_ID}.${sourceSuffix}`) as SourceRef
+  const $source = (sourceSuffix === undefined || sourceSuffix === ''
+    ? PLUGIN_ID
+    : `${PLUGIN_ID}.${sourceSuffix}`) as SourceRef
   app.handleMessage(PLUGIN_ID, {
     updates: [{
       $source,

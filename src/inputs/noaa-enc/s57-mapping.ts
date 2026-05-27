@@ -145,10 +145,16 @@ export function parseSordat (raw: unknown): { year: number, month: number, day?:
   if (trimmed.length !== 6 && trimmed.length !== 8) return undefined
   const year = Number.parseInt(trimmed.slice(0, 4), 10)
   const month = Number.parseInt(trimmed.slice(4, 6), 10)
-  if (!Number.isFinite(year) || !Number.isFinite(month)) return undefined
+  // Reject out-of-range months and days so Date.UTC does not silently wrap
+  // a `month=13` into the next January or a `day=99` three months forward;
+  // a popup-rendered "2024-02-99" and a published timestamp of
+  // "2024-04-08T00:00:00.000Z" for the same wire value would disagree.
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    return undefined
+  }
   if (trimmed.length === 6) return { year, month }
   const day = Number.parseInt(trimmed.slice(6, 8), 10)
-  if (!Number.isFinite(day)) return undefined
+  if (!Number.isFinite(day) || day < 1 || day > 31) return undefined
   return { year, month, day }
 }
 

@@ -9,6 +9,8 @@ import {
 const SAMPLE_URL = 'https://activecaptain.garmin.com/en-US/pois/7'
 const SAMPLE_SOURCE = 'activecaptain'
 const SAMPLE_ATTRIBUTION = 'Data from Garmin ActiveCaptain'
+const PLUGIN_ID = 'signalk-crows-nest'
+const PLUGIN_REPO_URL = 'https://github.com/NearlCrews/signalk-crows-nest'
 
 /** Build a NoteResourceInput for the fixture POI, with overrides merged on top. */
 function input (overrides: Partial<NoteResourceInput> = {}): NoteResourceInput {
@@ -32,7 +34,9 @@ test('buildNoteResource omits timestamp and description when not supplied', () =
   assert.deepEqual(note.properties, {
     skIcon: 'marina',
     source: SAMPLE_SOURCE,
-    attribution: SAMPLE_ATTRIBUTION
+    attribution: SAMPLE_ATTRIBUTION,
+    plugin: PLUGIN_ID,
+    pluginRepo: PLUGIN_REPO_URL
   })
 })
 
@@ -50,14 +54,16 @@ test('buildNoteResource carries corroboration when more than one source contribu
   const note = buildNoteResource(input({ sources: ['activecaptain', 'openseamap'] }))
   const properties = note.properties as Record<string, unknown>
   assert.deepEqual(properties.sources, ['activecaptain', 'openseamap'])
-  assert.equal(properties.sourceCount, 2)
+  // sourceCount is intentionally not published: it would be derivable from
+  // sources.length and inviting the two to disagree silently is worse than
+  // making the consumer read the length.
+  assert.equal(properties.sourceCount, undefined)
 })
 
 test('buildNoteResource omits corroboration for a single contributing source', () => {
   const note = buildNoteResource(input({ sources: ['activecaptain'] }))
   const properties = note.properties as Record<string, unknown>
   assert.equal(properties.sources, undefined, 'one source is not a corroboration signal')
-  assert.equal(properties.sourceCount, undefined)
 })
 
 test('readProperty reads a dot path and returns undefined for a miss', () => {

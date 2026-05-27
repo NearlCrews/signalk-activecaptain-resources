@@ -17,6 +17,7 @@
 
 import {
   emitNotification,
+  sanitizePoiId,
   type NotificationEmitterApp,
   type NotificationValue
 } from './notification-path.js'
@@ -61,7 +62,16 @@ export interface NotificationTracker<T> {
   clearAll: () => void
 }
 
-/** Create an alarm tracker bound to the given app and notification path. */
+/**
+ * Create an alarm tracker bound to the given app and notification path.
+ *
+ * The tracker keys its internal map by the sanitized POI id, the same value
+ * `emitNotification` puts on the wire. Keying by the raw id would let two
+ * ids that sanitize identically (a `.` and a `_` in the same slot, for
+ * example) be treated as distinct entries that share a single SignalK
+ * notification path, so `set(A)` then `set(B)` would clobber each other on
+ * the wire while the tracker thought both were live.
+ */
 export function createNotificationTracker<T> (
   config: NotificationTrackerConfig<T>
 ): NotificationTracker<T> {
@@ -69,28 +79,29 @@ export function createNotificationTracker<T> (
   const active = new Map<string, T>()
 
   function clear (poiId: string): void {
-    const entry = active.get(poiId)
+    const safeId = sanitizePoiId(poiId)
+    const entry = active.get(safeId)
     if (entry === undefined) {
       return
     }
-    emitNotification(app, pathPrefix, poiId, buildClearValue(entry), sourceSuffix)
-    active.delete(poiId)
+    emitNotification(app, pathPrefix, safeId, buildClearValue(entry), sourceSuffix)
+    active.delete(safeId)
     if (describeClear !== undefined) {
-      app.debug(describeClear(poiId, entry))
+      app.debug(describeClear(safeId, entry))
     }
   }
 
   function clearAll (): void {
     // Snapshot the keys first: clear() deletes from the map as it iterates.
-    for (const poiId of [...active.keys()]) {
-      clear(poiId)
+    for (const safeId of [...active.keys()]) {
+      clear(safeId)
     }
   }
 
   return {
-    has: (poiId) => active.has(poiId),
-    get: (poiId) => active.get(poiId),
-    set: (poiId, entry) => { active.set(poiId, entry) },
+    has: (poiId) => active.has(sanitizePoiId(poiId)),
+    get: (poiId) => active.get(sanitizePoiId(poiId)),
+    set: (poiId, entry) => { active.set(sanitizePoiId(poiId), entry) },
     entries: () => active.entries(),
     clear,
     clearAll

@@ -147,9 +147,11 @@ self-contained module registered on one line in `src/index.ts`.
   - `shared/` - source-agnostic contracts and helpers shared across the
     plugin: `types.ts` (the cross-module type contracts; ActiveCaptain-only
     wire types live next to the ActiveCaptain input, not here),
-    `plugin-id.ts` (the plugin id, shared by plugin and panel),
+    `plugin-id.ts` (the plugin id, the canonical repo URL, and the shared
+    `PLUGIN_USER_AGENT` every upstream client consumes, all in one
+    module so a rename touches one place),
     `source-ids.ts` (the four PoiSource id constants and the `SourceSlug`
-    union, shared by the input modules and the panel — extracted so the
+    union, shared by the input modules and the panel; extracted so the
     browser-bundled panel can import them without pulling in any
     node-only dependencies the source modules reach),
     `poi-type-selection.ts` (maps the config POI-type toggles to the
@@ -157,28 +159,33 @@ self-contained module registered on one line in `src/index.ts`.
     OpenSeaMap seamark group ids and labels, the single source of truth
     consumed by the OpenSeaMap input, its config-schema fragment, and the
     panel), `us-waters.ts` (the `isInUsWaters` gate the US-only inputs read
-    to skip outbound HTTP outside US waters), `attribution.ts` (the
-    source-agnostic attribution footer rendered into every detail HTML,
-    using the `crows-nest-attribution` CSS class), `bbox-debounce.ts`
+    to skip outbound HTTP outside US waters), `bbox-debounce.ts`
     (the per-bbox LRU debounce cache, plus the canonical
     `DEFAULT_BBOX_DEBOUNCE_SECONDS` / `MIN_BBOX_DEBOUNCE_SECONDS` /
     `MAX_BBOX_DEBOUNCE_SECONDS` bounds and the `clampBboxDebounceSeconds`
     helper that every input module and the panel's normalize-config
     consume), `map-link.ts` (the OpenSeaMap-marker fallback deep link
     USCG Light List and NOAA ENC popups use, since neither upstream
-    viewer supports per-feature deep links), `notification-path.ts`
-    (builds path-safe SignalK notification deltas, shared by the alarm
-    outputs, with a `sourceSuffix` arg so proximity and route alarms get
-    distinct `$source` brands), `notification-tracker.ts` (raise/clear
-    bookkeeping shared by the proximity and route-hazard outputs),
+    viewer supports per-feature deep links), `html-escape.ts` (the
+    shared `escapeHtml` helper every source's detail renderer consumes,
+    so the four metacharacters plus the apostrophe are escaped from one
+    place), `notification-path.ts` (builds path-safe SignalK notification
+    deltas, shared by the alarm outputs, with a `sourceSuffix` arg so
+    proximity and route alarms get distinct `$source` brands),
+    `notification-tracker.ts` (raise/clear bookkeeping shared by the
+    proximity and route-hazard outputs, keyed by the sanitized POI id
+    so the in-memory and on-wire identities cannot drift),
     `year-filter.ts` (the `filterByMinimumYear` helper plus the shared
-    `MIN_YEAR` / `MAX_YEAR` / `DEFAULT_MINIMUM_YEAR` bounds and the
-    `clampMinimumYear` helper every opting-in source uses for its
-    earliest-year filter), `numbers.ts` (the `toFiniteNumber` and
-    `positiveFiniteNumber` narrowing helpers), `cache.ts` (the
-    `MAX_POI_CACHE_ENTRIES` and `MAX_BBOX_CACHE_ENTRIES` ceilings shared
-    by the per-source detail and bbox caches), and `time.ts` (the
-    `MS_PER_MINUTE` and `MS_PER_HOUR` constants).
+    `OFF_SENTINEL_YEAR` / `MIN_YEAR` / `MAX_YEAR` / `DEFAULT_MINIMUM_YEAR`
+    bounds and the `clampMinimumYear` helper every opting-in source uses
+    for its earliest-year filter), `numbers.ts` (the `toFiniteNumber`
+    and `positiveFiniteNumber` narrowing helpers, both returning `null`
+    on a non-usable value, plus `isValidLatitude`, `isValidLongitude`,
+    and `isWireTruthy` for the wire-boundary parse sites), `cache.ts`
+    (the `MAX_POI_CACHE_ENTRIES` and `MAX_BBOX_CACHE_ENTRIES` ceilings
+    shared by the per-source detail and bbox caches), and `time.ts`
+    (the `MS_PER_SECOND` / `MS_PER_MINUTE` / `MS_PER_HOUR` /
+    `MS_PER_DAY` constants).
   - `panel/` - federated React configuration panel. Root and reducer:
     `index.tsx` (Module Federation entry), `PluginConfigurationPanel.tsx`,
     `config-reducer.ts`, `normalize-config.ts`, plus the UI-metadata

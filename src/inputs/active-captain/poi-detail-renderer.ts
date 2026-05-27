@@ -17,7 +17,6 @@ import {
   CONTACT_PARTIAL,
   DOCKAGE_PARTIAL,
   FEATURED_REVIEW_PARTIAL,
-  FOOTER_PARTIAL,
   FUEL_PARTIAL,
   HEADER_PARTIAL,
   MOORING_PARTIAL,
@@ -85,11 +84,14 @@ function isPositiveNumber (value: number | undefined): boolean {
  * Parse an ActiveCaptain timestamp. The API returns timestamps with no time
  * zone (for example "2025-08-11T18:51:51.442"), which JavaScript would read as
  * local time. ActiveCaptain serves them as UTC, so a zone-less value gets a
- * trailing 'Z' before parsing.
+ * trailing 'Z' before parsing. The regex is strict on the time portion (two-
+ * digit hour, minute, and second, with an optional fractional-second tail) so
+ * a malformed wire value like `"2024-01-01T:::"` is not silently accepted as
+ * zone-less and re-emitted with a `Z`.
  */
 export function parseApiDate (value: unknown): Date {
   let text = String(value)
-  if (/^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(text)) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(text)) {
     text += 'Z'
   }
   return new Date(text)
@@ -276,7 +278,6 @@ function buildEnvironment (): typeof Handlebars {
 
   env.registerPartial({
     header: HEADER_PARTIAL,
-    footer: FOOTER_PARTIAL,
     business: BUSINESS_PARTIAL,
     dockage: DOCKAGE_PARTIAL,
     fuel: FUEL_PARTIAL,
@@ -325,10 +326,32 @@ function buildEnvironment (): typeof Handlebars {
   )
 
   // Escapes text and converts its line breaks to <br/>, so a multi-line note
-  // is not collapsed onto one line in the rendered HTML.
-  env.registerHelper('multiline', (value: unknown): Handlebars.SafeString =>
-    new env.SafeString(env.escapeExpression(String(value)).replace(/\r\n|\r|\n/g, '<br/>'))
-  )
+  // is not collapsed onto one line in the rendered HTML. An absent value
+  // renders as empty rather than the literal string "undefined".
+  env.registerHelper('multiline', (value: unknown): Handlebars.SafeString => {
+    if (value === undefined || value === null) return new env.SafeString('')
+    return new env.SafeString(env.escapeExpression(String(value)).replace(/\r\n|\r|\n/g, '<br/>'))
+  })
+
+  // Returns the website URL if it parses as `http:`, `https:`, or `mailto:`,
+  // otherwise the empty string. Handlebars escapes HTML metacharacters in
+  // `{{value}}` interpolation but does not validate URL schemes, so a wire
+  // value of `javascript:alert(1)` would survive auto-escape and ship as a
+  // working click-to-execute link. This helper gates the only attacker-
+  // controllable href on the popup.
+  env.registerHelper('safeWebsite', (value: unknown): string => {
+    if (typeof value !== 'string' || value.length === 0) return ''
+    try {
+      const parsed = new URL(value)
+      const protocol = parsed.protocol.toLowerCase()
+      if (protocol === 'http:' || protocol === 'https:' || protocol === 'mailto:') {
+        return value
+      }
+      return ''
+    } catch {
+      return ''
+    }
+  })
 
   // Renders a "Free" or "Paid" line for a known boolean, and nothing when the
   // value is absent, so an unknown price is not asserted as "Paid".
@@ -376,7 +399,13 @@ const renderPointOfInterest = handlebarsEnvironment.compile(POINT_OF_INTEREST_TE
  * Render the HTML description for a point of interest. Every `PoiType` shares
  * the single point-of-interest template; the `poiType` selects which sections
  * carry data rather than which template is used.
+ *
+ * `trimEnd` strips trailing whitespace left over from absent section blocks:
+ * the template separates section blocks with literal newlines so the source
+ * stays readable, and Handlebars cannot strip those when the block tag shares
+ * a line with the partial call. Trimming keeps a bare-header description from
+ * shipping a tail of empty lines.
  */
 export function renderDescription (details: PoiDetails): string {
-  return renderPointOfInterest({ data: details })
+  return renderPointOfInterest({ data: details }).trimEnd()
 }

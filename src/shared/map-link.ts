@@ -32,6 +32,17 @@
 /** Default zoom for a marker view. Matches the zoom every other deep link uses. */
 const DEFAULT_ZOOM = 15
 
+/**
+ * Decimal places used when interpolating coordinates into the URL. Five
+ * decimals is roughly 1.1 m on the ground at the equator, which is well
+ * inside the resolution any of the plugin's sources publishes and well
+ * inside the precision a zoom-15 marker pin can represent. Without this
+ * cap, JavaScript's default `Number.prototype.toString` produces up to 17
+ * significant digits, so a coordinate like `41.012345678901234` would
+ * ship a 60+ character URL twice (once for the center, once for the pin).
+ */
+const COORDINATE_PRECISION = 5
+
 /** Fallback URL when a caller's coordinates are not usable. */
 const FALLBACK_URL = 'https://map.openseamap.org/'
 
@@ -46,10 +57,12 @@ export function openSeaMapMarkerUrl (latitude: number, longitude: number): strin
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return FALLBACK_URL
   }
+  const lat = latitude.toFixed(COORDINATE_PRECISION)
+  const lon = longitude.toFixed(COORDINATE_PRECISION)
   return (
     'https://map.openseamap.org/' +
     `?zoom=${DEFAULT_ZOOM}` +
-    `&lat=${latitude}&lon=${longitude}` +
-    `&mlat=${latitude}&mlon=${longitude}`
+    `&lat=${lat}&lon=${lon}` +
+    `&mlat=${lat}&mlon=${lon}`
   )
 }

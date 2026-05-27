@@ -271,8 +271,11 @@ test('getDetails on a cache hit serves the view, skips the upstream, and records
   assert.ok(view.description !== undefined)
   assert.ok(view.description.includes('dangerous wreck'))
   assert.ok(view.description.includes('not intended for primary navigation'))
-  // The CC0 attribution footer must be appended to the description.
-  assert.ok(view.description.includes(view.attribution))
+  // The CC0 credit no longer rides inline in the description; it lives on
+  // `properties.attribution` of the produced note (covered by the
+  // note-builder tests). This source-level check confirms the inline
+  // footer has been removed.
+  assert.doesNotMatch(view.description, /crows-nest-attribution/)
   assert.equal(queryByIdCalls, 0, 'a cache hit must not re-query the upstream')
   assert.equal(
     events.filter(e => e.startsWith('detail-ok')).length, 0,

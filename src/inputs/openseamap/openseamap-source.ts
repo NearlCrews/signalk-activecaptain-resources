@@ -6,10 +6,10 @@
  * cache; `getDetails` is then usually a cache hit and only queries Overpass by
  * id on a miss. This mirrors the ActiveCaptain cache-and-fetch pattern.
  *
- * Every POI the source produces is tagged `source: 'openseamap'`, carries its
- * OpenStreetMap element page as `url`, and renders its detail with the ODbL
- * attribution footer: the Open Database License requires attribution wherever
- * the data is shown.
+ * Every POI the source produces is tagged `source: 'openseamap'` and carries
+ * its OpenStreetMap element page as `url`. The ODbL attribution credit
+ * required wherever the data is shown rides on `properties.attribution` of
+ * the produced note, not inline in the rendered description.
  */
 
 import { LRUCache } from 'lru-cache'
@@ -17,7 +17,6 @@ import type { OverpassClient, OverpassElement } from './overpass-client.js'
 import { renderOpenSeaMapDetail } from './openseamap-detail.js'
 import { elementPoiType, elementSkIcon, seamarkRegex } from './seamark-mapping.js'
 import type { PoiSource } from '../poi-source.js'
-import { appendAttribution } from '../../shared/attribution.js'
 import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
 import { MAX_BBOX_CACHE_ENTRIES, MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
 import type { Bbox, PoiDetailView, PoiSummary, PoiType } from '../../shared/types.js'
@@ -28,8 +27,9 @@ import { OPENSEAMAP_SOURCE_ID } from '../../shared/source-ids.js'
 
 /**
  * Attribution credit for OpenStreetMap data. The Open Database License (ODbL)
- * requires this to be visible wherever the data is shown, so it is rendered
- * into every detail description, not just the README.
+ * requires this to be visible wherever the data is shown; it is published on
+ * every produced note as `properties.attribution` for the SignalK client to
+ * render.
  */
 const OPENSEAMAP_ATTRIBUTION = '© OpenStreetMap contributors (ODbL)'
 
@@ -106,7 +106,7 @@ function toDetailView (element: OverpassElement): PoiDetailView {
     url: elementOsmUrl(element),
     source: OPENSEAMAP_SOURCE_ID,
     attribution: OPENSEAMAP_ATTRIBUTION,
-    description: appendAttribution(renderOpenSeaMapDetail(element), OPENSEAMAP_ATTRIBUTION),
+    description: renderOpenSeaMapDetail(element),
     skIcon: elementSkIcon(element.tags)
   }
   if (element.timestamp !== undefined) view.timestamp = element.timestamp

@@ -5,6 +5,129 @@
 > development milestones that preceded this publication. Their content is
 > incorporated into the `v0.4.2` release.
 
+<a id="v046"></a>
+
+### v0.4.6 (2026/05/27) - data-formatting audit, attribution on structured properties
+
+A presentation cleanup. The boilerplate attribution footer (the "Data
+sourced from..." sup/sub block on ActiveCaptain notes and the
+`<p class="crows-nest-attribution">` line that every other source
+appended to its rendered description) is gone; the same information now
+rides on structured `properties.{source,attribution,plugin,pluginRepo}`
+fields published on every note, so a SignalK client UI can render the
+source link cleanly in chrome instead of inline alongside the POI
+detail.
+
+#### Attribution
+
+- Move attribution from inline description boilerplate to structured
+  `properties.{source,attribution,plugin,pluginRepo}` fields on every
+  note so client UIs can render the source link cleanly. `source` and
+  `attribution` were already published on the note; `plugin` and
+  `pluginRepo` are new and identify this plugin and its canonical
+  GitHub repository.
+- Remove the ActiveCaptain footer partial that rendered the "Data
+  sourced from Garmin Active Captain via the signalk-crows-nest
+  plugin" sup/sub block plus the per-POI "encouraged to contribute"
+  link, and stop wrapping the rendered description of every other
+  source (OpenSeaMap, USCG Light List, NOAA ENC Direct) with the
+  `crows-nest-attribution` paragraph.
+- Delete the now-unused `src/shared/attribution.ts` helper and its
+  test, since no source appends an inline attribution footer anymore.
+
+#### Data-formatting audit cleanup
+
+A four-agent review of data formatting across the codebase landed
+roughly fifty cleanups, every severity through nit:
+
+- **Security (med).** The ActiveCaptain `<a href="{{website}}">` link
+  is now gated by a `safeWebsite` Handlebars helper that rejects any
+  URL outside `http:`, `https:`, and `mailto:`, so a wire value of
+  `javascript:alert(1)` cannot ride the click-to-execute path. The
+  `rel="noopener noreferrer"` attribute is set on every external link.
+- **Plugin identity consolidated.** `PLUGIN_REPO_URL` and the new
+  `PLUGIN_USER_AGENT` live alongside `PLUGIN_ID` in
+  `src/shared/plugin-id.ts`. The four upstream clients (ActiveCaptain,
+  Overpass, USCG NAVCEN, NOAA ENC) all consume the shared `User-Agent`,
+  so every outbound request carries the same identity and the same
+  canonical repo URL. The stale `nlabadie/signalk-crows-nest` URL on
+  the NOAA and USCG clients is fixed in the same change.
+- **Shared HTML escape helper.** The three near-identical `escapeHtml`
+  copies in the source detail renderers consolidate onto a single
+  helper in `src/shared/html-escape.ts`; the table now escapes the
+  apostrophe alongside the four metacharacters so a future
+  single-quoted attribute is safe by default. The USCG `llnr` and
+  `volume` interpolation sites are now escaped consistently with the
+  rest of that renderer.
+- **NOAA ENC robustness.** The source rejects features with no
+  `OBJECTID` or out-of-range coordinates rather than minting a
+  `<layer>_unknown` marker whose click-through 404s. Charted depths
+  and sounding-accuracy parentheticals render as `12.0 m`, not
+  `12.0000001 m`, via `toFixed(1)`. `sordatToIsoTimestamp` rejects
+  out-of-range months and days so a wire `"20240299"` no longer
+  silently rolls forward to `2024-04-08`.
+- **OpenSeaMap robustness.** The wire timestamp is normalized through
+  `Date.toISOString()` so the published `PoiSummary.timestamp` is
+  consistent in precision with the other three sources. The
+  `seamark:type` and `leisure` lookups are case-insensitive and
+  whitespace-trimming so an older OSM edit with a capitalized or
+  padded tag is recognized rather than falling through to `Unknown`.
+  The `humanizeWord`-then-lowercase round-trip in `buildFamilyLine`
+  is dropped.
+- **USCG robustness.** A null `NAME` falls back to
+  `Unnamed <aidType>` so the chart marker has a popup title.
+  `INACTIVE` reads through `isWireTruthy` so a schema bump that
+  ships the boolean as a number does not silently mark every record
+  active. `MODIFIED_DATE = 0` is treated as absent so the year filter
+  does not unconditionally drop the record. The `humanizeLightChar`
+  guard, the `(Morse)` parenthetical, the dangling `<hr/>` in the
+  ActiveCaptain header, and the `Wifi` -> `Wi-Fi` and `Patrolled` ->
+  `Security patrol` labels are all fixed.
+- **SignalK note shape.** The `properties.sourceCount` field is
+  dropped (it duplicated `properties.sources.length`). The note's
+  `position` is built field-by-field at the builder boundary so an
+  upstream type that grows a stray field cannot leak it onto the wire.
+  `description: ''` no longer ships with `mimeType: text/html` for an
+  empty body. The `getResource` property-value branch no longer
+  returns `timestamp: undefined` for sources whose record carries no
+  date.
+- **Notification path safety.** The notification tracker keys by the
+  sanitized POI id (the same value that ends up on the wire), so two
+  ids that sanitize identically cannot live as two distinct tracker
+  entries that share one SignalK notification path. An empty
+  `sourceSuffix` string is treated the same as undefined, so the
+  `$source` brand never gains a trailing dot.
+- **Numeric helpers.** `toFiniteNumber` and `positiveFiniteNumber`
+  both return `null` for the "not usable" sentinel, matching the
+  `toPosition` and resource-query patterns. New helpers
+  `isValidLatitude`, `isValidLongitude`, and `isWireTruthy` live in
+  the same module and are used at every coordinate-parse site. The
+  panel's normalize-config replaces six copies of the
+  positive-finite inline check with the shared helper.
+- **Time and year constants.** `MS_PER_SECOND` and `MS_PER_DAY` join
+  `MS_PER_MINUTE` and `MS_PER_HOUR` in `src/shared/time.ts`; the
+  three `60_000` literals in HTTP clients and the position monitor
+  consume the shared `MS_PER_MINUTE` constant. The year-filter's
+  off-sentinel is now named `OFF_SENTINEL_YEAR` (still equal to
+  `MIN_YEAR = 0`) so the dual semantic is explicit.
+- **Geographic helpers harden.** `positionToBbox` and `unionBbox`
+  throw on non-finite inputs rather than silently emitting `NaN` to
+  an upstream query, and the projected latitude is clamped to
+  `[-90, 90]`. The doc comments name the pole and antimeridian
+  limitations side by side.
+- **Aggregate id namespace constraint.** The input registry asserts
+  at registration that no source slug contains a hyphen, because the
+  aggregate's id namespace splits on the first hyphen. A future
+  `noaa-enc` slug would surface as a runtime click-through error
+  without the guard.
+- **Map-link URL precision.** `openSeaMapMarkerUrl` caps coordinates
+  to five decimals (~1.1 m), so a marker URL is roughly 25% of its
+  previous length.
+- **Editorial.** Punctuation across the OpenSeaMap and NOAA ENC
+  popups is now consistent (every fact line ends in a period); the
+  ActiveCaptain `parseApiDate` regex tightens its time portion to
+  reject malformed `HH:MM:SS` values before appending `Z`.
+
 <a id="v044"></a>
 
 ### v0.4.4 (2026/05/26) - faster chart loads, plugin icon, audit cleanup

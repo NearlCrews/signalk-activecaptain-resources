@@ -21,8 +21,17 @@
 
 import type { PoiSummary } from './types.js'
 
-/** Off-sentinel and lower bound for every per-source minimum-year filter. */
-export const MIN_YEAR = 0
+/**
+ * Off-sentinel for every per-source minimum-year filter. `0` is not a
+ * meaningful year cutoff (the ISO year 0 is 1 BCE, which the plugin's data
+ * sources never produce), so it doubles as the "filter disabled" value
+ * shared by the clamp and the filter. Kept as a named constant rather than
+ * a magic `0` so the meaning is obvious at call sites.
+ */
+export const OFF_SENTINEL_YEAR = 0
+
+/** Lower bound on every minimum-year filter, alias of {@link OFF_SENTINEL_YEAR}. */
+export const MIN_YEAR = OFF_SENTINEL_YEAR
 
 /**
  * Upper bound on every minimum-year filter. Generous (a far-future year) so a
@@ -32,7 +41,7 @@ export const MIN_YEAR = 0
 export const MAX_YEAR = 9999
 
 /** Default minimum year on every per-source filter (the off sentinel). */
-export const DEFAULT_MINIMUM_YEAR = MIN_YEAR
+export const DEFAULT_MINIMUM_YEAR = OFF_SENTINEL_YEAR
 
 /**
  * Clamp a raw minimum-year value to `[MIN_YEAR, MAX_YEAR]` and truncate to an

@@ -21,6 +21,7 @@ import {
   lookupCode
 } from './s57-mapping.js'
 import type { EncLayerKey } from './enc-direct-types.js'
+import { escapeHtml } from '../../shared/html-escape.js'
 
 /** Layer-derived fallback header label when OBJNAM is null or absent. */
 const LAYER_LABEL: Readonly<Record<EncLayerKey, string>> = {
@@ -31,15 +32,6 @@ const LAYER_LABEL: Readonly<Record<EncLayerKey, string>> = {
 
 /** NOAA's standard disclaimer for ENC data published through Coast Survey. */
 const DISCLAIMER = 'NOAA ENC data is not intended for primary navigation.'
-
-/** Escape the four HTML-significant characters in a free-text value. */
-function escapeHtml (value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
 
 /**
  * Resolve the category label (CATWRK for a wreck, CATOBS for an obstruction).
@@ -97,8 +89,10 @@ export function renderEncDirectDetail (
   const valsou = readNumber(properties.VALSOU)
   if (valsou !== undefined) {
     const souacc = readNumber(properties.SOUACC)
-    const accuracy = souacc !== undefined ? ` (sounding accuracy ±${souacc} m)` : ''
-    blocks.push(`<p><strong>Charted depth:</strong> ${valsou} m${accuracy}.</p>`)
+    const accuracy = souacc !== undefined
+      ? ` (sounding accuracy ±${souacc.toFixed(1)} m)`
+      : ''
+    blocks.push(`<p><strong>Charted depth:</strong> ${valsou.toFixed(1)} m${accuracy}.</p>`)
   }
 
   const quality = lookupCode(QUASOU, properties.QUASOU)
@@ -113,7 +107,7 @@ export function renderEncDirectDetail (
 
   const inform = readText(properties.INFORM)
   if (inform !== undefined) {
-    blocks.push(`<p><strong>Information:</strong> ${escapeHtml(inform)}</p>`)
+    blocks.push(`<p><strong>Information:</strong> ${escapeHtml(inform)}.</p>`)
   }
 
   const dsnm = readText(properties.DSNM)

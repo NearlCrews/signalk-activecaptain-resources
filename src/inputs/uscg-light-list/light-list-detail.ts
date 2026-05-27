@@ -11,6 +11,7 @@
 
 import type { LightListRecord } from './light-list-types.js'
 import { humanizeLightCharacter } from '../openseamap/openseamap-detail.js'
+import { escapeHtml } from '../../shared/html-escape.js'
 
 /** Plain-English label for the single-letter USCG color codes. */
 const COLOR: Readonly<Record<string, string>> = {
@@ -21,14 +22,12 @@ const COLOR: Readonly<Record<string, string>> = {
   B: 'blue'
 }
 
-/** Escape text for safe inclusion in the rendered HTML. */
-function escape (value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
+/**
+ * Local alias for the shared HTML escape helper. Kept under the short
+ * `escape` name so the dense interpolation sites below stay readable; the
+ * implementation lives in `src/shared/html-escape.ts`.
+ */
+const escape = escapeHtml
 
 /** Normalize a USCG nominal-range unit code to a short, friendly label. */
 function rangeUnit (unit: string): string {
@@ -65,7 +64,9 @@ function humanizeLightChar (raw: string): string {
   }
   if (tokens.length > 2) {
     const period = tokens[2].replace(/s$/i, '')
-    parts.push(`${period} s period`)
+    if (period.length > 0) {
+      parts.push(`${period} s period`)
+    }
   }
   return parts.join(', ')
 }
@@ -126,19 +127,19 @@ function daymarkLine (record: LightListRecord): string | null {
   return parts.join(' ')
 }
 
-/** Render the source-attribution footer line: Volume, District, last-updated date. */
+/** Render the provenance line: Volume, District, last-updated date. */
 function sourceLine (record: LightListRecord): string {
   const updated = record.modifiedDate !== undefined
     ? ` (last updated ${escape(record.modifiedDate.slice(0, 10))})`
     : ''
-  return `USCG Light List, Volume ${record.volume}, District ${escape(record.district)}${updated}`
+  return `USCG Light List, Volume ${escape(String(record.volume))}, District ${escape(record.district)}${updated}`
 }
 
 /** Render a USCG Light List record as a Freeboard-ready HTML description. */
 export function renderLightListDetail (record: LightListRecord): string {
   const blocks: string[] = []
   const inactiveSuffix = record.inactive ? ' (inactive)' : ''
-  blocks.push(`<h4>${escape(record.name)} (LLNR ${record.llnr})${inactiveSuffix}</h4>`)
+  blocks.push(`<h4>${escape(record.name)} (LLNR ${escape(String(record.llnr))})${inactiveSuffix}</h4>`)
   const light = lightLine(record)
   if (light !== null) {
     blocks.push(`<p><strong>Light:</strong> ${escape(light)}.</p>`)
@@ -155,7 +156,7 @@ export function renderLightListDetail (record: LightListRecord): string {
     blocks.push(`<p><strong>Sound signal:</strong> ${escape(record.soundEmitterType)}.</p>`)
   }
   if (record.racon !== undefined) {
-    blocks.push(`<p><strong>RACON:</strong> ${escape(record.racon)} (Morse).</p>`)
+    blocks.push(`<p><strong>RACON:</strong> ${escape(record.racon)}.</p>`)
   }
   if (record.remark !== undefined && record.remark.length > 0) {
     blocks.push(`<p><strong>Remarks:</strong> ${escape(record.remark)}</p>`)

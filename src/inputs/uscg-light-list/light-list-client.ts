@@ -17,9 +17,9 @@ import type {
   LightListProperties,
   LightListRecord
 } from './light-list-types.js'
-
-/** Descriptive User-Agent identifying the plugin to the USCG NAVCEN service. */
-const USER_AGENT = 'signalk-crows-nest (+https://github.com/nlabadie/signalk-crows-nest)'
+import { PLUGIN_USER_AGENT } from '../../shared/plugin-id.js'
+import { isValidLatitude, isValidLongitude, isWireTruthy } from '../../shared/numbers.js'
+import { MS_PER_MINUTE } from '../../shared/time.js'
 
 /** Default upstream host for the NAVCEN Maritime Safety Information files. */
 const DEFAULT_BASE_URL = 'https://navcen.uscg.gov'
@@ -37,7 +37,7 @@ const HTTP_OK = 200
  * `http-client.ts` enforces an equivalent policy for the queued sources;
  * this raw client mirrors it.
  */
-const REQUEST_TIMEOUT_MS = 60_000
+const REQUEST_TIMEOUT_MS = MS_PER_MINUTE
 
 /** Result of a single district download attempt. */
 export type DownloadResult =
@@ -139,7 +139,7 @@ function parseFeature (
   }
   const latitude = properties.DECIMAL_LATITUDE
   const longitude = properties.DECIMAL_LONGITUDE
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
     return null
   }
   // The wire ships VOLUME_NUMBER as a zero-padded string (`"01"`), but the
@@ -150,14 +150,19 @@ function parseFeature (
   if (!Number.isFinite(volume)) {
     return null
   }
+  // Fall back to a synthesized "Unnamed <aid type>" when NAME is null so
+  // the chart marker carries a popup title rather than rendering blank.
+  // This mirrors OpenSeaMap's `Unnamed ${type}` fallback.
+  const aidType = presentString(properties.AID_TYPE)
+  const name = presentString(properties.NAME) ?? `Unnamed ${aidType ?? 'navigation aid'}`
   const record: LightListRecord = {
     llnr: properties.LIGHT_LIST_NUMBER,
-    name: properties.NAME ?? '',
+    name,
     position: { latitude, longitude },
     district,
     volume,
     source: 'usclightlist',
-    inactive: properties.INACTIVE === '1'
+    inactive: isWireTruthy(properties.INACTIVE)
   }
   copyOptionalProperties(properties, record)
   return record
@@ -209,8 +214,13 @@ function copyOptionalProperties (
   if (aidSubtype !== undefined) record.aidSubtype = aidSubtype
   const remark = presentString(properties.REMARK)
   if (remark !== undefined) record.remark = remark
+  // MSI occasionally ships `0` as the "unknown" sentinel for MODIFIED_DATE.
+  // Treat it as absent so the year filter does not silently drop the record
+  // (a January 1970 timestamp would fail every meaningful cutoff). MSI
+  // values otherwise are millisecond epochs from the 2010s onwards, so
+  // discarding `0` poses no realistic data loss.
   const modified = presentNumber(properties.MODIFIED_DATE)
-  if (modified !== undefined) {
+  if (modified !== undefined && modified > 0) {
     record.modifiedDate = new Date(modified).toISOString()
   }
 }
@@ -223,7 +233,7 @@ export function createLightListClient (
   return {
     async downloadDistrict (district, page, previousHeaders) {
       const url = `${baseUrl}/sites/default/files/msi/lightList${district}_${page}.geojson`
-      const headers: Record<string, string> = { 'User-Agent': USER_AGENT }
+      const headers: Record<string, string> = { 'User-Agent': PLUGIN_USER_AGENT }
       if (previousHeaders?.lastModified !== undefined) {
         headers['If-Modified-Since'] = previousHeaders.lastModified
       }

@@ -80,7 +80,7 @@ export interface InputModule {
    * method, so a tight USCG-against-AC merge can coexist with a looser
    * OpenSeaMap-against-AC merge in the same run.
    */
-  dedupeRadiusMeters?: (config: PluginConfig) => number | undefined
+  dedupeRadiusMeters?: (config: PluginConfig) => number | null | undefined
   /** Build the source. Called once per plugin start. */
   createSource: (context: InputContext) => PoiSource
 }

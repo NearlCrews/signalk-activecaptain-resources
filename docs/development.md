@@ -94,12 +94,18 @@ src/                      # TypeScript source
 ├── geo/                  # position-utilities.ts: bounding-box and great-circle helpers
 ├── status/               # plugin-status.ts (per-source recorder), status-router.ts, status-types.ts
 ├── shared/               # Source-agnostic helpers: types.ts (cross-module contracts),
-│                         #   plugin-id.ts, poi-type-selection.ts, seamark-groups.ts,
+│                         #   plugin-id.ts (id, repo URL, and shared User-Agent),
+│                         #   poi-type-selection.ts, seamark-groups.ts,
 │                         #   us-waters.ts (the isInUsWaters gate the US-only inputs
 │                         #   read), year-filter.ts (the filterByMinimumYear helper
 │                         #   plus the shared year bounds and clamp every opting-in
-│                         #   source uses), attribution.ts, notification-path.ts,
-│                         #   notification-tracker.ts, numbers.ts, cache.ts, time.ts
+│                         #   source uses), html-escape.ts (the shared escapeHtml
+│                         #   helper every source's detail renderer consumes),
+│                         #   notification-path.ts, notification-tracker.ts,
+│                         #   numbers.ts (toFiniteNumber, positiveFiniteNumber,
+│                         #   isValidLatitude/Longitude, isWireTruthy), cache.ts,
+│                         #   time.ts (MS_PER_SECOND, MS_PER_MINUTE, MS_PER_HOUR,
+│                         #   MS_PER_DAY)
 └── panel/                # Federated React configuration panel (bundled to public/)
     ├── index.tsx          # Federation entry; re-exports PluginConfigurationPanel
     ├── PluginConfigurationPanel.tsx  # Root panel component

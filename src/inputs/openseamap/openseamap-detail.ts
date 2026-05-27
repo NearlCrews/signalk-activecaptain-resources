@@ -6,11 +6,12 @@
  * (`seamark:buoy_lateral:colour`, `seamark:light:character`, etc.) that mean
  * nothing on a chart popup. This module curates the tags that matter to a
  * mariner, labels them in plain English, translates the IALA light character
- * abbreviations, and ignores the rest. The attribution footer is appended by
- * the caller.
+ * abbreviations, and ignores the rest. The attribution credit rides on
+ * `properties.attribution` of the produced note, not inline in this HTML.
  */
 
 import type { OverpassElement } from './overpass-client.js'
+import { escapeHtml } from '../../shared/html-escape.js'
 
 /** Plain-English label for every `seamark:type` the plugin fetches. */
 const TYPE_LABEL: Readonly<Record<string, string>> = {
@@ -66,19 +67,18 @@ const LIGHT_CHARACTER: Readonly<Record<string, string>> = {
 /** Pattern that splits a light character into its base and optional group. */
 const LIGHT_CHARACTER_PATTERN = /^([A-Za-z]+)(\(.+\))?$/
 
-/** Escape text for safe inclusion in the rendered HTML. */
-function escapeHtml (value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-/** Replace underscores with spaces and capitalize the first letter. */
-function humanizeWord (value: string): string {
-  const spaced = value.replace(/_/g, ' ')
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+/**
+ * Read an OSM tag and trim whitespace. Returns undefined when the value is
+ * absent or trims to the empty string. Older OSM edits occasionally surface
+ * with leading or trailing whitespace; the lookup tables in this file and in
+ * seamark-mapping.ts key on the trimmed form, so reading every tag through
+ * this helper keeps the curation working on those records too.
+ */
+function tagValue (tags: Readonly<Record<string, string>>, key: string): string | undefined {
+  const raw = tags[key]
+  if (raw === undefined) return undefined
+  const trimmed = raw.trim()
+  return trimmed.length > 0 ? trimmed : undefined
 }
 
 /**
@@ -101,40 +101,41 @@ export function humanizeLightCharacter (raw: string): string {
  */
 function buildLightLine (tags: Readonly<Record<string, string>>): string | null {
   const parts: string[] = []
-  const character = tags['seamark:light:character']
+  const character = tagValue(tags, 'seamark:light:character')
   if (character !== undefined) {
     parts.push(humanizeLightCharacter(character))
   }
-  const colour = tags['seamark:light:colour']
+  const colour = tagValue(tags, 'seamark:light:colour')
   if (colour !== undefined) {
-    parts.push(humanizeWord(colour).toLowerCase())
+    parts.push(colour.replace(/_/g, ' '))
   }
-  const period = tags['seamark:light:period']
+  const period = tagValue(tags, 'seamark:light:period')
   if (period !== undefined) {
     parts.push(`${period} s period`)
   }
-  const range = tags['seamark:light:range']
+  const range = tagValue(tags, 'seamark:light:range')
   if (range !== undefined) {
     parts.push(`${range} NM range`)
   }
-  const height = tags['seamark:light:height']
+  const height = tagValue(tags, 'seamark:light:height')
   if (height !== undefined) {
     parts.push(`${height} m high`)
   }
-  const exhibition = tags['seamark:light:exhibition']
+  const exhibition = tagValue(tags, 'seamark:light:exhibition')
   if (exhibition !== undefined) {
-    parts.push(`shown at ${humanizeWord(exhibition).toLowerCase()}`)
+    parts.push(`shown at ${exhibition.replace(/_/g, ' ')}`)
   }
   return parts.length > 0 ? parts.join(', ') : null
 }
 
 /** Header label for an element: the type label plus its name, if any. */
 function buildHeader (tags: Readonly<Record<string, string>>): string {
-  const type = tags['seamark:type']
+  const type = tagValue(tags, 'seamark:type')?.toLowerCase()
+  const leisure = tagValue(tags, 'leisure')?.toLowerCase()
   const label = (type !== undefined && TYPE_LABEL[type] !== undefined)
     ? TYPE_LABEL[type]
-    : (tags.leisure === 'marina' ? TYPE_LABEL.marina : 'OpenSeaMap feature')
-  const name = tags.name ?? tags['seamark:name']
+    : (leisure === 'marina' ? TYPE_LABEL.marina : 'OpenSeaMap feature')
+  const name = tagValue(tags, 'name') ?? tagValue(tags, 'seamark:name')
   return name !== undefined
     ? `${escapeHtml(label)}: ${escapeHtml(name)}`
     : escapeHtml(label)
@@ -153,17 +154,17 @@ function buildFamilyLine (tags: Readonly<Record<string, string>>): string | null
   }
   const prefix = `seamark:${type}:`
   const parts: string[] = []
-  const category = tags[`${prefix}category`]
+  const category = tagValue(tags, `${prefix}category`)
   if (category !== undefined) {
-    parts.push(humanizeWord(category).toLowerCase())
+    parts.push(category.replace(/_/g, ' '))
   }
-  const colour = tags[`${prefix}colour`]
+  const colour = tagValue(tags, `${prefix}colour`)
   if (colour !== undefined) {
-    parts.push(humanizeWord(colour).toLowerCase())
+    parts.push(colour.replace(/_/g, ' '))
   }
-  const shape = tags[`${prefix}shape`]
+  const shape = tagValue(tags, `${prefix}shape`)
   if (shape !== undefined) {
-    parts.push(`${humanizeWord(shape).toLowerCase()} shape`)
+    parts.push(`${shape.replace(/_/g, ' ')} shape`)
   }
   if (parts.length === 0) {
     return null
@@ -175,8 +176,7 @@ function buildFamilyLine (tags: Readonly<Record<string, string>>): string | null
 /**
  * Render a friendly HTML description for an OpenSeaMap element. Curates the
  * seamark tags that matter to a mariner; the technical OSM enums and the
- * verbose family-keyed tags are folded into one or two short sentences. The
- * caller appends the ODbL attribution footer.
+ * verbose family-keyed tags are folded into one or two short sentences.
  */
 export function renderOpenSeaMapDetail (element: OverpassElement): string {
   const tags = element.tags
@@ -194,13 +194,13 @@ export function renderOpenSeaMapDetail (element: OverpassElement): string {
     blocks.push(`<p><strong>Light:</strong> ${escapeHtml(lightLine)}.</p>`)
   }
 
-  const information = tags['seamark:information']
-  if (information !== undefined && information.length > 0) {
-    blocks.push(`<p><strong>Information:</strong> ${escapeHtml(information)}</p>`)
+  const information = tagValue(tags, 'seamark:information')
+  if (information !== undefined) {
+    blocks.push(`<p><strong>Information:</strong> ${escapeHtml(information)}.</p>`)
   }
-  const notice = tags['seamark:notice']
-  if (notice !== undefined && notice.length > 0) {
-    blocks.push(`<p><strong>Notice:</strong> ${escapeHtml(notice)}</p>`)
+  const notice = tagValue(tags, 'seamark:notice')
+  if (notice !== undefined) {
+    blocks.push(`<p><strong>Notice:</strong> ${escapeHtml(notice)}.</p>`)
   }
 
   // If none of the curated tags supplied any content, surface a brief note

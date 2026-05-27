@@ -21,6 +21,8 @@
  */
 
 import { assertResponseOk, createHttpClient, type RateLimitOptions } from '../http-client.js'
+import { PLUGIN_USER_AGENT } from '../../shared/plugin-id.js'
+import { isValidLatitude, isValidLongitude } from '../../shared/numbers.js'
 import type { Bbox, Logger, Position } from '../../shared/types.js'
 
 // No OpenSeaMap consumer inspects the HTTP status of a failed request: a
@@ -54,12 +56,12 @@ export interface OverpassElement {
   timestamp?: string
 }
 
-/** Descriptive User-Agent, required by the Overpass API usage policy. */
-const USER_AGENT = 'signalk-crows-nest Signal K plugin'
-
-/** Headers sent on every Overpass request. */
+/** Headers sent on every Overpass request. The descriptive `User-Agent`
+ * (sourced from {@link PLUGIN_USER_AGENT}) is required by the Overpass API
+ * usage policy.
+ */
 const BASE_HEADERS: Readonly<Record<string, string>> = {
-  'User-Agent': USER_AGENT,
+  'User-Agent': PLUGIN_USER_AGENT,
   'Content-Type': 'text/plain',
   Accept: 'application/json'
 }
@@ -224,17 +226,24 @@ function parseElement (wire: OverpassWireElement): OverpassElement | null {
   }
   const lat = wire.lat ?? wire.center?.lat
   const lon = wire.lon ?? wire.center?.lon
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+  if (!isValidLatitude(lat) || !isValidLongitude(lon)) {
     return null
   }
   const element: OverpassElement = {
     type,
     id: wire.id as number,
     tags: wire.tags ?? {},
-    position: { latitude: lat as number, longitude: lon as number }
+    position: { latitude: lat, longitude: lon }
   }
+  // Normalize the wire timestamp through Date.toISOString so the published
+  // value carries the same canonical precision as every other source
+  // (`YYYY-MM-DDTHH:MM:SS.sssZ`). Reject anything Date.parse cannot read,
+  // rather than letting it ride through unchecked.
   if (typeof wire.timestamp === 'string' && wire.timestamp.length > 0) {
-    element.timestamp = wire.timestamp
+    const parsed = Date.parse(wire.timestamp)
+    if (Number.isFinite(parsed)) {
+      element.timestamp = new Date(parsed).toISOString()
+    }
   }
   return element
 }

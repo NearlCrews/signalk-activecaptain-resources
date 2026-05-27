@@ -149,26 +149,44 @@ export function distanceMeters (a: Position, b: Position): number {
  * `[longitude, latitude]`. This typed version takes a `Position` object and
  * returns a `Bbox` object instead.
  *
- * Known limitation: this function is not antimeridian-aware. When the search
- * circle straddles +/-180 degrees longitude the projected `west` edge ends up
- * numerically greater than the `east` edge, so a downstream consumer that
- * assumes `west <= east` builds the wrong (inside-out) box. This affects only
- * vessels operating right at the 180 degree meridian; a correct fix would have
- * to split the box in two, which is deliberately out of scope here.
+ * Known limitations:
+ *
+ * - Not antimeridian-aware. When the search circle straddles +/-180 degrees
+ *   longitude the projected `west` edge ends up numerically greater than
+ *   the `east` edge, so a downstream consumer that assumes `west <= east`
+ *   builds the wrong (inside-out) box.
+ * - Not pole-aware. At a latitude extremely close to +/-90 degrees, one
+ *   degree of longitude collapses toward zero meters, so the projected NW
+ *   and SE corner longitudes wrap and the returned box can be degenerate.
+ *
+ * Both limitations affect only vessels operating in those corner cases,
+ * and the latitude is clamped to `[-90, 90]` so a numerically out-of-range
+ * input cannot reach an upstream query as `lat=99`.
+ *
+ * Throws when `position` carries a non-finite coordinate or `distanceMeters`
+ * is not a finite non-negative number: every upstream that would consume
+ * the returned box expects finite edges, and silently emitting `NaN` to a
+ * remote service is worse than failing loudly here.
  *
  * @param position - The center of the bounding box.
  * @param distanceMeters - Search radius in meters that the box must enclose.
  * @returns A `Bbox` with `north`, `south`, `east`, and `west` edges in degrees.
  */
 export function positionToBbox (position: Position, distanceMeters: number): Bbox {
+  if (!Number.isFinite(position.latitude) || !Number.isFinite(position.longitude)) {
+    throw new Error('positionToBbox: position carries a non-finite coordinate')
+  }
+  if (!Number.isFinite(distanceMeters) || distanceMeters < 0) {
+    throw new Error('positionToBbox: distanceMeters must be a finite non-negative number')
+  }
   // Corner-to-center distance for a square whose edges sit distanceMeters out.
   const cornerDistanceKm = (distanceMeters * Math.SQRT2) / 1000
   const northWest = projectPosition(position, NW_BEARING_DEGREES, cornerDistanceKm)
   const southEast = projectPosition(position, SE_BEARING_DEGREES, cornerDistanceKm)
 
   return {
-    north: northWest.latitude,
-    south: southEast.latitude,
+    north: Math.min(90, northWest.latitude),
+    south: Math.max(-90, southEast.latitude),
     east: southEast.longitude,
     west: northWest.longitude
   }
@@ -260,8 +278,19 @@ export function projectPointOntoLeg (start: Position, end: Position, point: Posi
  * of the short way across the meridian. This affects only vessels operating
  * right at the 180 degree meridian; a correct fix would have to detect the
  * wrap and is deliberately out of scope here.
+ *
+ * Throws when either input carries a non-finite edge: `Math.max(NaN, x)` is
+ * NaN, so the propagation would silently emit `lat=NaN` to an upstream.
  */
 export function unionBbox (a: Bbox, b: Bbox): Bbox {
+  if (
+    !Number.isFinite(a.north) || !Number.isFinite(a.south) ||
+    !Number.isFinite(a.east) || !Number.isFinite(a.west) ||
+    !Number.isFinite(b.north) || !Number.isFinite(b.south) ||
+    !Number.isFinite(b.east) || !Number.isFinite(b.west)
+  ) {
+    throw new Error('unionBbox: input carries a non-finite edge')
+  }
   return {
     north: Math.max(a.north, b.north),
     south: Math.min(a.south, b.south),

@@ -31,7 +31,15 @@ import type { PluginStatus } from '../../status/plugin-status.js'
 
 import { ACTIVE_CAPTAIN_SOURCE_ID } from '../../shared/source-ids.js'
 
-/** Human-readable attribution credit for ActiveCaptain data. */
+/**
+ * Human-readable attribution credit for ActiveCaptain data. The other three
+ * sources lead with a `©` symbol and end with a `(license)` parenthetical
+ * (ODbL, CC0, US Government public domain). ActiveCaptain reads as a
+ * sentence because the data is proprietary and community-contributed: the
+ * Garmin developer terms ask for a credit, not a copyright assertion. The
+ * dedupe pass joins these credits with `'; '`, so a corroborated note
+ * displays them side by side with the stylistic mismatch preserved.
+ */
 const ACTIVE_CAPTAIN_ATTRIBUTION = 'Data from Garmin ActiveCaptain'
 
 /** Public ActiveCaptain page for a point of interest, by id. */
@@ -201,9 +209,9 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
       const poi = entity.pointOfInterest
       let description: string | undefined
       try {
-        // The rendered template ends with a footer partial that already
-        // credits ActiveCaptain, so the description needs no extra
-        // attribution line appended.
+        // The rendered HTML carries no inline attribution credit; the
+        // ActiveCaptain credit rides on the detail view's `attribution`
+        // field and is republished on the note's `properties.attribution`.
         description = renderDescription(entity)
       } catch (error) {
         app.debug(`Unable to format description for ${id}: ${String(error)}`)

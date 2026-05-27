@@ -16,7 +16,7 @@ import { createLightListStore } from './light-list-store.js'
 import type { InputContext, InputModule } from '../poi-source.js'
 import { positiveFiniteNumber } from '../../shared/numbers.js'
 import { USCG_LIGHT_LIST_SOURCE_ID } from '../../shared/source-ids.js'
-import { MS_PER_HOUR } from '../../shared/time.js'
+import { MS_PER_HOUR, MS_PER_SECOND } from '../../shared/time.js'
 import type { PluginConfig } from '../../shared/types.js'
 import { DEFAULT_DEDUPE_RADIUS_METERS } from '../dedupe-pois.js'
 import {
@@ -35,9 +35,6 @@ const MAX_REFRESH_HOURS = 168
 
 /** Delay before the first refresh fires after a plugin start, in seconds. */
 const INITIAL_REFRESH_DELAY_SECONDS = 30
-
-/** Seconds-to-milliseconds factor. MS_PER_HOUR is shared via shared/time.js. */
-const MS_PER_SECOND = 1000
 
 /** The enable, dedupe, and refresh-period config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {

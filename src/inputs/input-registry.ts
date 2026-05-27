@@ -68,6 +68,22 @@ export function createInputRegistry (
   modules: readonly InputModule[],
   options: InputRegistryOptions = {}
 ): InputRegistry {
+  // The aggregate prefixes resource ids with `${sourceId}-` and `getDetails`
+  // splits on the first hyphen to recover the source slug. A source whose
+  // slug itself contains a hyphen (e.g. `noaa-enc`) would split as
+  // `noaa` / `enc-12345` and route to a non-existent source, surfacing as
+  // a `No source for resource id` error only at click-time. Enforce the
+  // constraint at registration so a future contributor cannot trip the
+  // bug without noticing.
+  for (const module of modules) {
+    if (module.id.includes('-')) {
+      throw new Error(
+        `Source slug "${module.id}" contains a hyphen; the aggregate ` +
+        'resource-id namespace splits on the first hyphen, so slugs must ' +
+        'use underscores or no separators.'
+      )
+    }
+  }
   const perSourceListTimeoutMs =
     options.perSourceListTimeoutMs ?? DEFAULT_PER_SOURCE_LIST_TIMEOUT_MS
   return {
@@ -94,7 +110,7 @@ export function createInputRegistry (
           if (module.id !== ACTIVE_CAPTAIN_SOURCE_ID && module.isDedupeEnabled?.(context.config) === true) {
             dedupeSources.add(module.id)
             const radius = module.dedupeRadiusMeters?.(context.config)
-            if (radius !== undefined) {
+            if (radius != null) {
               dedupeRadiusBySource.set(module.id, radius)
             }
           }

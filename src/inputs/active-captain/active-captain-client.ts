@@ -14,6 +14,8 @@
  */
 
 import { assertResponseOk, createHttpClient, type RateLimitOptions, type Sleep } from '../http-client.js'
+import { PLUGIN_USER_AGENT } from '../../shared/plugin-id.js'
+import { isValidLatitude, isValidLongitude } from '../../shared/numbers.js'
 import type { Bbox, PoiSummary, Logger } from '../../shared/types.js'
 import type { PoiDetails, PoiListResponse } from './active-captain-types.js'
 
@@ -28,11 +30,10 @@ export type { RateLimitOptions, Sleep } from '../http-client.js'
 export type ClientPoiSummary = Omit<PoiSummary, 'source' | 'url' | 'attribution'>
 
 const BASE_URL = 'https://activecaptain.garmin.com'
-const USER_AGENT = 'Signal K Active Captain Plugin'
 
 /** Headers sent on every request to the ActiveCaptain API. */
 const BASE_HEADERS: Readonly<Record<string, string>> = {
-  'User-Agent': USER_AGENT,
+  'User-Agent': PLUGIN_USER_AGENT,
   Accept: 'application/json'
 }
 
@@ -140,8 +141,8 @@ export function createActiveCaptainClient (
         typeof poi.name === 'string' && poi.name.length > 0 &&
         (poi.poiCount ?? 1) <= 1 &&
         poi.mapLocation != null &&
-        Number.isFinite(poi.mapLocation.latitude) &&
-        Number.isFinite(poi.mapLocation.longitude)
+        isValidLatitude(poi.mapLocation.latitude) &&
+        isValidLongitude(poi.mapLocation.longitude)
       )
       const skipped = data.pointsOfInterest.length - usable.length
       if (skipped > 0) {
