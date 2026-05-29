@@ -5,6 +5,19 @@
 > development milestones that preceded this publication. Their content is
 > incorporated into the `v0.4.2` release.
 
+<a id="v060"></a>
+
+### v0.6.0 (2026/05/29) - version realignment (same content as v0.4.7)
+
+A version-only release: the code is identical to v0.4.7, so there are no
+functional changes. The bump realigns the published version line to 0.6.0.
+`v0.5.0` is skipped because that identifier already names a pre-publication
+development milestone above. The release content, carried over from v0.4.7, is
+the whole-tree `/simplify` cleanup, the plugin-registry screenshots declared
+under `signalk.screenshots`, and the hardened npm publish workflow (a
+tag-versus-version guard, `typecheck` and `lint` in the gating job, and
+provenance). See the v0.4.7 entry below for the detailed change list.
+
 <a id="v047"></a>
 
 ### v0.4.7 (2026/05/29) - codebase cleanup, registry screenshots, publish-workflow hardening

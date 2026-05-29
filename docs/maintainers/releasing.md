@@ -56,7 +56,7 @@ Before creating the GitHub release:
    images). Confirm with `git status` that nothing under `assets/` is left
    untracked, since the publish workflow ships only committed files.
 6. Create a GitHub release whose tag matches the new `package.json` version
-   (for example, tag `v0.4.7`). The build job fails fast if the tag and the
+   (for example, tag `v0.6.0`). The build job fails fast if the tag and the
    version disagree. Creating the release triggers the publish workflow; once
    it succeeds the new version is live on npm.
 
