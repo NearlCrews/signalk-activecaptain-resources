@@ -15,7 +15,7 @@
 import { LRUCache } from 'lru-cache'
 import type { OverpassClient, OverpassElement } from './overpass-client.js'
 import { renderOpenSeaMapDetail } from './openseamap-detail.js'
-import { elementPoiType, elementSkIcon, seamarkRegex } from './seamark-mapping.js'
+import { elementMarking, seamarkRegex } from './seamark-mapping.js'
 import type { PoiSource } from '../poi-source.js'
 import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
 import { MAX_BBOX_CACHE_ENTRIES, MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
@@ -96,7 +96,7 @@ function elementName (element: OverpassElement, type: PoiType): string {
 
 /** Build the source-agnostic detail view for an element. */
 function toDetailView (element: OverpassElement): PoiDetailView {
-  const type = elementPoiType(element.tags)
+  const { type, skIcon } = elementMarking(element.tags)
   const view: PoiDetailView = {
     name: elementName(element, type),
     position: { ...element.position },
@@ -105,7 +105,7 @@ function toDetailView (element: OverpassElement): PoiDetailView {
     source: OPENSEAMAP_SOURCE_ID,
     attribution: OPENSEAMAP_ATTRIBUTION,
     description: renderOpenSeaMapDetail(element),
-    skIcon: elementSkIcon(element.tags)
+    skIcon
   }
   if (element.timestamp !== undefined) view.timestamp = element.timestamp
   return view
@@ -113,7 +113,7 @@ function toDetailView (element: OverpassElement): PoiDetailView {
 
 /** Build the list summary for an element. */
 function toSummary (element: OverpassElement): PoiSummary {
-  const type = elementPoiType(element.tags)
+  const { type, skIcon } = elementMarking(element.tags)
   const summary: PoiSummary = {
     id: elementId(element),
     type,
@@ -122,7 +122,7 @@ function toSummary (element: OverpassElement): PoiSummary {
     source: OPENSEAMAP_SOURCE_ID,
     url: elementOsmUrl(element),
     attribution: OPENSEAMAP_ATTRIBUTION,
-    skIcon: elementSkIcon(element.tags)
+    skIcon
   }
   if (element.timestamp !== undefined) summary.timestamp = element.timestamp
   return summary

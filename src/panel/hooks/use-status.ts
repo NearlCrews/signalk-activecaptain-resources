@@ -35,6 +35,10 @@ export function useStatus (): UseStatusResult {
   const [error, setError] = useState<string | null>(null)
   const canceled = useRef(false)
   const inFlight = useRef(false)
+  // The JSON of the last snapshot we committed to state, so a byte-identical
+  // poll is detected with one stringify of the new body rather than
+  // stringifying both the previous and the new snapshot every 5 s.
+  const lastSnapshotJson = useRef<string | null>(null)
 
   useEffect(() => {
     canceled.current = false
@@ -62,14 +66,19 @@ export function useStatus (): UseStatusResult {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const body = await response.json() as StatusSnapshot
         if (!canceled.current) {
-          // Reuse the previous snapshot reference when the payload is
-          // byte-identical, so a downstream useMemo keyed on `status`
-          // (DataSourcesSection.useStatusBySource, the per-card status
-          // prop) keeps stable identity across polls and the four
-          // DataSourceCards do not re-render once per 5 s for no
-          // user-visible change. JSON.stringify is the cheap canonical
-          // comparison for a snapshot in the kilobyte range.
-          setStatus((prev) => prev !== null && JSON.stringify(prev) === JSON.stringify(body) ? prev : body)
+          // Skip the state update when the payload is byte-identical to the
+          // last one committed, so a downstream useMemo keyed on `status`
+          // (DataSourcesSection.useStatusBySource, the per-card status prop)
+          // keeps stable identity across polls and the four DataSourceCards
+          // do not re-render once per 5 s for no user-visible change.
+          // JSON.stringify is the cheap canonical comparison for a snapshot in
+          // the kilobyte range; comparing against the stored JSON stringifies
+          // only the new body, not both snapshots.
+          const json = JSON.stringify(body)
+          if (lastSnapshotJson.current !== json) {
+            lastSnapshotJson.current = json
+            setStatus(body)
+          }
           setError(null)
         }
       } catch (e) {

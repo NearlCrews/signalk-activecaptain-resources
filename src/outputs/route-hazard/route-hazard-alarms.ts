@@ -24,6 +24,8 @@
 
 import { emitNotification, type NotificationValue } from '../../shared/notification-path.js'
 import { createNotificationTracker, type NotificationTrackerApp } from '../../shared/notification-tracker.js'
+import { toFiniteNumber } from '../../shared/numbers.js'
+import { SECONDS_PER_MINUTE } from '../../shared/time.js'
 import type { CorridorPoi } from '../../shared/types.js'
 
 /** Path prefix for the per-point route notification, completed with the POI id. */
@@ -38,9 +40,6 @@ const SOURCE_SUFFIX = 'route'
 
 /** Meters in a kilometer, the threshold above which a distance is shown in km. */
 const METERS_PER_KM = 1000
-
-/** Seconds in a minute, used to format an ETA. */
-const SECONDS_PER_MINUTE = 60
 
 /** Minutes in an hour, used to format an ETA that runs past the hour. */
 const MINUTES_PER_HOUR = 60
@@ -118,9 +117,8 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
   /** Build the notification message for a flagged point: type, name, distance, and ETA. */
   function buildMessage (poi: CorridorPoi): string {
     const distance = formatDistance(poi.alongTrackDistanceMeters)
-    const eta = typeof poi.etaSeconds === 'number' && Number.isFinite(poi.etaSeconds)
-      ? `, ETA ${formatEta(poi.etaSeconds)}`
-      : ''
+    const etaSeconds = toFiniteNumber(poi.etaSeconds)
+    const eta = etaSeconds !== null ? `, ETA ${formatEta(etaSeconds)}` : ''
     return `${poi.type} "${poi.name}" is on the route ahead, ${distance} away${eta}`
   }
 

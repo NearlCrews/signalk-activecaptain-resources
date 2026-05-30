@@ -200,7 +200,7 @@ export function positionToBbox (position: Position, distanceMeters: number): Bbo
  * leaves `a`; on a great circle the bearing changes along the path, so it is
  * only correct at the start point.
  */
-function initialBearingRad (a: Position, b: Position): number {
+export function initialBearingRad (a: Position, b: Position): number {
   const latitudeA = toRadians(a.latitude)
   const latitudeB = toRadians(b.latitude)
   const deltaLongitude = toRadians(b.longitude - a.longitude)
@@ -241,13 +241,21 @@ interface TrackProjection {
  * @param start - The leg's start point.
  * @param end - The leg's end point.
  * @param point - The point to project onto the leg.
+ * @param bearingToEnd - Optional precomputed `initialBearingRad(start, end)`.
+ *   The leg bearing is invariant across every point projected onto the same
+ *   leg, so a caller scanning many points against one leg passes it in once to
+ *   skip the per-point recomputation. Defaults to computing it from `end`.
  * @returns The signed cross-track and along-track distances, in meters.
  */
-export function projectPointOntoLeg (start: Position, end: Position, point: Position): TrackProjection {
+export function projectPointOntoLeg (
+  start: Position,
+  end: Position,
+  point: Position,
+  bearingToEnd: number = initialBearingRad(start, end)
+): TrackProjection {
   const radiusMeters = EARTH_RADIUS_KM * 1000
   const angularDistanceToPoint = distanceMeters(start, point) / radiusMeters
   const bearingToPoint = initialBearingRad(start, point)
-  const bearingToEnd = initialBearingRad(start, end)
 
   // Clamp before asin: floating-point error can push the product a hair past
   // the [-1, 1] range, and Math.asin of an out-of-range value is NaN.

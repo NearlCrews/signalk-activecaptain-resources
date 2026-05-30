@@ -5,12 +5,13 @@
  */
 
 import { formatRelativeDelta, type RelativeUnit } from '../shared/relative-time-format.js'
+import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE } from '../shared/time.js'
 
 /** Relative-time units, largest first, paired with their length in seconds. */
 const RELATIVE_UNITS: ReadonlyArray<RelativeUnit> = [
-  ['day', 86400],
-  ['hour', 3600],
-  ['minute', 60],
+  ['day', SECONDS_PER_DAY],
+  ['hour', SECONDS_PER_HOUR],
+  ['minute', SECONDS_PER_MINUTE],
   ['second', 1]
 ]
 

@@ -11,12 +11,7 @@
 import { createActiveCaptainClient } from './active-captain-client.js'
 import { createActiveCaptainSource } from './active-captain-source.js'
 import type { InputContext, InputModule } from '../poi-source.js'
-import {
-  clampBboxDebounceSeconds,
-  DEFAULT_BBOX_DEBOUNCE_SECONDS,
-  MAX_BBOX_DEBOUNCE_SECONDS,
-  MIN_BBOX_DEBOUNCE_SECONDS
-} from '../../shared/bbox-debounce.js'
+import { clampBboxDebounceSeconds, refreshSecondsSchema } from '../../shared/bbox-debounce.js'
 import { ACTIVE_CAPTAIN_SOURCE_ID } from '../../shared/source-ids.js'
 import {
   clampMinimumRating,
@@ -33,15 +28,17 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   cachingDurationMinutes: {
     type: 'number',
     title: 'How long to cache data from Active Captain in minutes (longer = less data traffic; shorter = more up to date data)',
-    default: DEFAULT_CACHING_DURATION_MINUTES
+    default: DEFAULT_CACHING_DURATION_MINUTES,
+    // Minimum 1 so the admin UI clamps the field and AJV rejects a 0 or
+    // negative submit, matching every other numeric in this schema. The
+    // runtime resolveCachingDuration already falls back on a non-positive
+    // value, but accepting one in the form and then silently overriding it
+    // is a confusing UX inconsistency with the bounded sibling fields.
+    minimum: 1
   },
-  activeCaptainRefreshSeconds: {
-    type: 'number',
-    title: 'ActiveCaptain bbox-debounce window, in seconds (0 to query Garmin on every list call)',
-    default: DEFAULT_BBOX_DEBOUNCE_SECONDS,
-    minimum: MIN_BBOX_DEBOUNCE_SECONDS,
-    maximum: MAX_BBOX_DEBOUNCE_SECONDS
-  },
+  activeCaptainRefreshSeconds: refreshSecondsSchema(
+    'ActiveCaptain bbox-debounce window, in seconds (0 to query Garmin on every list call)'
+  ),
   minimumRating: {
     type: 'number',
     title: 'Minimum rating: hide points of interest rated below this (0 to 5; 0 shows all)',

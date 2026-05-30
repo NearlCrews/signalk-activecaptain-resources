@@ -33,17 +33,21 @@ const READ_ONLY_MESSAGE = "Crow's nest notes resources are read-only"
 function buildMethods (context: OutputContext): ResourceProviderMethods {
   const { app, config, pois } = context
 
+  // The selected POI-types string is fixed for the life of the plugin run
+  // (config does not change without a restart), so build it once here rather
+  // than on every listResources request.
+  const poiTypes = buildPoiTypesString(config)
+
   return {
     listResources: async (query: Record<string, unknown>): Promise<Record<string, unknown>> => {
       app.debug(`Incoming request to list note resources - query: ${JSON.stringify(query)}`)
       // Resolve the bbox first: a Freeboard probe without a viewport is the
-      // common no-op, and bailing here skips building the POI-types string.
+      // common no-op, and bailing here skips the upstream list request.
       const bbox = resolveBbox(query)
       if (bbox === null) {
         app.debug(`Could not derive a bounding box from query ${JSON.stringify(query)}`)
         return {}
       }
-      const poiTypes = buildPoiTypesString(config)
       if (poiTypes === null) {
         app.debug('No POI types are selected in the configuration; returning no resources')
         return {}

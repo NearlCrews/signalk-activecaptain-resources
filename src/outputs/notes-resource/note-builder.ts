@@ -96,9 +96,16 @@ export function buildNoteResource (input: NoteResourceInput): Record<string, unk
   const note: Record<string, unknown> = {
     name,
     position: { latitude: position.latitude, longitude: position.longitude },
-    url,
     properties,
     $source: PLUGIN_ID
+  }
+  // Guard `url` against the empty string like `description` below: a defensive
+  // source that returned `''` instead of a real link would otherwise ship
+  // `url: ""`, and a chart plotter rendering a "more info" link from it lands
+  // nowhere. Every current source supplies a real URL, so this only matters
+  // defensively. `url` is optional on the SignalK `Note` interface.
+  if (url.length > 0) {
+    note.url = url
   }
   if (timestamp !== undefined) {
     note.timestamp = timestamp

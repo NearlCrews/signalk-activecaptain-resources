@@ -53,20 +53,9 @@ export function seamarkToPoiType (value: string): PoiType {
   return SEAMARK_POI_TYPE[value] ?? 'Unknown'
 }
 
-/**
- * Resolve the `PoiType` for an OpenSeaMap element from its OSM tags. A
- * `seamark:type` tag is mapped directly; an element with no seamark type but
- * tagged `leisure=marina` is a `Marina`. Everything else is `Unknown`.
- */
+/** Resolve the `PoiType` for an OpenSeaMap element from its OSM tags. */
 export function elementPoiType (tags: Record<string, string>): PoiType {
-  const seamark = tags['seamark:type']?.trim().toLowerCase()
-  if (seamark !== undefined && seamark.length > 0) {
-    return seamarkToPoiType(seamark)
-  }
-  if (tags.leisure?.trim().toLowerCase() === 'marina') {
-    return 'Marina'
-  }
-  return 'Unknown'
+  return elementMarking(tags).type
 }
 
 /**
@@ -121,22 +110,30 @@ export function seamarkSkIcon (value: string): string {
   return SEAMARK_SK_ICON[value] ?? FALLBACK_SK_ICON
 }
 
-/**
- * Resolve the Freeboard-SK note icon for an OpenSeaMap element from its OSM
- * tags. A `seamark:type` tag is mapped directly; a `leisure=marina` element
- * with no seamark gets the `marina` icon. Anything else falls back to the
- * generic notice glyph, so a missing icon never renders as a bare yellow
- * square.
- */
+/** Resolve the Freeboard-SK note icon for an OpenSeaMap element from its OSM tags. */
 export function elementSkIcon (tags: Record<string, string>): string {
+  return elementMarking(tags).skIcon
+}
+
+/**
+ * Resolve both the `PoiType` and the Freeboard-SK note icon for an OpenSeaMap
+ * element in a single pass over its OSM tags. A `seamark:type` tag drives both
+ * mappings; an element with no seamark type but tagged `leisure=marina` is a
+ * `Marina` with the `marina` icon; everything else is `Unknown` with the
+ * generic notice glyph, so a missing icon never renders as a bare yellow
+ * square. The list and detail builders call this once per element rather than
+ * normalizing the seamark value twice through {@link elementPoiType} and
+ * {@link elementSkIcon}.
+ */
+export function elementMarking (tags: Record<string, string>): { type: PoiType, skIcon: string } {
   const seamark = tags['seamark:type']?.trim().toLowerCase()
   if (seamark !== undefined && seamark.length > 0) {
-    return seamarkSkIcon(seamark)
+    return { type: seamarkToPoiType(seamark), skIcon: seamarkSkIcon(seamark) }
   }
   if (tags.leisure?.trim().toLowerCase() === 'marina') {
-    return 'marina'
+    return { type: 'Marina', skIcon: 'marina' }
   }
-  return FALLBACK_SK_ICON
+  return { type: 'Unknown', skIcon: FALLBACK_SK_ICON }
 }
 
 /**

@@ -11,6 +11,7 @@
 import type { InputContext, InputModule, PoiSource } from './poi-source.js'
 import { dedupeAgainstBase } from './dedupe-pois.js'
 import { ACTIVE_CAPTAIN_SOURCE_ID } from '../shared/source-ids.js'
+import { splitOnFirstSeparator } from '../shared/namespaced-id.js'
 import type { PoiSummary } from '../shared/types.js'
 
 /**
@@ -244,15 +245,15 @@ export function createInputRegistry (
         },
         getDetails: async (id) => {
           // Split on the FIRST hyphen only: a raw id (an OSM id such as
-          // `node_987654`) can itself contain hyphens or underscores.
-          const hyphen = id.indexOf('-')
-          const sourceId = hyphen > 0 ? id.slice(0, hyphen) : ''
-          const rawId = hyphen > 0 ? id.slice(hyphen + 1) : id
-          const source = sources.get(sourceId)
-          if (source === undefined) {
+          // `node_987654`) can itself contain hyphens or underscores. The
+          // shared splitter returns null for a leading or absent hyphen, which
+          // resolves to no source and the same "No source" error below.
+          const split = splitOnFirstSeparator(id, '-')
+          const source = split === null ? undefined : sources.get(split.prefix)
+          if (source === undefined || split === null) {
             throw new Error(`No source for resource id "${id}"`)
           }
-          return await source.getDetails(rawId)
+          return await source.getDetails(split.remainder)
         },
         cacheSize: () => sourceList.reduce((sum, s) => sum + s.cacheSize(), 0),
         close: () => { for (const s of sourceList) s.close() }

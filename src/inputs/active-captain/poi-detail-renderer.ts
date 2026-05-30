@@ -30,6 +30,7 @@ import {
 
 import type { PoiDetails, PoiNote } from './active-captain-types.js'
 import { formatRelativeDelta } from '../../shared/relative-time-format.js'
+import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE } from '../../shared/time.js'
 
 /** The root context handed to the point-of-interest template. */
 interface TemplateRoot {
@@ -100,14 +101,12 @@ export function parseApiDate (value: unknown): Date {
 
 /**
  * Seconds in each relative-time unit, ordered largest first. Used to pick the
- * coarsest unit that fits a given delta. A month is treated as 30 days and a
- * year as 12 of those months, so the two thresholds stay consistent: a delta
- * just under a year never rounds to "12 months".
+ * coarsest unit that fits a given delta. The minute, hour, and day lengths come
+ * from the shared time constants; a month is treated as 30 days and a year as
+ * 12 of those months, so the two thresholds stay consistent: a delta just under
+ * a year never rounds to "12 months".
  */
 const SECONDS_PER_SECOND = 1
-const SECONDS_PER_MINUTE = 60
-const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60
-const SECONDS_PER_DAY = SECONDS_PER_HOUR * 24
 const SECONDS_PER_MONTH = SECONDS_PER_DAY * 30
 const RELATIVE_UNITS: ReadonlyArray<readonly [Intl.RelativeTimeFormatUnit, number]> = [
   ['year', SECONDS_PER_MONTH * 12],

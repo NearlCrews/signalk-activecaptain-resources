@@ -21,7 +21,8 @@
  * and never mutates its inputs.
  */
 
-import { distanceMeters, projectPointOntoLeg } from '../../geo/position-utilities.js'
+import { distanceMeters, initialBearingRad, projectPointOntoLeg } from '../../geo/position-utilities.js'
+import { positiveFiniteNumber } from '../../shared/numbers.js'
 import type { CorridorPoi, PoiSummary, PoiType, Position, RoutePolyline } from '../../shared/types.js'
 
 /**
@@ -98,10 +99,9 @@ export function scanRouteCorridor (input: RouteCorridorScanInput): CorridorPoi[]
     return []
   }
 
-  const sogForEta =
-    typeof speedOverGround === 'number' && Number.isFinite(speedOverGround) && speedOverGround > 0
-      ? speedOverGround
-      : undefined
+  // A null, undefined, zero, or non-finite speed yields no ETA. The shared
+  // narrower returns null on every one of those, which maps to undefined.
+  const sogForEta = positiveFiniteNumber(speedOverGround) ?? undefined
 
   // The best (nearest) projection found so far for each point of interest,
   // keyed by id. A point can fall in the corridor of more than one leg, near
@@ -119,8 +119,12 @@ export function scanRouteCorridor (input: RouteCorridorScanInput): CorridorPoi[]
       continue
     }
 
+    // The leg bearing is invariant across every point on this leg, so compute
+    // it once here rather than re-deriving it inside projectPointOntoLeg for
+    // every corridor POI.
+    const bearingToEnd = initialBearingRad(start, end)
     for (const poi of corridorPois) {
-      const projection = projectPointOntoLeg(start, end, poi.position)
+      const projection = projectPointOntoLeg(start, end, poi.position, bearingToEnd)
       if (!Number.isFinite(projection.crossTrackMeters) || !Number.isFinite(projection.alongTrackMeters)) {
         continue
       }
