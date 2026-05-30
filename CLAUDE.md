@@ -207,10 +207,13 @@ self-contained module registered on one line in `src/index.ts`.
     `relative-time-format.ts` (the `formatRelativeDelta` unit-stepping the
     panel's status bar and the ActiveCaptain detail renderer share, each
     passing its own unit table and locale), `namespaced-id.ts` (the
-    `splitOnFirstUnderscore` helper the OpenSeaMap and NOAA ENC sources
-    share to decode their `node_123` / `wreck_12345` id form), and `time.ts`
-    (the `MS_PER_SECOND` / `MS_PER_MINUTE` / `MS_PER_HOUR` /
-    `MS_PER_DAY` constants).
+    `splitOnFirstSeparator` helper, plus its `splitOnFirstUnderscore` wrapper,
+    the OpenSeaMap and NOAA ENC sources share to decode their `node_123` /
+    `wreck_12345` id form and the aggregate registry uses for its
+    `activecaptain-12345` hyphen form), and `time.ts`
+    (the `MS_PER_SECOND` / `MS_PER_MINUTE` / `MS_PER_HOUR` millisecond
+    constants plus the `SECONDS_PER_MINUTE` / `SECONDS_PER_HOUR` /
+    `SECONDS_PER_DAY` constants the relative-time formatters share).
   - `panel/` - federated React configuration panel. Root and reducer:
     `index.tsx` (Module Federation entry), `PluginConfigurationPanel.tsx`,
     `config-reducer.ts`, `normalize-config.ts`, plus the UI-metadata
@@ -218,14 +221,19 @@ self-contained module registered on one line in `src/index.ts`.
     and `source-status-pill.ts` (the pure `pillVariant` + `pillContent`
     helpers used by the per-source live-status pill on each card header,
     in a non-tsx module so the unit tests import it without JSX).
-    `hooks/` holds `use-config`, `use-status`, and `use-number-draft` (the
-    raw-text draft state for clearable numeric inputs). `components/` holds
+    `hooks/` holds `use-config`, `use-status`, `use-number-draft` (the
+    raw-text draft state for clearable numeric inputs), and
+    `use-collapse-focus-restore` (the shared focus-restore-on-collapse hook
+    both `SectionBox` and `DataSourceCard` consume, so a keyboard user is not
+    dropped to `document.body` when a region collapses). `components/` holds
     the layout pieces: `SectionBox` (the shared collapsible-section
-    primitive: section heading, chevron, focus-restore on collapse), and
+    primitive: section heading, chevron, and focus-restore on collapse via
+    the shared hook), and
     on top of it `StatusBar`, `FooterBar`, `DataSourcesSection`
     (the per-source accordion shell), `DataSourceCard` (one collapsible
     card, with an in-header live-status pill and a body that stays mounted
-    via `display: none` so an in-progress NumberField draft survives a
+    via `display: none` (and marked `inert` while collapsed) so an
+    in-progress NumberField draft survives a
     collapse-and-expand round trip), `ActiveCaptainSource`,
     `OpenSeaMapSource`, `UscgLightListSource`, and `NoaaEncSource` (the
     per-source card bodies), `AlertsSection` (the proximity and

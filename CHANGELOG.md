@@ -5,6 +5,62 @@
 > development milestones that preceded this publication. Their content is
 > incorporated into the `v0.4.2` release.
 
+<a id="v061"></a>
+
+### v0.6.1 (2026/05/30) - whole-codebase cleanup, accessibility, and registry compliance
+
+A quality, accessibility, and compliance release driven by a four-lens review
+of the whole codebase (Signal K compliance, performance, code quality, and the
+admin UI). There are no runtime behavior changes for the chart user: every POI
+source, note, and alarm works exactly as before, and all 587 tests pass. This
+release is also cut from a commit that carries the Signal K plugin-ci workflow,
+so the community plugin-registry's plugin-ci run now lands on the published
+commit.
+
+#### Plugin-registry compliance
+
+- Declare `signalk.recommends` (the registry's "Works well with" list),
+  cross-linking the two published, genuinely-paired companion plugins:
+  `@signalk/freeboard-sk` (the chart plotter that renders these notes and
+  hazard notifications) and `signalk-nmea2000-emitter-cannon` (relays the
+  hazard-notification deltas to a Garmin MFD over NMEA 2000).
+- Add a `minimum` bound to the ActiveCaptain `cachingDurationMinutes` schema
+  field so the admin UI clamps it and AJV rejects a zero or negative submit,
+  matching every other bounded numeric in the schema.
+
+#### Admin panel accessibility
+
+- Restore focus to the disclosure button before a data-source card collapses,
+  so a keyboard user is no longer dropped to the top of the panel. The
+  focus-restore logic that previously lived only in the section headers is now
+  a shared `useCollapseFocusRestore` hook both the cards and the sections use.
+- Mark collapsed card and section bodies `inert`, so the hidden subtree stays
+  out of the tab order and the accessibility tree.
+- Drop the malformed ARIA table roles from the status bar (rows with no cells),
+  rendering it as a plain read-only health readout instead.
+- Stop the per-source pills and the whole status bar from each being a live
+  region: the relative "N minutes ago" text re-rendered on every poll, so the
+  redundant regions only produced screen-reader noise. The pill now exposes a
+  concise ok / idle / error label, with the longer context in the hover title.
+
+#### Code quality and reuse
+
+- Add shared `SECONDS_PER_MINUTE` / `SECONDS_PER_HOUR` / `SECONDS_PER_DAY`
+  constants and route the three relative-time formatters through them, removing
+  three private copies of the same arithmetic and the dead `MS_PER_DAY` export.
+- Generalize the namespaced-id splitter to `splitOnFirstSeparator`, so the
+  aggregate registry's hyphen split and the sources' underscore split share one
+  implementation.
+- Derive the OpenSeaMap `PoiType` and Freeboard icon in a single
+  `elementMarking` pass instead of normalizing the `seamark:type` tag twice per
+  element.
+- Hoist the per-leg bearing out of the route-corridor point loop and the
+  selected-POI-types string out of the per-request notes path, and reuse the
+  shared `positiveFiniteNumber` / `toFiniteNumber` narrowers and the
+  `refreshSecondsSchema` builder where they had been re-implemented inline.
+- Guard the note `url` field against the empty string, matching the existing
+  `description` and `timestamp` guards.
+
 <a id="v060"></a>
 
 ### v0.6.0 (2026/05/29) - version realignment (same content as v0.4.7)

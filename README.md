@@ -24,21 +24,22 @@ with a plain-English popup, and the whole plugin is configured from one panel.
 | --- | --- | --- |
 | [![An ActiveCaptain hazard note open in Freeboard-SK, showing the rating, the review text, and a staleness warning](assets/screenshots/freeboard-activecaptain-hazard.png)](assets/screenshots/freeboard-activecaptain-hazard.png) | [![A USCG Light List buoy note open in Freeboard-SK, showing the light characteristic and the source citation](assets/screenshots/freeboard-uscg-light-list.png)](assets/screenshots/freeboard-uscg-light-list.png) | [![The Crow's Nest configuration panel, showing per-source live status and the data-source cards](assets/screenshots/admin-panel.png)](assets/screenshots/admin-panel.png) |
 
-## What's New in v0.6.0
+## What's New in v0.6.1
 
-An internal-quality, packaging, and release-pipeline release: there are no
-runtime behavior changes for the chart user, so every POI source, note, and
-alarm works exactly as before. The published package now ships three
-screenshots for the Signal K plugin registry (declared under
-`signalk.screenshots`), and the npm publish workflow is hardened with a
-tag-versus-version guard, `typecheck` and `lint` in the release gate, and npm
-provenance. A whole-tree cleanup pass extracted several shared helpers, made
-the Freeboard `skIcon` a required field on every point, and collapsed
-concurrent same-bbox fetches into a single upstream request, all with the full
-587-test suite still green. (v0.6.0 carries the same code as v0.4.7; the bump
-realigns the published version line.)
+A quality, accessibility, and compliance release driven by a four-lens review
+of the whole codebase: there are no runtime behavior changes for the chart
+user, so every POI source, note, and alarm works exactly as before, and all
+587 tests pass. The admin panel now restores keyboard focus when a card
+collapses, marks hidden card bodies `inert`, and drops the redundant
+screen-reader live regions and a malformed ARIA table so its status readout is
+quieter and correct. The plugin declares `signalk.recommends` (Freeboard-SK and
+the NMEA 2000 emitter) for the registry's "Works well with" list, bounds the
+ActiveCaptain cache-duration field, and shares a few more helpers
+(`SECONDS_PER_*`, `splitOnFirstSeparator`, a single-pass OpenSeaMap marking)
+while dropping dead code. Cut from a commit that carries the Signal K plugin-ci
+workflow, this release closes the registry's plugin-ci gap.
 
-See the [v0.6.0 changelog entry](CHANGELOG.md#v060) and the
+See the [v0.6.1 changelog entry](CHANGELOG.md#v061) and the
 [full release history](CHANGELOG.md).
 
 ## Features
