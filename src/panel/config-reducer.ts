@@ -17,6 +17,9 @@ export type ConfigAction =
   | { type: 'setProximityAlarmRadius', meters: number }
   | { type: 'setRouteHazardScanEnabled', enabled: boolean }
   | { type: 'setRouteCorridorWidth', meters: number }
+  | { type: 'setBridgeAirDraftCheckEnabled', enabled: boolean }
+  | { type: 'setVesselAirDraft', meters: number }
+  | { type: 'setBridgeClearanceMargin', meters: number }
   | { type: 'setOpenSeaMapEnabled', enabled: boolean }
   | { type: 'setOpenSeaMapEndpoint', endpoint: string }
   | { type: 'setOpenSeaMapSeamarkGroups', groups: string[] }
@@ -83,6 +86,15 @@ export function configReducer (state: PluginConfig, action: ConfigAction): Plugi
     case 'setRouteCorridorWidth':
       if (state.routeCorridorWidthMeters === action.meters) return state
       return { ...state, routeCorridorWidthMeters: action.meters }
+    case 'setBridgeAirDraftCheckEnabled':
+      if (state.enableBridgeAirDraftCheck === action.enabled) return state
+      return { ...state, enableBridgeAirDraftCheck: action.enabled }
+    case 'setVesselAirDraft':
+      if (state.vesselAirDraftMeters === action.meters) return state
+      return { ...state, vesselAirDraftMeters: action.meters }
+    case 'setBridgeClearanceMargin':
+      if (state.bridgeClearanceMarginMeters === action.meters) return state
+      return { ...state, bridgeClearanceMarginMeters: action.meters }
     case 'setOpenSeaMapEnabled':
       if (state.openSeaMapEnabled === action.enabled) return state
       return { ...state, openSeaMapEnabled: action.enabled }

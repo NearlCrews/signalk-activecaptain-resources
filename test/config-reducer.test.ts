@@ -191,6 +191,45 @@ test('setRouteCorridorWidth returns the same state when the value is unchanged',
   assert.equal(next, state)
 })
 
+test('setBridgeAirDraftCheckEnabled enables the bridge air-draft check', () => {
+  const next = configReducer(baseConfig(), { type: 'setBridgeAirDraftCheckEnabled', enabled: true })
+  assert.equal(next.enableBridgeAirDraftCheck, true)
+})
+
+test('setBridgeAirDraftCheckEnabled disables the bridge air-draft check', () => {
+  const state: PluginConfig = { ...baseConfig(), enableBridgeAirDraftCheck: true }
+  const next = configReducer(state, { type: 'setBridgeAirDraftCheckEnabled', enabled: false })
+  assert.equal(next.enableBridgeAirDraftCheck, false)
+})
+
+test('setBridgeAirDraftCheckEnabled returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), enableBridgeAirDraftCheck: true }
+  const next = configReducer(state, { type: 'setBridgeAirDraftCheckEnabled', enabled: true })
+  assert.equal(next, state)
+})
+
+test('setVesselAirDraft updates the air draft', () => {
+  const next = configReducer(baseConfig(), { type: 'setVesselAirDraft', meters: 4.5 })
+  assert.equal(next.vesselAirDraftMeters, 4.5)
+})
+
+test('setVesselAirDraft returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), vesselAirDraftMeters: 4.5 }
+  const next = configReducer(state, { type: 'setVesselAirDraft', meters: 4.5 })
+  assert.equal(next, state)
+})
+
+test('setBridgeClearanceMargin updates the margin', () => {
+  const next = configReducer(baseConfig(), { type: 'setBridgeClearanceMargin', meters: 2 })
+  assert.equal(next.bridgeClearanceMarginMeters, 2)
+})
+
+test('setBridgeClearanceMargin returns the same state when the value is unchanged', () => {
+  const state: PluginConfig = { ...baseConfig(), bridgeClearanceMarginMeters: 1 }
+  const next = configReducer(state, { type: 'setBridgeClearanceMargin', meters: 1 })
+  assert.equal(next, state)
+})
+
 test('setOpenSeaMapDedupe enables the dedupe pass', () => {
   const next = configReducer(baseConfig(), { type: 'setOpenSeaMapDedupe', enabled: true })
   assert.equal(next.openSeaMapDedupe, true)

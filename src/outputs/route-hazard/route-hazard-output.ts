@@ -13,11 +13,13 @@
  */
 
 import { createCourseReader } from './course-reader.js'
-import { createRouteHazardAlarms } from './route-hazard-alarms.js'
+import { createRouteHazardAlarms, type BridgeClearanceVerdict } from './route-hazard-alarms.js'
 import { CORRIDOR_POI_TYPES, routeLegPoints, scanRouteCorridor } from './route-corridor.js'
 import type { OutputContext, OutputHandle, OutputModule, PositionScanContributor } from '../output.js'
+import { createBridgeClearanceResolver, type BridgeClearanceResolver } from '../bridge-air-draft/bridge-clearance-resolver.js'
+import { bridgeBlocksVessel, clampClearanceMargin, readVesselAirDraft } from '../../shared/bridge-clearance.js'
 import { distanceMeters, positionToBbox, unionBbox } from '../../geo/position-utilities.js'
-import type { Bbox, CorridorPoi, Position, RoutePolyline } from '../../shared/types.js'
+import type { Bbox, CorridorPoi, PoiSummary, Position, RoutePolyline } from '../../shared/types.js'
 
 /** Default route-corridor half-width, in meters; mirrors the schema default. */
 const DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS = 500
@@ -85,6 +87,67 @@ function routeCorridorBbox (route: RoutePolyline, corridorWidthMeters: number): 
   return box ?? null
 }
 
+/** Inputs for {@link resolveTooLowBridges}. */
+export interface TooLowBridgeInput {
+  /** The corridor points flagged for this tick; only `Bridge` points are tested. */
+  corridorPois: CorridorPoi[]
+  /** The tick's combined list result, used to resolve each bridge's clearance by id. */
+  pois: PoiSummary[]
+  /** The shared clearance resolver (synchronous summary hit, async ActiveCaptain detail). */
+  resolver: BridgeClearanceResolver
+  /** The vessel air draft, in meters, or `null` when unknown (the check is then inert). */
+  airDraftMeters: number | null
+  /** The clamped safety margin, in meters, added to the air draft for the comparison. */
+  marginMeters: number
+}
+
+/**
+ * Build the too-low-bridge verdict map the route-hazard alarms consume.
+ *
+ * The corridor scan emits {@link CorridorPoi}, which carries no clearance, so
+ * the verdict is resolved here, between the scan and the alarms, keeping
+ * `route-corridor.ts` pure geometry. Each corridor bridge's clearance is looked
+ * up from its {@link PoiSummary} by id (the resolver takes a summary, not a
+ * corridor point), and a bridge that {@link bridgeBlocksVessel} flags is
+ * recorded with the figures the warn message needs. An unknown air draft, a
+ * bridge with no matching summary, and an unknown clearance all yield no
+ * verdict, so that bridge keeps the generic message.
+ */
+export function resolveTooLowBridges (input: TooLowBridgeInput): Map<string, BridgeClearanceVerdict> {
+  const { corridorPois, pois, resolver, airDraftMeters, marginMeters } = input
+  const tooLow = new Map<string, BridgeClearanceVerdict>()
+  // An unknown air draft makes the check inert: no comparison, and no
+  // ActiveCaptain detail fetches kicked off through the resolver this tick.
+  if (airDraftMeters === null) {
+    return tooLow
+  }
+  const bridges = corridorPois.filter((poi) => poi.type === 'Bridge')
+  if (bridges.length === 0) {
+    return tooLow
+  }
+  // The resolver works from the PoiSummary (which can carry the clearance, or
+  // be the key the ActiveCaptain detail fetch is cached under), not the
+  // clearance-free CorridorPoi, so index the tick's summaries by id.
+  const bySummaryId = new Map<string, PoiSummary>()
+  for (const summary of pois) {
+    bySummaryId.set(summary.id, summary)
+  }
+  for (const poi of bridges) {
+    const summary = bySummaryId.get(poi.id)
+    if (summary === undefined) {
+      continue
+    }
+    const clearanceMeters = resolver.clearanceMeters(summary)
+    if (clearanceMeters === null) {
+      continue
+    }
+    if (bridgeBlocksVessel(clearanceMeters, airDraftMeters, marginMeters)) {
+      tooLow.set(poi.id, { clearanceMeters, airDraftMeters, marginMeters })
+    }
+  }
+  return tooLow
+}
+
 /** The route-hazard output module. */
 export const routeHazardOutput: OutputModule = {
   id: 'route-hazard',
@@ -92,13 +155,28 @@ export const routeHazardOutput: OutputModule = {
   configSchema: CONFIG_SCHEMA,
   isEnabled: (config) => config.enableRouteHazardScan === true,
   start: (context: OutputContext): OutputHandle => {
-    const corridorWidthMeters = resolveCorridorWidth(context.config.routeCorridorWidthMeters)
+    const { app, config } = context
+    const corridorWidthMeters = resolveCorridorWidth(config.routeCorridorWidthMeters)
     // The alarms are built before the course reader: createCourseReader opens
     // two Course API delta subscriptions, so if alarm construction were to
     // throw after that, those subscriptions would be orphaned with no stop()
     // handle. Constructing the alarms first keeps any throw subscription-free.
-    const alarms = createRouteHazardAlarms(context.app)
-    const courseReader = createCourseReader({ app: context.app })
+    const alarms = createRouteHazardAlarms(app)
+    const courseReader = createCourseReader({ app })
+
+    // The bridge air-draft check rides this existing route scan: when it is on,
+    // a too-low bridge in the corridor gets a clearance-specific warn message.
+    // The resolver is built only when the check is enabled, so a disabled check
+    // costs nothing and the route scan behaves exactly as before. The air draft
+    // is re-read each tick, so the check activates if `design.airHeight` appears
+    // later in the voyage.
+    const bridgeCheckEnabled = config.enableBridgeAirDraftCheck === true
+    const clearanceResolver = bridgeCheckEnabled
+      ? createBridgeClearanceResolver({ getDetails: (id) => context.pois.getDetails(id), debug: app.debug })
+      : null
+    const clearanceMarginMeters = clampClearanceMargin(config.bridgeClearanceMarginMeters)
+    const airDraftFallbackMeters = config.vesselAirDraftMeters
+    const getAirDraftMeters = (): number | null => readVesselAirDraft(app, airDraftFallbackMeters)
 
     // The route read in buildFetchBox, reused in evaluate within the same tick.
     let tickRoute: RoutePolyline | null = null
@@ -137,7 +215,18 @@ export const routeHazardOutput: OutputModule = {
             speedOverGround: vesselState.speedOverGround
           }).filter((poi) => poi.alongTrackDistanceMeters <= ROUTE_LOOK_AHEAD_METERS)
         }
-        alarms.evaluate(corridorPois)
+        if (clearanceResolver === null) {
+          alarms.evaluate(corridorPois)
+          return
+        }
+        const tooLow = resolveTooLowBridges({
+          corridorPois,
+          pois,
+          resolver: clearanceResolver,
+          airDraftMeters: getAirDraftMeters(),
+          marginMeters: clearanceMarginMeters
+        })
+        alarms.evaluate(corridorPois, tooLow)
       }
     }
     return {

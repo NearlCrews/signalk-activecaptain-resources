@@ -45,6 +45,29 @@ const METERS_PER_KM = 1000
 const MINUTES_PER_HOUR = 60
 
 /**
+ * The clearance verdict for a corridor bridge the bridge air-draft check found
+ * too low for the vessel. The route-hazard output builds a map of these, keyed
+ * by POI id, between the corridor scan and the alarms: a bridge present in the
+ * map gets its warn message upgraded with the clearance figures, while every
+ * other corridor point keeps today's generic message.
+ */
+export interface BridgeClearanceVerdict {
+  /** The bridge's charted or tagged vertical clearance, in meters. */
+  clearanceMeters: number
+  /** The vessel air draft the clearance was compared against, in meters. */
+  airDraftMeters: number
+  /** The safety margin added to the air draft for the comparison, in meters. */
+  marginMeters: number
+}
+
+/**
+ * Shared empty verdict map: the default when the bridge air-draft check is off,
+ * so every existing caller and test passing a single argument keeps working and
+ * no per-tick allocation is made on the common path.
+ */
+const NO_CLEARANCE_VERDICTS: ReadonlyMap<string, BridgeClearanceVerdict> = new Map()
+
+/**
  * Format an along-track distance for the notification message: whole meters
  * under a kilometer, kilometers to one decimal place beyond that.
  */
@@ -70,6 +93,15 @@ function formatEta (seconds: number): string {
 }
 
 /**
+ * Format a meter value for the clearance clause: rounded to one decimal place,
+ * with a trailing `.0` dropped so a whole number reads `5 m`, not `5.0 m`. A
+ * feet-to-meters conversion (for example 15 ft to 4.572 m) then reads `4.6 m`.
+ */
+function formatMeters (meters: number): string {
+  return (Math.round(meters * 10) / 10).toString()
+}
+
+/**
  * The slice of the SignalK app the alarms need. The real `ServerAPI` satisfies
  * this structurally, so the plugin entrypoint passes `app` directly; tests
  * pass a small stub.
@@ -82,8 +114,14 @@ export interface RouteHazardAlarms {
    * Evaluate the points of interest the route-corridor scan flagged for the
    * current tick, raising a notification for each one that has just appeared
    * on the route ahead and clearing each one that has just dropped off.
+   *
+   * `tooLow` maps the id of each corridor bridge the air-draft check found too
+   * low to its clearance verdict; such a bridge gets a clearance-specific warn
+   * message. It defaults to empty, so a caller with the bridge air-draft check
+   * off (or no check at all) calls `evaluate(corridorPois)` and every point
+   * keeps today's generic message.
    */
-  evaluate: (corridorPois: CorridorPoi[]) => void
+  evaluate: (corridorPois: CorridorPoi[], tooLow?: ReadonlyMap<string, BridgeClearanceVerdict>) => void
   /**
    * Clear every notification currently in the alarm state. Called on plugin
    * stop so a stale route alarm does not linger after the monitor is gone.
@@ -114,12 +152,24 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
     describeClear: (poiId, { name }) => `Route hazard alarm cleared for ${poiId} ("${name}")`
   })
 
-  /** Build the notification message for a flagged point: type, name, distance, and ETA. */
-  function buildMessage (poi: CorridorPoi): string {
+  /**
+   * Build the notification message for a flagged point: type, name, distance,
+   * and ETA. When a clearance `verdict` is supplied (a corridor bridge the
+   * air-draft check found too low), a clause naming the clearance, the air
+   * draft, and the margin is appended; otherwise the generic message stands.
+   */
+  function buildMessage (poi: CorridorPoi, verdict?: BridgeClearanceVerdict): string {
     const distance = formatDistance(poi.alongTrackDistanceMeters)
     const etaSeconds = toFiniteNumber(poi.etaSeconds)
     const eta = etaSeconds !== null ? `, ETA ${formatEta(etaSeconds)}` : ''
-    return `${poi.type} "${poi.name}" is on the route ahead, ${distance} away${eta}`
+    const base = `${poi.type} "${poi.name}" is on the route ahead, ${distance} away${eta}`
+    if (verdict === undefined) {
+      return base
+    }
+    const clearance = formatMeters(verdict.clearanceMeters)
+    const airDraft = formatMeters(verdict.airDraftMeters)
+    const margin = formatMeters(verdict.marginMeters)
+    return `${base}: clearance ${clearance} m is at or below your air draft ${airDraft} m (+${margin} m margin)`
   }
 
   /** Emit a `warn` notification for a flagged point with the given message. */
@@ -133,7 +183,10 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
     emitNotification(app, NOTIFICATION_PATH_PREFIX, poiId, value, SOURCE_SUFFIX)
   }
 
-  function evaluate (corridorPois: CorridorPoi[]): void {
+  function evaluate (
+    corridorPois: CorridorPoi[],
+    tooLow: ReadonlyMap<string, BridgeClearanceVerdict> = NO_CLEARANCE_VERDICTS
+  ): void {
     // The points flagged on this tick, keyed by id. The route-corridor scan
     // already deduplicates by id, but a defensive Map keeps the entry-and-exit
     // diff sound even if it did not.
@@ -144,9 +197,11 @@ export function createRouteHazardAlarms (app: RouteAlarmApp): RouteHazardAlarms 
 
     // A point now flagged is raised on first appearance, and its notification
     // is refreshed when the message changes, so the distance and ETA do not go
-    // stale over a long approach to the point.
+    // stale over a long approach to the point. A bridge crossing into or out of
+    // the too-low set changes its message text too, so the same refresh path
+    // upgrades it to (or back from) the clearance message.
     for (const poi of flagged.values()) {
-      const message = buildMessage(poi)
+      const message = buildMessage(poi, tooLow.get(poi.id))
       const existing = tracker.get(poi.id)
       if (existing === undefined) {
         emitWarn(poi.id, message)

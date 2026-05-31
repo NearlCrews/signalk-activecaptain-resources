@@ -4,7 +4,7 @@
  */
 
 import { POI_TYPE_FLAGS } from '../shared/poi-type-selection.js'
-import { positiveFiniteNumber } from '../shared/numbers.js'
+import { positiveFiniteNumber, toFiniteNumber } from '../shared/numbers.js'
 import { SEAMARK_GROUP_IDS } from '../shared/seamark-groups.js'
 import type { PluginConfig } from '../shared/types.js'
 
@@ -86,6 +86,13 @@ export const NOAA_ENC_SCALE_BANDS = [
 export { DEFAULT_MINIMUM_YEAR, MAX_YEAR, MIN_YEAR } from '../shared/year-filter.js'
 import { clampMinimumYear } from '../shared/year-filter.js'
 
+// The clearance-margin bounds, default, and clamp helper are owned by
+// src/shared/bridge-clearance.ts so the panel and the bridge air-draft output
+// consume the same source of truth. Re-exported here so panel components that
+// already import from normalize-config do not need a second import line.
+export { DEFAULT_CLEARANCE_MARGIN_METERS } from '../shared/bridge-clearance.js'
+import { clampClearanceMargin } from '../shared/bridge-clearance.js'
+
 // The bbox-debounce bounds, default, and clamp helper are owned by
 // src/shared/bbox-debounce.ts so the panel and the three input modules
 // consume the same source of truth. Re-exported here under the legacy
@@ -137,6 +144,19 @@ export function normalizeConfig (configuration: unknown): PluginConfig {
   // the default.
   config.routeCorridorWidthMeters =
     positiveFiniteNumber(raw.routeCorridorWidthMeters) ?? DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+
+  config.enableBridgeAirDraftCheck = raw.enableBridgeAirDraftCheck === true
+
+  // The fallback air draft. Zero is valid and means rely on `design.airHeight`
+  // alone, so unlike a radius or width this floors at zero rather than falling
+  // back to a non-zero default: a non-numeric, non-finite, or negative value
+  // becomes 0.
+  const airDraft = toFiniteNumber(raw.vesselAirDraftMeters)
+  config.vesselAirDraftMeters = airDraft !== null && airDraft >= 0 ? airDraft : 0
+
+  // The clearance margin is clamped to the shared [MIN, MAX] bounds; a
+  // non-numeric or non-finite value falls back to the shared default.
+  config.bridgeClearanceMarginMeters = clampClearanceMargin(raw.bridgeClearanceMarginMeters)
 
   config.openSeaMapEnabled = raw.openSeaMapEnabled === true
 

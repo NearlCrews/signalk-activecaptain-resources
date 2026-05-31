@@ -95,6 +95,27 @@ interface Corroboration {
   slugs: string[]
   /** Distinct attribution credit strings, base first, in merge order. */
   attributions: string[]
+  /**
+   * The most conservative (smallest) vertical clearance, in meters, reported
+   * by the base POI or any merged duplicate. Undefined when none of them
+   * carried a clearance.
+   */
+  clearance: number | undefined
+}
+
+/**
+ * Fold a candidate vertical clearance into the running minimum, treating
+ * `undefined` as "no value." The smaller clearance wins, so a survivor warns
+ * against the lowest clearance any contributing source reported: the bridge
+ * air-draft check is a safety comparison, so the conservative value is kept.
+ */
+function minClearance (
+  current: number | undefined,
+  candidate: number | undefined
+): number | undefined {
+  if (candidate === undefined) return current
+  if (current === undefined) return candidate
+  return candidate < current ? candidate : current
 }
 
 /**
@@ -200,7 +221,11 @@ export function dedupeAgainstBase (
     } else {
       bucket.push(base)
     }
-    corroboration.set(base, { slugs: [base.source], attributions: [base.attribution] })
+    corroboration.set(base, {
+      slugs: [base.source],
+      attributions: [base.attribution],
+      clearance: base.verticalClearanceMeters
+    })
   }
 
   /** Find a base POI of the same type within `poi`'s source radius. */
@@ -241,11 +266,17 @@ export function dedupeAgainstBase (
       continue
     }
     const merged = corroboration.get(base)
-    if (merged !== undefined && !merged.slugs.includes(poi.source)) {
-      merged.slugs.push(poi.source)
-      if (!merged.attributions.includes(poi.attribution)) {
-        merged.attributions.push(poi.attribution)
+    if (merged !== undefined) {
+      if (!merged.slugs.includes(poi.source)) {
+        merged.slugs.push(poi.source)
+        if (!merged.attributions.includes(poi.attribution)) {
+          merged.attributions.push(poi.attribution)
+        }
       }
+      // Fold every merged duplicate's clearance, including a second duplicate
+      // from a source already credited above, so the survivor keeps the most
+      // conservative clearance any of them reported.
+      merged.clearance = minClearance(merged.clearance, poi.verticalClearanceMeters)
     }
   }
 
@@ -255,7 +286,16 @@ export function dedupeAgainstBase (
   // the non-null assertion is safe and documents that invariant.
   const baseSurvivors = basePois.map((base): PoiSummary => {
     const merged = corroboration.get(base) as Corroboration
-    return { ...base, sources: merged.slugs, attribution: merged.attributions.join('; ') }
+    // The folded clearance overrides the base's own value (it is the minimum
+    // across the base and every merged duplicate). When none carried one the
+    // spread adds nothing, so the field stays absent rather than re-emitting
+    // the base's missing value.
+    return {
+      ...base,
+      sources: merged.slugs,
+      attribution: merged.attributions.join('; '),
+      ...(merged.clearance !== undefined && { verticalClearanceMeters: merged.clearance })
+    }
   })
   return [...baseSurvivors, ...dedupeSameSource(survivors, radiusSpec, cellCoords, dedupeSources)]
 }
@@ -297,7 +337,16 @@ function dedupeSameSource (
       keptBySource.set(poi.source, sourceGrid)
     }
     const radius = radiusFor(poi.source, radiusSpec)
-    if (hasNearbyDuplicate(poi, x, y, radius, sourceGrid)) {
+    const kept = findNearbyDuplicate(poi, x, y, radius, sourceGrid)
+    if (kept !== undefined) {
+      // Collapse this duplicate into the kept survivor, folding its clearance
+      // so the survivor keeps the most conservative clearance the pair
+      // reported. Only write a defined result, so a pair that both lack a
+      // clearance leaves the field absent rather than present-undefined.
+      const folded = minClearance(kept.verticalClearanceMeters, poi.verticalClearanceMeters)
+      if (folded !== undefined) {
+        kept.verticalClearanceMeters = folded
+      }
       continue
     }
     out.push(poi)
@@ -313,17 +362,19 @@ function dedupeSameSource (
 }
 
 /**
- * True when a same-source same-type POI within `radiusMeters` of `poi` has
- * already been kept in `sourceGrid`. Sweeps the 3x3 neighborhood of the POI's
- * grid cell, which is exhaustive at this grid scale.
+ * The first same-source same-type POI within `radiusMeters` of `poi` already
+ * kept in `sourceGrid`, or undefined when there is none. Sweeps the 3x3
+ * neighborhood of the POI's grid cell, which is exhaustive at this grid scale.
+ * Returning the matched survivor (rather than a bare boolean) lets the caller
+ * fold the dropped duplicate's clearance onto it.
  */
-function hasNearbyDuplicate (
+function findNearbyDuplicate (
   poi: PoiSummary,
   x: number,
   y: number,
   radiusMeters: number,
   sourceGrid: ReadonlyMap<number, PoiSummary[]>
-): boolean {
+): PoiSummary | undefined {
   for (let dx = -1; dx <= 1; dx += 1) {
     for (let dy = -1; dy <= 1; dy += 1) {
       const bucket = sourceGrid.get(packCellKey(x + dx, y + dy))
@@ -331,10 +382,10 @@ function hasNearbyDuplicate (
       for (const kept of bucket) {
         if (kept.type === poi.type &&
           distanceMeters(kept.position, poi.position) <= radiusMeters) {
-          return true
+          return kept
         }
       }
     }
   }
-  return false
+  return undefined
 }

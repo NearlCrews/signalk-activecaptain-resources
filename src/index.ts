@@ -18,6 +18,7 @@ import { noaaEncInput } from './inputs/noaa-enc/noaa-enc-input.js'
 import { notesResourceOutput } from './outputs/notes-resource/notes-resource-output.js'
 import { proximityAlarmOutput } from './outputs/proximity-alarm/proximity-alarm-output.js'
 import { routeHazardOutput } from './outputs/route-hazard/route-hazard-output.js'
+import { bridgeAirDraftOutput } from './outputs/bridge-air-draft/bridge-air-draft-output.js'
 
 export = function (app: ServerAPI): Plugin {
   const inputs = createInputRegistry([
@@ -29,7 +30,8 @@ export = function (app: ServerAPI): Plugin {
   const outputs = createOutputRegistry([
     notesResourceOutput,
     proximityAlarmOutput,
-    routeHazardOutput
+    routeHazardOutput,
+    bridgeAirDraftOutput
   ])
   return createPlugin(app, inputs, outputs)
 }

@@ -16,6 +16,7 @@ import { LRUCache } from 'lru-cache'
 import type { OverpassClient, OverpassElement } from './overpass-client.js'
 import { renderOpenSeaMapDetail } from './openseamap-detail.js'
 import { elementMarking, seamarkRegex } from './seamark-mapping.js'
+import { parseOsmClearanceMeters } from './clearance.js'
 import type { PoiSource } from '../poi-source.js'
 import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
 import { MAX_BBOX_CACHE_ENTRIES, MAX_POI_CACHE_ENTRIES } from '../../shared/cache.js'
@@ -108,6 +109,10 @@ function toDetailView (element: OverpassElement): PoiDetailView {
     skIcon
   }
   if (element.timestamp !== undefined) view.timestamp = element.timestamp
+  // Attach whenever a clearance tag parses; harmless on non-bridges, since the
+  // air-draft check only reads it on Bridge POIs.
+  const clearance = parseOsmClearanceMeters(element.tags)
+  if (clearance !== undefined) view.verticalClearanceMeters = clearance
   return view
 }
 
@@ -125,6 +130,10 @@ function toSummary (element: OverpassElement): PoiSummary {
     skIcon
   }
   if (element.timestamp !== undefined) summary.timestamp = element.timestamp
+  // Attach whenever a clearance tag parses; harmless on non-bridges, since the
+  // air-draft check only reads it on Bridge POIs.
+  const clearance = parseOsmClearanceMeters(element.tags)
+  if (clearance !== undefined) summary.verticalClearanceMeters = clearance
   return summary
 }
 

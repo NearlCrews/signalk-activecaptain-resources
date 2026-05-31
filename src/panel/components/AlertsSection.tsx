@@ -16,11 +16,13 @@ import type { Dispatch } from 'react'
 import type { ConfigAction } from '../config-reducer.js'
 import {
   DEFAULT_PROXIMITY_ALARM_RADIUS_METERS,
-  DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
+  DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS,
+  DEFAULT_CLEARANCE_MARGIN_METERS
 } from '../normalize-config.js'
 import type { PluginConfig } from '../../shared/types.js'
 import ProximityAlarmFields from './ProximityAlarmFields.js'
 import RouteHazardScanFields from './RouteHazardScanFields.js'
+import BridgeAirDraftFields from './BridgeAirDraftFields.js'
 import SectionBox from './SectionBox.js'
 
 interface Props {
@@ -36,7 +38,9 @@ export default function AlertsSection ({ state, dispatch }: Props): React.ReactE
   // defaultExpanded once on mount, which matches the
   // initial-state-from-saved-config semantic we want here.
   const alertsConfigured =
-    state.enableProximityAlarms === true || state.enableRouteHazardScan === true
+    state.enableProximityAlarms === true ||
+    state.enableRouteHazardScan === true ||
+    state.enableBridgeAirDraftCheck === true
   return (
     <SectionBox cardId='alerts' title='Alerts' defaultExpanded={alertsConfigured}>
       <ProximityAlarmFields
@@ -50,6 +54,14 @@ export default function AlertsSection ({ state, dispatch }: Props): React.ReactE
         corridorWidthMeters={state.routeCorridorWidthMeters ?? DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS}
         onToggleEnabled={(enabled) => dispatch({ type: 'setRouteHazardScanEnabled', enabled })}
         onChangeWidth={(meters) => dispatch({ type: 'setRouteCorridorWidth', meters })}
+      />
+      <BridgeAirDraftFields
+        enabled={state.enableBridgeAirDraftCheck === true}
+        airDraftMeters={state.vesselAirDraftMeters ?? 0}
+        marginMeters={state.bridgeClearanceMarginMeters ?? DEFAULT_CLEARANCE_MARGIN_METERS}
+        onToggleEnabled={(enabled) => dispatch({ type: 'setBridgeAirDraftCheckEnabled', enabled })}
+        onChangeAirDraft={(meters) => dispatch({ type: 'setVesselAirDraft', meters })}
+        onChangeMargin={(meters) => dispatch({ type: 'setBridgeClearanceMargin', meters })}
       />
     </SectionBox>
   )

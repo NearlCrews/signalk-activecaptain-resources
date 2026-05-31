@@ -20,6 +20,16 @@ function poi (
   }
 }
 
+/** Build a Bridge POI carrying an optional vertical clearance, in meters. */
+function bridge (
+  id: string, source: string, latitude: number, longitude: number, clearanceMeters?: number
+): PoiSummary {
+  const base = poi(id, source, 'Bridge', latitude, longitude)
+  return clearanceMeters === undefined
+    ? base
+    : { ...base, verticalClearanceMeters: clearanceMeters }
+}
+
 /** A latitude offset of about 20 m: well within the default 150 m radius. */
 const NEAR = 0.00018
 /** A latitude offset of about 5 km: well outside the merge radius. */
@@ -146,6 +156,56 @@ test('same-source dedup also runs when a base POI is present alongside non-base 
   const osm = result.filter((p) => p.source === 'openseamap')
   assert.equal(osm.length, 1, 'the two co-located OpenSeaMap POIs collapse to one')
   assert.equal(osm[0].id, 'node/9', 'the first occurrence in input order wins')
+})
+
+test('a base POI without clearance takes a merged duplicate\'s clearance', () => {
+  const base = bridge('1', BASE_SOURCE_ID, 10, 20)
+  const osm = bridge('node/9', 'openseamap', 10 + NEAR, 20, 5)
+  const result = dedupeAgainstBase([base, osm], new Set(['openseamap']), 50)
+  assert.equal(result.length, 1, 'the duplicate merges into the base')
+  assert.equal(result[0].source, BASE_SOURCE_ID, 'the base POI is the survivor')
+  assert.equal(result[0].verticalClearanceMeters, 5, 'and it carries the duplicate\'s clearance')
+})
+
+test('when both the base and a duplicate carry clearance the smaller wins', () => {
+  const base = bridge('1', BASE_SOURCE_ID, 10, 20, 8)
+  const osm = bridge('node/9', 'openseamap', 10 + NEAR, 20, 5)
+  const result = dedupeAgainstBase([base, osm], new Set(['openseamap']), 50)
+  assert.equal(result.length, 1)
+  assert.equal(result[0].verticalClearanceMeters, 5, 'the conservative clearance survives')
+})
+
+test('a base POI keeps its own clearance when a merged duplicate reports a larger one', () => {
+  const base = bridge('1', BASE_SOURCE_ID, 10, 20, 5)
+  const osm = bridge('node/9', 'openseamap', 10 + NEAR, 20, 8)
+  const result = dedupeAgainstBase([base, osm], new Set(['openseamap']), 50)
+  assert.equal(result.length, 1)
+  assert.equal(result[0].verticalClearanceMeters, 5, 'a larger duplicate does not clobber the base')
+})
+
+test('a base POI with no clearance and a clearance-less duplicate leaves the field absent', () => {
+  const base = bridge('1', BASE_SOURCE_ID, 10, 20)
+  const osm = bridge('node/9', 'openseamap', 10 + NEAR, 20)
+  const result = dedupeAgainstBase([base, osm], new Set(['openseamap']), 50)
+  assert.equal(result.length, 1)
+  assert.ok(!('verticalClearanceMeters' in result[0]), 'the field stays absent, not present-undefined')
+})
+
+test('a pass-through POI with no base match keeps its own clearance', () => {
+  const base = bridge('1', BASE_SOURCE_ID, 10, 20)
+  const osm = bridge('node/9', 'openseamap', 10 + FAR, 20, 7)
+  const result = dedupeAgainstBase([base, osm], new Set(['openseamap']), 50)
+  const survivor = result.find((p) => p.source === 'openseamap')
+  assert.equal(survivor?.verticalClearanceMeters, 7, 'an unmerged duplicate keeps its clearance')
+})
+
+test('the same-source collapse keeps the smaller clearance', () => {
+  const node = bridge('node/9', 'openseamap', 10, 20, 8)
+  const way = bridge('way/77', 'openseamap', 10 + NEAR, 20, 5)
+  const result = dedupeAgainstBase([node, way], new Set(['openseamap']), 50)
+  assert.equal(result.length, 1, 'the second same-source duplicate is dropped')
+  assert.equal(result[0].id, 'node/9', 'the first occurrence survives')
+  assert.equal(result[0].verticalClearanceMeters, 5, 'but it takes the smaller clearance')
 })
 
 test('a per-source radius map applies each source\'s radius independently', () => {

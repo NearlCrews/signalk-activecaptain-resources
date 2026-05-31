@@ -14,6 +14,10 @@ import {
 } from '../src/panel/normalize-config.js'
 import { SEAMARK_GROUP_IDS } from '../src/shared/seamark-groups.js'
 import { POI_TYPE_FLAGS } from '../src/shared/poi-type-selection.js'
+import {
+  DEFAULT_CLEARANCE_MARGIN_METERS,
+  MAX_CLEARANCE_MARGIN_METERS
+} from '../src/shared/bridge-clearance.js'
 
 test('normalizeConfig fills every POI flag true and the default duration for an empty config', () => {
   const config = normalizeConfig({})
@@ -161,6 +165,49 @@ test('normalizeConfig falls back to the default for an unusable corridor width',
       normalizeConfig({ routeCorridorWidthMeters: input }).routeCorridorWidthMeters,
       DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
     )
+  }
+})
+
+test('normalizeConfig defaults the bridge air-draft options for an empty config', () => {
+  const config = normalizeConfig({})
+  assert.equal(config.enableBridgeAirDraftCheck, false)
+  assert.equal(config.vesselAirDraftMeters, 0)
+  assert.equal(config.bridgeClearanceMarginMeters, DEFAULT_CLEARANCE_MARGIN_METERS)
+})
+
+test('normalizeConfig keeps valid bridge air-draft options', () => {
+  const config = normalizeConfig({
+    enableBridgeAirDraftCheck: true,
+    vesselAirDraftMeters: 4.5,
+    bridgeClearanceMarginMeters: 2
+  })
+  assert.equal(config.enableBridgeAirDraftCheck, true)
+  assert.equal(config.vesselAirDraftMeters, 4.5)
+  assert.equal(config.bridgeClearanceMarginMeters, 2)
+})
+
+test('normalizeConfig treats a non-true enableBridgeAirDraftCheck as false', () => {
+  assert.equal(normalizeConfig({ enableBridgeAirDraftCheck: 'yes' }).enableBridgeAirDraftCheck, false)
+  assert.equal(normalizeConfig({ enableBridgeAirDraftCheck: false }).enableBridgeAirDraftCheck, false)
+})
+
+test('normalizeConfig clamps an out-of-range bridge clearance margin', () => {
+  assert.equal(normalizeConfig({ bridgeClearanceMarginMeters: 99 }).bridgeClearanceMarginMeters,
+    MAX_CLEARANCE_MARGIN_METERS)
+  assert.equal(normalizeConfig({ bridgeClearanceMarginMeters: -3 }).bridgeClearanceMarginMeters, 0)
+})
+
+test('normalizeConfig falls back a non-numeric bridge clearance margin to the default', () => {
+  assert.equal(normalizeConfig({ bridgeClearanceMarginMeters: 'lots' }).bridgeClearanceMarginMeters,
+    DEFAULT_CLEARANCE_MARGIN_METERS)
+})
+
+test('normalizeConfig coerces the vessel air draft to a finite, non-negative number', () => {
+  assert.equal(normalizeConfig({ vesselAirDraftMeters: 6.2 }).vesselAirDraftMeters, 6.2)
+  // Zero is valid and means rely on design.airHeight alone.
+  assert.equal(normalizeConfig({ vesselAirDraftMeters: 0 }).vesselAirDraftMeters, 0)
+  for (const input of [-1, 'tall', Number.POSITIVE_INFINITY, Number.NaN]) {
+    assert.equal(normalizeConfig({ vesselAirDraftMeters: input }).vesselAirDraftMeters, 0)
   }
 })
 

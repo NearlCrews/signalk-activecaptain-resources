@@ -22,6 +22,7 @@ import { createPoiCache } from './poi-cache.js'
 import { createPoiStore } from './poi-store.js'
 import type { PoiStore } from './poi-store.js'
 import { parseApiDate, renderDescription } from './poi-detail-renderer.js'
+import { bridgeHeightToMeters } from './bridge-clearance.js'
 import { filterByRating } from './rating-filter.js'
 import type { PoiSource } from '../poi-source.js'
 import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
@@ -217,6 +218,13 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
         app.debug(`Unable to format description for ${id}: ${String(error)}`)
       }
       const modified = parseApiDate(poi.dateLastModified)
+      // A fixed bridge's clearance lives only in the navigation section, in
+      // `distanceUnit` (feet or meters). The air-draft check reads this off
+      // the detail view; an absent or unrecognized unit yields undefined and
+      // the field stays absent.
+      const navigation = entity.navigation
+      const verticalClearanceMeters = bridgeHeightToMeters(
+        navigation?.bridgeHeight, navigation?.distanceUnit)
       return {
         name: poi.name,
         position: { ...poi.mapLocation },
@@ -226,7 +234,8 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
         attribution: ACTIVE_CAPTAIN_ATTRIBUTION,
         skIcon: activeCaptainSkIcon(poi.poiType),
         ...(description !== undefined && { description }),
-        ...(Number.isFinite(modified.getTime()) && { timestamp: modified.toISOString() })
+        ...(Number.isFinite(modified.getTime()) && { timestamp: modified.toISOString() }),
+        ...(verticalClearanceMeters !== undefined && { verticalClearanceMeters })
       }
     },
     cacheSize: () => cache.size(),
