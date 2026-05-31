@@ -14,7 +14,7 @@
 
 import { LRUCache } from 'lru-cache'
 import type { OverpassClient, OverpassElement } from './overpass-client.js'
-import { renderOpenSeaMapDetail } from './openseamap-detail.js'
+import { renderOpenSeaMapDetail, tagValue } from './openseamap-detail.js'
 import { elementMarking, seamarkRegex } from './seamark-mapping.js'
 import { parseOsmClearanceMeters } from './clearance.js'
 import type { PoiSource } from '../poi-source.js'
@@ -90,15 +90,21 @@ function toOverpassTypedId (id: string): string {
   return split === null ? id : `${split.prefix}/${split.remainder}`
 }
 
-/** A display name for an element: its `name` tag, or a type-derived fallback. */
+/**
+ * A display name for an element: its `name` tag, then `seamark:name`, then a
+ * type-derived fallback. Each tag is read through {@link tagValue} so a
+ * whitespace-only value is rejected and falls through rather than yielding a
+ * blank title, matching the detail renderer's header behaviour.
+ */
 function elementName (element: OverpassElement, type: PoiType): string {
-  return element.tags.name ?? element.tags['seamark:name'] ?? `Unnamed ${type.toLowerCase()}`
+  const name = tagValue(element.tags, 'name') ?? tagValue(element.tags, 'seamark:name')
+  return name ?? `Unnamed ${type.toLowerCase()}`
 }
 
 /**
  * Attach the OSM vertical clearance to a built POI when a clearance tag parses.
- * Runs for every element: it is harmless on non-bridges, since the air-draft
- * check only reads `verticalClearanceMeters` on Bridge POIs.
+ * Called only for Bridge POIs, since the air-draft check reads
+ * `verticalClearanceMeters` on bridges alone.
  */
 function attachClearance (
   target: { verticalClearanceMeters?: number },
@@ -122,7 +128,7 @@ function toDetailView (element: OverpassElement): PoiDetailView {
     skIcon
   }
   if (element.timestamp !== undefined) view.timestamp = element.timestamp
-  attachClearance(view, element.tags)
+  if (type === 'Bridge') attachClearance(view, element.tags)
   return view
 }
 
@@ -140,7 +146,7 @@ function toSummary (element: OverpassElement): PoiSummary {
     skIcon
   }
   if (element.timestamp !== undefined) summary.timestamp = element.timestamp
-  attachClearance(summary, element.tags)
+  if (type === 'Bridge') attachClearance(summary, element.tags)
   return summary
 }
 
@@ -179,8 +185,9 @@ export function createOpenSeaMapSource (config: OpenSeaMapSourceConfig): PoiSour
         await client.listPointsOfInterest(bbox, regex))
       const summaries: PoiSummary[] = []
       for (const element of elements) {
-        cache.set(elementId(element), element)
-        summaries.push(toSummary(element))
+        const summary = toSummary(element)
+        cache.set(summary.id, element)
+        summaries.push(summary)
       }
       // Year filter is applied source-side so the rest of the pipeline
       // (dedupe, notes output, alarms) never sees filtered elements.

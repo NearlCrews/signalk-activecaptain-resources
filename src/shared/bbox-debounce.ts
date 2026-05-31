@@ -27,6 +27,8 @@
  */
 
 import { LRUCache } from 'lru-cache'
+import { clampNumber } from './numbers.js'
+import { MS_PER_SECOND } from './time.js'
 import type { Bbox } from './types.js'
 
 /** Default per-bbox debounce window, in seconds. */
@@ -51,12 +53,7 @@ export const MAX_BBOX_DEBOUNCE_SECONDS = 600
  * non-finite input.
  */
 export function clampBboxDebounceSeconds (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
-    return DEFAULT_BBOX_DEBOUNCE_SECONDS
-  }
-  if (raw < MIN_BBOX_DEBOUNCE_SECONDS) return MIN_BBOX_DEBOUNCE_SECONDS
-  if (raw > MAX_BBOX_DEBOUNCE_SECONDS) return MAX_BBOX_DEBOUNCE_SECONDS
-  return Math.trunc(raw)
+  return clampNumber(raw, MIN_BBOX_DEBOUNCE_SECONDS, MAX_BBOX_DEBOUNCE_SECONDS, DEFAULT_BBOX_DEBOUNCE_SECONDS, true)
 }
 
 /**
@@ -124,7 +121,7 @@ export function createBboxDebounceCache<T extends NonNullable<unknown>> (
   ttlSeconds: number,
   maxEntries: number
 ): BboxDebounceCache<T> {
-  const ttlMs = Math.max(0, ttlSeconds) * 1000
+  const ttlMs = Math.max(0, ttlSeconds) * MS_PER_SECOND
   // ttl: 0 would tell LRUCache to keep entries forever, which is the
   // opposite of what `ttlSeconds <= 0` means in this module's contract.
   // So when ttlSeconds is the off sentinel, build a 1-entry cache that we

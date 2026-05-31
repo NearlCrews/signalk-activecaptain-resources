@@ -12,6 +12,7 @@
 
 import type { OverpassElement } from './overpass-client.js'
 import { escapeHtml, labeledParagraph } from '../../shared/html-escape.js'
+import { humanizeLightCharacter } from '../../shared/light-character.js'
 
 /** Plain-English label for every `seamark:type` the plugin fetches. */
 const TYPE_LABEL: Readonly<Record<string, string>> = {
@@ -42,31 +43,6 @@ const TYPE_LABEL: Readonly<Record<string, string>> = {
   mooring: 'Mooring'
 }
 
-/**
- * IALA light character abbreviations, in plain English. A real value can
- * carry a parenthesised group count, e.g. `Fl(2)` or `Q(9)`, handled by the
- * caller after this base map is consulted.
- */
-const LIGHT_CHARACTER: Readonly<Record<string, string>> = {
-  F: 'fixed',
-  Fl: 'flashing',
-  LFl: 'long flashing',
-  Q: 'quick flashing',
-  IQ: 'interrupted quick',
-  VQ: 'very quick',
-  IVQ: 'interrupted very quick',
-  UQ: 'ultra quick',
-  IUQ: 'interrupted ultra quick',
-  Iso: 'isophase',
-  Oc: 'occulting',
-  Mo: 'Morse',
-  Al: 'alternating',
-  FFl: 'fixed and flashing'
-}
-
-/** Pattern that splits a light character into its base and optional group. */
-const LIGHT_CHARACTER_PATTERN = /^([A-Za-z]+)(\(.+\))?$/
-
 /** Underscore separator in raw OSM enum values, replaced with a space for display. */
 const UNDERSCORE_PATTERN = /_/g
 
@@ -75,27 +51,14 @@ const UNDERSCORE_PATTERN = /_/g
  * absent or trims to the empty string. Older OSM edits occasionally surface
  * with leading or trailing whitespace; the lookup tables in this file and in
  * seamark-mapping.ts key on the trimmed form, so reading every tag through
- * this helper keeps the curation working on those records too.
+ * this helper keeps the curation working on those records too. Exported so the
+ * source's name resolver shares the same trim-and-reject-empty behaviour.
  */
-function tagValue (tags: Readonly<Record<string, string>>, key: string): string | undefined {
+export function tagValue (tags: Readonly<Record<string, string>>, key: string): string | undefined {
   const raw = tags[key]
   if (raw === undefined) return undefined
   const trimmed = raw.trim()
   return trimmed.length > 0 ? trimmed : undefined
-}
-
-/**
- * Translate an IALA light-character value like `Fl(2)` into a phrase like
- * `flashing (2)`. An unmapped base abbreviation is left as-is so an exotic
- * character is at least recognisable; the group count rides along unchanged.
- */
-export function humanizeLightCharacter (raw: string): string {
-  const match = raw.match(LIGHT_CHARACTER_PATTERN)
-  if (match === null) {
-    return raw
-  }
-  const base = LIGHT_CHARACTER[match[1]] ?? match[1]
-  return match[2] !== undefined ? `${base} ${match[2]}` : base
 }
 
 /**
@@ -151,7 +114,7 @@ function buildHeader (tags: Readonly<Record<string, string>>): string {
  * family that follows the standard tagging convention.
  */
 function buildFamilyLine (tags: Readonly<Record<string, string>>): string | null {
-  const type = tags['seamark:type']
+  const type = tagValue(tags, 'seamark:type')?.toLowerCase()
   if (type === undefined) {
     return null
   }

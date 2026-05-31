@@ -17,10 +17,10 @@
  * tagged clearance is a static figure.
  */
 
-import { positiveFiniteNumber, toFiniteNumber } from './numbers.js'
+import { clampNumber, positiveFiniteNumber, toFiniteNumber } from './numbers.js'
 
 /** SignalK self path carrying the vessel air draft (height above waterline), in meters. */
-export const SELF_AIR_HEIGHT_PATH = 'design.airHeight'
+const SELF_AIR_HEIGHT_PATH = 'design.airHeight'
 
 /** Lowest clearance margin: 0 is a strict `clearance <= airDraft` comparison. */
 export const MIN_CLEARANCE_MARGIN_METERS = 0
@@ -42,10 +42,7 @@ export const DEFAULT_CLEARANCE_MARGIN_METERS = 1
  * Shared by the output's config resolution and the panel's normalize-config.
  */
 export function clampClearanceMargin (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_CLEARANCE_MARGIN_METERS
-  if (raw < MIN_CLEARANCE_MARGIN_METERS) return MIN_CLEARANCE_MARGIN_METERS
-  if (raw > MAX_CLEARANCE_MARGIN_METERS) return MAX_CLEARANCE_MARGIN_METERS
-  return raw
+  return clampNumber(raw, MIN_CLEARANCE_MARGIN_METERS, MAX_CLEARANCE_MARGIN_METERS, DEFAULT_CLEARANCE_MARGIN_METERS)
 }
 
 /** The minimal app surface {@link readVesselAirDraft} needs. */

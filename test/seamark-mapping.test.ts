@@ -2,8 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   SEAMARK_GROUPS,
-  elementPoiType,
-  elementSkIcon,
+  elementMarking,
   seamarkRegex,
   seamarkSkIcon,
   seamarkToPoiType
@@ -27,16 +26,16 @@ test('seamarkToPoiType maps an unknown seamark type to Unknown', () => {
   assert.equal(seamarkToPoiType('definitely_not_a_seamark'), 'Unknown')
 })
 
-test('elementPoiType reads the seamark:type tag when present', () => {
-  assert.equal(elementPoiType({ 'seamark:type': 'wreck' }), 'Hazard')
+test('elementMarking reads the seamark:type tag when present', () => {
+  assert.equal(elementMarking({ 'seamark:type': 'wreck' }).type, 'Hazard')
 })
 
-test('elementPoiType maps a leisure=marina element with no seamark type to Marina', () => {
-  assert.equal(elementPoiType({ leisure: 'marina' }), 'Marina')
+test('elementMarking maps a leisure=marina element with no seamark type to Marina', () => {
+  assert.equal(elementMarking({ leisure: 'marina' }).type, 'Marina')
 })
 
-test('elementPoiType maps an untagged element to Unknown', () => {
-  assert.equal(elementPoiType({}), 'Unknown')
+test('elementMarking maps an untagged element to Unknown', () => {
+  assert.equal(elementMarking({}).type, 'Unknown')
 })
 
 test('the seamark groups cover the four configurable categories', () => {
@@ -103,12 +102,12 @@ test('seamarkSkIcon falls back to notice-to-mariners for an unmapped seamark typ
   assert.equal(seamarkSkIcon('definitely_not_a_seamark'), 'notice-to-mariners')
 })
 
-test('elementSkIcon reads seamark:type, then leisure=marina, then falls back', () => {
-  assert.equal(elementSkIcon({ 'seamark:type': 'wreck' }), 'hazard')
-  assert.equal(elementSkIcon({ 'seamark:type': 'light_minor' }), 'navigation-structure')
-  assert.equal(elementSkIcon({ leisure: 'marina' }), 'marina')
-  assert.equal(elementSkIcon({}), 'notice-to-mariners')
-  assert.equal(elementSkIcon({ name: 'Just a tagged feature' }), 'notice-to-mariners')
+test('elementMarking resolves the icon from seamark:type, then leisure=marina, then falls back', () => {
+  assert.equal(elementMarking({ 'seamark:type': 'wreck' }).skIcon, 'hazard')
+  assert.equal(elementMarking({ 'seamark:type': 'light_minor' }).skIcon, 'navigation-structure')
+  assert.equal(elementMarking({ leisure: 'marina' }).skIcon, 'marina')
+  assert.equal(elementMarking({}).skIcon, 'notice-to-mariners')
+  assert.equal(elementMarking({ name: 'Just a tagged feature' }).skIcon, 'notice-to-mariners')
 })
 
 test('every fetched seamark type has a specific PoiType and Freeboard icon mapping', () => {

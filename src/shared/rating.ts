@@ -10,6 +10,8 @@
  * review score.
  */
 
+import { clampNumber } from './numbers.js'
+
 /** Lowest minimum rating: 0 disables the rating filter and shows every point. */
 export const MIN_RATING = 0
 
@@ -27,8 +29,5 @@ export const DEFAULT_MINIMUM_RATING = MIN_RATING
  * case the rating filter treats as off.
  */
 export function clampMinimumRating (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_MINIMUM_RATING
-  if (raw < MIN_RATING) return MIN_RATING
-  if (raw > MAX_RATING) return MAX_RATING
-  return raw
+  return clampNumber(raw, MIN_RATING, MAX_RATING, DEFAULT_MINIMUM_RATING)
 }

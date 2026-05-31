@@ -22,13 +22,13 @@ export const DEFAULT_CACHE_DURATION_MINUTES = 60
 export { MIN_RATING, MAX_RATING, DEFAULT_MINIMUM_RATING } from '../shared/rating.js'
 import { clampMinimumRating } from '../shared/rating.js'
 
-/**
- * Fallback proximity-alarm radius, in meters. Mirrors the
- * `proximityAlarmRadiusMeters` schema default in
- * src/outputs/proximity-alarm/proximity-alarm-output.ts; keep the two in step
- * so the panel and the plugin agree.
- */
-export const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
+// The proximity-alarm radius default is owned by src/shared/proximity-radius.ts
+// so the panel, the proximity-alarm output, and the bridge air-draft output
+// consume the same source of truth. Imported here because normalizeConfig falls
+// back to it, and re-exported so panel components and tests that already import
+// from normalize-config do not need a second import line.
+import { DEFAULT_PROXIMITY_ALARM_RADIUS_METERS } from '../shared/proximity-radius.js'
+export { DEFAULT_PROXIMITY_ALARM_RADIUS_METERS }
 
 /**
  * Fallback route-corridor half-width, in meters. Mirrors the
@@ -90,7 +90,11 @@ import { clampMinimumYear } from '../shared/year-filter.js'
 // src/shared/bridge-clearance.ts so the panel and the bridge air-draft output
 // consume the same source of truth. Re-exported here so panel components that
 // already import from normalize-config do not need a second import line.
-export { DEFAULT_CLEARANCE_MARGIN_METERS } from '../shared/bridge-clearance.js'
+export {
+  DEFAULT_CLEARANCE_MARGIN_METERS,
+  MIN_CLEARANCE_MARGIN_METERS,
+  MAX_CLEARANCE_MARGIN_METERS
+} from '../shared/bridge-clearance.js'
 import { clampClearanceMargin } from '../shared/bridge-clearance.js'
 
 // The bbox-debounce bounds, default, and clamp helper are owned by

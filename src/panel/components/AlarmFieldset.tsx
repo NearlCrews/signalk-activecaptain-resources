@@ -4,13 +4,15 @@
  * explain each. Both `ProximityAlarmFields` and `RouteHazardScanFields` use
  * it, parameterized by their labels, ids, and the numeric setting's minimum.
  *
- * The numeric input is disabled while the toggle is off, because the setting
- * then has no effect.
+ * The fieldset, legend, toggle, and hint shell come from `ToggleFieldset`;
+ * AlarmFieldset slots its single integer NumberField as the children. The
+ * numeric input is disabled while the toggle is off, because the setting then
+ * has no effect.
  */
 
 import type * as React from 'react'
 import NumberField from './NumberField.js'
-import { S } from '../styles.js'
+import ToggleFieldset from './ToggleFieldset.js'
 
 interface Props {
   /** Fieldset legend, e.g. `Proximity hazard alarms`. */
@@ -54,23 +56,14 @@ export default function AlarmFieldset ({
   numberValue,
   onChangeNumber
 }: Props): React.ReactElement {
-  // The outer <section> wrapper that used to sit around the fieldset is
-  // gone: AlertsSection already provides the section landmark, and the
-  // extra nested section made screen-reader landmark navigation noisier
-  // without adding any visual structure.
   return (
-    <fieldset style={S.group}>
-      <legend style={S.groupTitle}>{title}</legend>
-      <label style={S.checkboxRow}>
-        <input
-          type='checkbox'
-          style={S.checkbox}
-          checked={enabled}
-          onChange={(e) => onToggleEnabled(e.target.checked)}
-        />
-        {toggleLabel}
-      </label>
-      <p style={S.hint}>{toggleHint}</p>
+    <ToggleFieldset
+      title={title}
+      toggleLabel={toggleLabel}
+      toggleHint={toggleHint}
+      enabled={enabled}
+      onToggleEnabled={onToggleEnabled}
+    >
       <NumberField
         id={numberFieldId}
         label={numberLabel}
@@ -83,6 +76,6 @@ export default function AlarmFieldset ({
         disabled={!enabled}
         dense
       />
-    </fieldset>
+    </ToggleFieldset>
   )
 }

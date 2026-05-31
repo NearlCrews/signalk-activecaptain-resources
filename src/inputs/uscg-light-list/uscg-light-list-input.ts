@@ -101,10 +101,11 @@ export const uscgLightListInput: InputModule = {
     const intervalMs = refreshHours * MS_PER_HOUR
     const delayMs = INITIAL_REFRESH_DELAY_SECONDS * MS_PER_SECOND
     // In-flight guard: a refresh pass that takes longer than the configured
-    // window (37 sequential conditional GETs against a slow NAVCEN) would
-    // otherwise let the next setInterval tick start a concurrent refreshAll,
-    // racing on store.upsertDistrict and clobbering each other's writes. The
-    // guard skips overlapping ticks; the next interval fires normally.
+    // window (37 conditional GETs against a slow NAVCEN, fanned out four at a
+    // time) would otherwise let the next setInterval tick start a concurrent
+    // refreshAll, racing on store.upsertDistrict and clobbering each other's
+    // writes. The guard skips overlapping ticks; the next interval fires
+    // normally.
     let refreshing = false
     const runRefresh = (reason: string): void => {
       if (refreshing) {

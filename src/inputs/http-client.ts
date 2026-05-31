@@ -21,7 +21,10 @@ export interface RateLimitOptions {
   backoffBaseMs: number
   /** Upper bound for a single backoff wait, in milliseconds. */
   maxBackoffMs: number
-  /** Maximum retry attempts after the first try, for 429, 502, 503, and 504 responses. */
+  /**
+   * Maximum retry attempts after the first try, for 429, 502, 503, and 504
+   * responses, and network errors.
+   */
   maxRetries: number
   /**
    * Upper bound on how long a server-supplied Retry-After header is honored,

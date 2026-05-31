@@ -3,14 +3,14 @@
  *
  * The wire format carries USCG-specific abbreviations and unit codes that
  * mean nothing on a chart popup; this module humanizes them. The IALA
- * light-character vocabulary is reused from the OpenSeaMap module: the
- * abbreviations are identical, so the table lives there as the single source
- * of truth and a new value belongs alongside the other OpenSeaMap entries
- * rather than in a parallel table here.
+ * light-character vocabulary is shared with the OpenSeaMap renderer: the
+ * abbreviations are identical, so the table lives in
+ * `src/shared/light-character.ts` as the single source of truth and a new
+ * value belongs there rather than in a parallel table here.
  */
 
 import type { LightListRecord } from './light-list-types.js'
-import { humanizeLightCharacter } from '../openseamap/openseamap-detail.js'
+import { humanizeLightCharacter } from '../../shared/light-character.js'
 import { escapeHtml, labeledParagraph } from '../../shared/html-escape.js'
 
 /** Plain-English label for the single-letter USCG color codes. */

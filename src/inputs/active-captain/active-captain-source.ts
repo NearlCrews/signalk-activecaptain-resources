@@ -220,11 +220,13 @@ export function createActiveCaptainSource (config: ActiveCaptainSourceConfig): P
       const modified = parseApiDate(poi.dateLastModified)
       // A fixed bridge's clearance lives only in the navigation section, in
       // `distanceUnit` (feet or meters). The air-draft check reads this off
-      // the detail view; an absent or unrecognized unit yields undefined and
-      // the field stays absent.
+      // the detail view; gate it to a Bridge POI (matching the OpenSeaMap
+      // source) so a non-bridge never carries a clearance. An absent or
+      // unrecognized unit yields undefined and the field stays absent.
       const navigation = entity.navigation
-      const verticalClearanceMeters = bridgeHeightToMeters(
-        navigation?.bridgeHeight, navigation?.distanceUnit)
+      const verticalClearanceMeters = poi.poiType === 'Bridge'
+        ? bridgeHeightToMeters(navigation?.bridgeHeight, navigation?.distanceUnit)
+        : undefined
       return {
         name: poi.name,
         position: { ...poi.mapLocation },

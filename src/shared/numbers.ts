@@ -33,6 +33,27 @@ export function positiveFiniteNumber (value: unknown): number | null {
     : null
 }
 
+/**
+ * Clamp a raw value into `[min, max]`, falling back to `fallback` when it is
+ * not a finite number, and optionally truncating to an integer. The config
+ * bounds modules (rating, year-filter, bbox-debounce, bridge-clearance) share
+ * this body while each keeps its own bounds and default, so the clamp logic
+ * lives in one place.
+ */
+export function clampNumber (
+  raw: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+  truncate = false
+): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return fallback
+  let value = raw
+  if (value < min) value = min
+  else if (value > max) value = max
+  return truncate ? Math.trunc(value) : value
+}
+
 /** True when `value` is a finite latitude in the standard `[-90, 90]` range. */
 export function isValidLatitude (value: unknown): value is number {
   return typeof value === 'number' &&

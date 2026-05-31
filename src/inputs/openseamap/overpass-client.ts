@@ -22,6 +22,7 @@
 
 import { assertResponseOk, createHttpClient, type RateLimitOptions } from '../http-client.js'
 import { PLUGIN_USER_AGENT } from '../../shared/plugin-id.js'
+import { splitOnFirstSeparator } from '../../shared/namespaced-id.js'
 import { isValidLatitude, isValidLongitude } from '../../shared/numbers.js'
 import type { Bbox, Logger, Position } from '../../shared/types.js'
 
@@ -179,9 +180,9 @@ function buildDetailQuery (type: OsmElementType, id: number): string {
  * Throws on a malformed id rather than issuing a guaranteed-empty query.
  */
 function parseTypedId (typedId: string): { type: OsmElementType, id: number } {
-  const slash = typedId.indexOf('/')
-  const type = slash > 0 ? typedId.slice(0, slash) : ''
-  const id = Number(typedId.slice(slash + 1))
+  const split = splitOnFirstSeparator(typedId, '/')
+  const type = split?.prefix ?? ''
+  const id = split !== null ? Number(split.remainder) : Number.NaN
   if (
     (type !== 'node' && type !== 'way' && type !== 'relation') ||
     !Number.isInteger(id) || id <= 0

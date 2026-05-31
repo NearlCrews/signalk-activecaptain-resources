@@ -36,8 +36,8 @@ export interface ReviewSummary {
  *
  * The wire ships `id` as a number on both the list and the detail responses
  * (see docs/garmin-api.md for the live-verified shape); the client coerces
- * it to a string in `parseSummaryEntry` for use as a SignalK resource id, so
- * the rest of the plugin sees a uniform string.
+ * it to a string in the list-mapping step for use as a SignalK resource id,
+ * so the rest of the plugin sees a uniform string.
  */
 export interface PoiListItem {
   id: number

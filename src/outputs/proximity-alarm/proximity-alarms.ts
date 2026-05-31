@@ -25,6 +25,7 @@
 
 import { emitNotification, type NotificationValue } from '../../shared/notification-path.js'
 import { createNotificationTracker, type NotificationTrackerApp } from '../../shared/notification-tracker.js'
+import { EXIT_RADIUS_FACTOR } from '../../shared/proximity-radius.js'
 import { distanceMeters } from '../../geo/position-utilities.js'
 import { PROXIMITY_ALARM_POI_TYPE } from './poi-types.js'
 import type { PoiSummary, Position } from '../../shared/types.js'
@@ -38,14 +39,6 @@ const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.crowsNest.hazard.'
  * though both come from this plugin.
  */
 const SOURCE_SUFFIX = 'proximity'
-
-/**
- * Hysteresis margin: an active alarm clears only once the hazard is this
- * multiple of the alarm radius away. The gap between the raise distance and
- * the clear distance stops an alarm chattering when a hazard sits right on
- * the boundary.
- */
-const EXIT_RADIUS_FACTOR = 1.2
 
 /**
  * The slice of the SignalK app the alarms need. The real `ServerAPI` satisfies

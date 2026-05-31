@@ -12,7 +12,7 @@
  * module supports the `position` plus `distance` form the chart plotter sends.
  */
 
-import { toFiniteNumber } from '../shared/numbers.js'
+import { isValidLatitude, isValidLongitude } from '../shared/numbers.js'
 import type { Position, Bbox } from '../shared/types.js'
 
 /** Mean radius of the Earth in kilometers, used for great-circle estimates. */
@@ -55,12 +55,12 @@ export function toPosition (value: unknown): Position | null {
     return null
   }
   const { latitude, longitude } = value as Record<string, unknown>
-  const lat = toFiniteNumber(latitude)
-  const lon = toFiniteNumber(longitude)
-  if (lat === null || lon === null) {
+  // Range-check, not just finiteness, so a garbled fix (latitude 999) is
+  // rejected, matching how every wire parser validates a coordinate.
+  if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
     return null
   }
-  return { latitude: lat, longitude: lon }
+  return { latitude, longitude }
 }
 
 /**

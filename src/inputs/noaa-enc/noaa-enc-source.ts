@@ -20,7 +20,7 @@
 import { LRUCache } from 'lru-cache'
 import type { EncDirectClient } from './enc-direct-client.js'
 import type { EncFeature, EncLayerKey, ScaleBand } from './enc-direct-types.js'
-import { layerPoiType, layerSkIcon, sordatToIsoTimestamp } from './s57-mapping.js'
+import { LAYER_LABEL, LAYER_POI_TYPE, LAYER_SK_ICON, sordatToIsoTimestamp } from './s57-mapping.js'
 import { renderEncDirectDetail } from './enc-direct-detail.js'
 import type { PoiSource } from '../poi-source.js'
 import { createBboxDebounceCache } from '../../shared/bbox-debounce.js'
@@ -37,13 +37,6 @@ import { NOAA_ENC_SOURCE_ID } from '../../shared/source-ids.js'
 
 /** Human-readable attribution credit for NOAA ENC Direct data. */
 const NOAA_ENC_ATTRIBUTION = '© NOAA Office of Coast Survey (CC0)'
-
-/** Layer-derived fallback name used when a feature has no OBJNAM. */
-const LAYER_NAME: Readonly<Record<EncLayerKey, string>> = {
-  wreck: 'Wreck',
-  obstruction: 'Obstruction',
-  rock: 'Rock'
-}
 
 /** Cached entry: the layer the feature came from plus the feature itself. */
 interface CachedFeature {
@@ -121,7 +114,7 @@ function featureName (layerKey: EncLayerKey, feature: EncFeature): string {
     const trimmed = objnam.trim()
     if (trimmed.length > 0) return trimmed
   }
-  return LAYER_NAME[layerKey]
+  return LAYER_LABEL[layerKey]
 }
 
 /**
@@ -153,7 +146,7 @@ function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary | nu
   const timestamp = sordatToIsoTimestamp(feature.properties.SORDAT)
   const summary: PoiSummary = {
     id: `${layerKey}_${objectId}`,
-    type: layerPoiType(layerKey),
+    type: LAYER_POI_TYPE,
     position: { latitude: latLon.lat, longitude: latLon.lon },
     name: featureName(layerKey, feature),
     source: NOAA_ENC_SOURCE_ID,
@@ -161,7 +154,7 @@ function toSummary (layerKey: EncLayerKey, feature: EncFeature): PoiSummary | nu
     // browser" link falls back to an OpenSeaMap marker (see map-link.ts).
     url: openSeaMapMarkerUrl(latLon.lat, latLon.lon),
     attribution: NOAA_ENC_ATTRIBUTION,
-    skIcon: layerSkIcon(layerKey)
+    skIcon: LAYER_SK_ICON
   }
   if (timestamp !== undefined) summary.timestamp = timestamp
   return summary
@@ -181,12 +174,12 @@ function toDetailView (cached: CachedFeature): PoiDetailView | null {
   const view: PoiDetailView = {
     name: featureName(layerKey, feature),
     position: { latitude: latLon.lat, longitude: latLon.lon },
-    type: layerPoiType(layerKey),
+    type: LAYER_POI_TYPE,
     url: openSeaMapMarkerUrl(latLon.lat, latLon.lon),
     source: NOAA_ENC_SOURCE_ID,
     attribution: NOAA_ENC_ATTRIBUTION,
     description,
-    skIcon: layerSkIcon(layerKey)
+    skIcon: LAYER_SK_ICON
   }
   if (timestamp !== undefined) view.timestamp = timestamp
   return view
@@ -238,7 +231,7 @@ export function createNoaaEncSource (config: NoaaEncSourceConfig): PoiSource {
             return { layerKey, features: response.features }
           })
         )
-        const layerFeatures: Array<{ layerKey: EncLayerKey, features: EncFeature[] }> = []
+        const layerFeatures: LayerFeatures = []
         let anyLayerOk = false
         let firstRejection: unknown
         for (const result of results) {

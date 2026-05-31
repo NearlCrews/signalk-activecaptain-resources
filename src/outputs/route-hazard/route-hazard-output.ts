@@ -18,6 +18,7 @@ import { CORRIDOR_POI_TYPES, routeLegPoints, scanRouteCorridor } from './route-c
 import type { OutputContext, OutputHandle, OutputModule, PositionScanContributor } from '../output.js'
 import { createBridgeClearanceResolver, type BridgeClearanceResolver } from '../bridge-air-draft/bridge-clearance-resolver.js'
 import { bridgeBlocksVessel, clampClearanceMargin, readVesselAirDraft } from '../../shared/bridge-clearance.js'
+import { positiveFiniteNumber } from '../../shared/numbers.js'
 import { distanceMeters, positionToBbox, unionBbox } from '../../geo/position-utilities.js'
 import type { Bbox, CorridorPoi, PoiSummary, Position, RoutePolyline } from '../../shared/types.js'
 
@@ -48,18 +49,6 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
     default: DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS,
     minimum: 1
   }
-}
-
-/**
- * Resolve the corridor half-width from raw config, applying the default.
- * Rejects non-finite values (NaN, Infinity) so a hand-edited config file
- * cannot propagate NaN through routeCorridorBbox into the outbound list URL.
- */
-function resolveCorridorWidth (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) {
-    return DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
-  }
-  return raw
 }
 
 /**
@@ -171,7 +160,7 @@ export const routeHazardOutput: OutputModule = {
   isEnabled: (config) => config.enableRouteHazardScan === true,
   start: (context: OutputContext): OutputHandle => {
     const { app, config } = context
-    const corridorWidthMeters = resolveCorridorWidth(config.routeCorridorWidthMeters)
+    const corridorWidthMeters = positiveFiniteNumber(config.routeCorridorWidthMeters) ?? DEFAULT_ROUTE_CORRIDOR_WIDTH_METERS
     // The alarms are built before the course reader: createCourseReader opens
     // two Course API delta subscriptions, so if alarm construction were to
     // throw after that, those subscriptions would be orphaned with no stop()

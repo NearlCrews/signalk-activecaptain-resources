@@ -22,7 +22,9 @@ const ESCAPE_REGEX = /[&<>"']/g
 
 /** Escape a string for safe interpolation into an HTML attribute or text node. */
 export function escapeHtml (value: string): string {
-  return value.replace(ESCAPE_REGEX, (char) => ESCAPE_TABLE.get(char) ?? char)
+  // ESCAPE_REGEX matches exactly the five keys in ESCAPE_TABLE, so the lookup
+  // is total: the non-null assertion documents that the table covers the regex.
+  return value.replace(ESCAPE_REGEX, (char) => ESCAPE_TABLE.get(char) as string)
 }
 
 /**

@@ -111,7 +111,9 @@ export function lookupCode (
  * arrive already in human-readable lowercase form, e.g. `"dangerous wreck"`,
  * so the only normalization is trimming surrounding whitespace and treating a
  * blank or non-string value as absent. Returns `undefined` when the input
- * carries no useful category label.
+ * carries no useful category label. The detail renderer also reuses this as
+ * its general non-empty free-text reader for OBJNAM, INFORM, and DSNM, which
+ * need the same trim-and-reject-blank handling.
  */
 export function humanizeCategory (raw: unknown): string | undefined {
   if (typeof raw !== 'string') {
@@ -121,15 +123,24 @@ export function humanizeCategory (raw: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
-/** Resolve the PoiType for an ENC hazard layer. Always `Hazard`. */
-export function layerPoiType (_layer: EncLayerKey): PoiType {
-  return 'Hazard'
+/**
+ * Layer-derived fallback label for a hazard feature, used as the popup header
+ * and the list name when the feature carries no OBJNAM. Shared by the source's
+ * `featureName` and the detail renderer so the two cannot drift.
+ */
+export const LAYER_LABEL: Readonly<Record<EncLayerKey, string>> = {
+  wreck: 'Wreck',
+  obstruction: 'Obstruction',
+  rock: 'Rock'
 }
 
-/** Resolve the Freeboard skIcon glyph for an ENC hazard layer. Always `hazard`. */
-export function layerSkIcon (_layer: EncLayerKey): string {
-  return 'hazard'
-}
+/**
+ * Every ENC hazard layer (wreck, obstruction, rock) shares one `PoiType` and
+ * one Freeboard glyph: the layer does not vary either, so these are plain
+ * constants rather than per-layer lookups.
+ */
+export const LAYER_POI_TYPE: PoiType = 'Hazard'
+export const LAYER_SK_ICON = 'hazard'
 
 /**
  * Parse the S-57 `SORDAT` source-date field into its `(year, month, day)`

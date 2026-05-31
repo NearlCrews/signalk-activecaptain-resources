@@ -2,7 +2,8 @@
  * ActiveCaptain input module.
  *
  * Registers the ActiveCaptain API as a POI source. Owns the config-schema
- * fragment for the cache duration, the minimum-rating filter, and the 13
+ * fragment for the cache duration, the bbox-debounce window
+ * (`activeCaptainRefreshSeconds`), the minimum-rating filter, and the 13
  * POI-type toggles, since those tune the ActiveCaptain API specifically.
  * Always enabled: the POI-type toggles control which types are fetched, not
  * whether the source runs.
@@ -12,6 +13,7 @@ import { createActiveCaptainClient } from './active-captain-client.js'
 import { createActiveCaptainSource } from './active-captain-source.js'
 import type { InputContext, InputModule } from '../poi-source.js'
 import { clampBboxDebounceSeconds, refreshSecondsSchema } from '../../shared/bbox-debounce.js'
+import { positiveFiniteNumber } from '../../shared/numbers.js'
 import { ACTIVE_CAPTAIN_SOURCE_ID } from '../../shared/source-ids.js'
 import {
   clampMinimumRating,
@@ -63,7 +65,7 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
 
 /** Resolve the caching duration from raw config, applying the default. */
 function resolveCachingDuration (raw: unknown): number {
-  return typeof raw === 'number' && raw > 0 ? raw : DEFAULT_CACHING_DURATION_MINUTES
+  return positiveFiniteNumber(raw) ?? DEFAULT_CACHING_DURATION_MINUTES
 }
 
 /** The ActiveCaptain input module. */

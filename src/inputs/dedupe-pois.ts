@@ -22,7 +22,7 @@
 
 import { distanceMeters } from '../geo/position-utilities.js'
 import { ACTIVE_CAPTAIN_SOURCE_ID } from '../shared/source-ids.js'
-import type { PoiSummary } from '../shared/types.js'
+import type { PoiSummary, PoiType, Position } from '../shared/types.js'
 
 /**
  * The fixed base source: non-base POIs dedupe against ActiveCaptain. Aliased
@@ -87,6 +87,51 @@ const MIN_SAFE_RADIUS_METERS = 1
 /** Pack (x, y) cell coordinates into a single integer suitable for a Map key. */
 function packCellKey (x: number, y: number): number {
   return x * CELL_KEY_STRIDE + y
+}
+
+/**
+ * The first POI of `type` within `radius` of `position` already bucketed in
+ * `grid`, scanning the 3x3 neighborhood of cell `(x, y)`. The sweep is
+ * exhaustive at this grid scale: two points within `radius` of each other land
+ * at most one cell apart on each axis. Returns undefined when none matches.
+ * Shared by the base-merge and same-source passes, whose neighbor scans are
+ * the same shape.
+ */
+function scanNeighborhood (
+  grid: ReadonlyMap<number, PoiSummary[]>,
+  x: number,
+  y: number,
+  type: PoiType,
+  position: Position,
+  radius: number
+): PoiSummary | undefined {
+  for (let dx = -1; dx <= 1; dx += 1) {
+    for (let dy = -1; dy <= 1; dy += 1) {
+      const bucket = grid.get(packCellKey(x + dx, y + dy))
+      if (bucket === undefined) continue
+      for (const candidate of bucket) {
+        if (candidate.type === type &&
+          distanceMeters(candidate.position, position) <= radius) {
+          return candidate
+        }
+      }
+    }
+  }
+  return undefined
+}
+
+/** Append `value` to the array bucketed at `key` in `map`, creating it if absent. */
+function pushToBucket (
+  map: Map<number, PoiSummary[]>,
+  key: number,
+  value: PoiSummary
+): void {
+  const bucket = map.get(key)
+  if (bucket === undefined) {
+    map.set(key, [value])
+  } else {
+    bucket.push(value)
+  }
 }
 
 /** Per-source detail tracked for a surviving base POI as duplicates merge in. */
@@ -214,13 +259,7 @@ export function dedupeAgainstBase (
   const corroboration = new Map<PoiSummary, Corroboration>()
   for (const base of basePois) {
     const [x, y] = cellCoords(base)
-    const key = packCellKey(x, y)
-    const bucket = grid.get(key)
-    if (bucket === undefined) {
-      grid.set(key, [base])
-    } else {
-      bucket.push(base)
-    }
+    pushToBucket(grid, packCellKey(x, y), base)
     corroboration.set(base, {
       slugs: [base.source],
       attributions: [base.attribution],
@@ -232,19 +271,7 @@ export function dedupeAgainstBase (
   function baseMatch (poi: PoiSummary): PoiSummary | undefined {
     const [x, y] = cellCoords(poi)
     const radius = radiusFor(poi.source, radiusSpec)
-    for (let dx = -1; dx <= 1; dx += 1) {
-      for (let dy = -1; dy <= 1; dy += 1) {
-        const bucket = grid.get(packCellKey(x + dx, y + dy))
-        if (bucket === undefined) continue
-        for (const base of bucket) {
-          if (base.type === poi.type &&
-            distanceMeters(base.position, poi.position) <= radius) {
-            return base
-          }
-        }
-      }
-    }
-    return undefined
+    return scanNeighborhood(grid, x, y, poi.type, poi.position, radius)
   }
 
   // Non-base POIs: merge a dedupe-enabled duplicate into its base, otherwise
@@ -337,7 +364,7 @@ function dedupeSameSource (
       keptBySource.set(poi.source, sourceGrid)
     }
     const radius = radiusFor(poi.source, radiusSpec)
-    const kept = findNearbyDuplicate(poi, x, y, radius, sourceGrid)
+    const kept = scanNeighborhood(sourceGrid, x, y, poi.type, poi.position, radius)
     if (kept !== undefined) {
       // Collapse this duplicate into the kept survivor, folding its clearance
       // so the survivor keeps the most conservative clearance the pair
@@ -350,42 +377,7 @@ function dedupeSameSource (
       continue
     }
     out.push(poi)
-    const key = packCellKey(x, y)
-    const bucket = sourceGrid.get(key)
-    if (bucket === undefined) {
-      sourceGrid.set(key, [poi])
-    } else {
-      bucket.push(poi)
-    }
+    pushToBucket(sourceGrid, packCellKey(x, y), poi)
   }
   return out
-}
-
-/**
- * The first same-source same-type POI within `radiusMeters` of `poi` already
- * kept in `sourceGrid`, or undefined when there is none. Sweeps the 3x3
- * neighborhood of the POI's grid cell, which is exhaustive at this grid scale.
- * Returning the matched survivor (rather than a bare boolean) lets the caller
- * fold the dropped duplicate's clearance onto it.
- */
-function findNearbyDuplicate (
-  poi: PoiSummary,
-  x: number,
-  y: number,
-  radiusMeters: number,
-  sourceGrid: ReadonlyMap<number, PoiSummary[]>
-): PoiSummary | undefined {
-  for (let dx = -1; dx <= 1; dx += 1) {
-    for (let dy = -1; dy <= 1; dy += 1) {
-      const bucket = sourceGrid.get(packCellKey(x + dx, y + dy))
-      if (bucket === undefined) continue
-      for (const kept of bucket) {
-        if (kept.type === poi.type &&
-          distanceMeters(kept.position, poi.position) <= radiusMeters) {
-          return kept
-        }
-      }
-    }
-  }
-  return undefined
 }

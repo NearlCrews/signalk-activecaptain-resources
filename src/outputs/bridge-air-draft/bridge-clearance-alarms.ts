@@ -28,6 +28,7 @@
 import { emitNotification, type NotificationValue } from '../../shared/notification-path.js'
 import { createNotificationTracker, type NotificationTrackerApp } from '../../shared/notification-tracker.js'
 import { bridgeBlocksVessel, formatMeters } from '../../shared/bridge-clearance.js'
+import { EXIT_RADIUS_FACTOR } from '../../shared/proximity-radius.js'
 import { distanceMeters } from '../../geo/position-utilities.js'
 import type { BridgeClearanceResolver } from './bridge-clearance-resolver.js'
 import type { PoiSummary, PoiType, Position } from '../../shared/types.js'
@@ -47,14 +48,6 @@ const NOTIFICATION_PATH_PREFIX = 'notifications.navigation.crowsNest.bridgeClear
  * route-corridor output even though all three come from this plugin.
  */
 const SOURCE_SUFFIX = 'bridge'
-
-/**
- * Hysteresis margin: an active alarm clears only once the bridge is this
- * multiple of the alarm radius away. The gap between the raise distance and the
- * clear distance stops an alarm chattering when a bridge sits on the boundary.
- * Matches the proximity alarm's exit-radius factor.
- */
-const EXIT_RADIUS_FACTOR = 1.2
 
 /**
  * The slice of the SignalK app the alarms need. The real `ServerAPI` satisfies

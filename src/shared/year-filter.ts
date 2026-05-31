@@ -19,6 +19,7 @@
  *   authorize.
  */
 
+import { clampNumber } from './numbers.js'
 import type { PoiSummary } from './types.js'
 
 /**
@@ -28,7 +29,7 @@ import type { PoiSummary } from './types.js'
  * shared by the clamp and the filter. Kept as a named constant rather than
  * a magic `0` so the meaning is obvious at call sites.
  */
-export const OFF_SENTINEL_YEAR = 0
+const OFF_SENTINEL_YEAR = 0
 
 /** Lower bound on every minimum-year filter, alias of {@link OFF_SENTINEL_YEAR}. */
 export const MIN_YEAR = OFF_SENTINEL_YEAR
@@ -51,10 +52,7 @@ export const DEFAULT_MINIMUM_YEAR = OFF_SENTINEL_YEAR
  * the bounds and the fallback rule live in one place.
  */
 export function clampMinimumYear (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw)) return DEFAULT_MINIMUM_YEAR
-  if (raw < MIN_YEAR) return MIN_YEAR
-  if (raw > MAX_YEAR) return MAX_YEAR
-  return Math.trunc(raw)
+  return clampNumber(raw, MIN_YEAR, MAX_YEAR, DEFAULT_MINIMUM_YEAR, true)
 }
 
 /**

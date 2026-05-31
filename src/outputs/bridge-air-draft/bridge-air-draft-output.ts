@@ -24,18 +24,9 @@ import {
   clearanceMarginSchema
 } from '../../shared/bridge-clearance.js'
 import { positiveFiniteNumber } from '../../shared/numbers.js'
+import { DEFAULT_PROXIMITY_ALARM_RADIUS_METERS, vesselScanRadiusMeters } from '../../shared/proximity-radius.js'
 import { positionToBbox } from '../../geo/position-utilities.js'
 import type { OutputContext, OutputHandle, OutputModule, PositionScanContributor } from '../output.js'
-
-/**
- * Default vessel-proximity alarm radius, in meters. Mirrors the proximity-alarm
- * output's default so the two outputs share one "near the vessel" radius when
- * `proximityAlarmRadiusMeters` is unset.
- */
-const DEFAULT_BRIDGE_ALARM_RADIUS_METERS = 500
-
-/** Lower bound on the bridge-scan radius, so the clearance check always has data. */
-const MIN_SCAN_RADIUS_METERS = 2000
 
 /** The bridge air-draft config fragment, built from the shared schema builders. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
@@ -60,10 +51,10 @@ export const bridgeAirDraftOutput: OutputModule = {
     const { app, config, pois } = context
     const marginMeters = clampClearanceMargin(config.bridgeClearanceMarginMeters)
     const fallbackAirDraftMeters = config.vesselAirDraftMeters
-    const radiusMeters = positiveFiniteNumber(config.proximityAlarmRadiusMeters) ?? DEFAULT_BRIDGE_ALARM_RADIUS_METERS
+    const radiusMeters = positiveFiniteNumber(config.proximityAlarmRadiusMeters) ?? DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
     // The scan box is wider than the alarm radius so a bridge (and its
     // ActiveCaptain clearance) is fetched well before it crosses the radius.
-    const scanRadiusMeters = Math.max(radiusMeters * 3, MIN_SCAN_RADIUS_METERS)
+    const scanRadiusMeters = vesselScanRadiusMeters(radiusMeters)
 
     const resolver = createBridgeClearanceResolver({
       getDetails: (id) => pois.getDetails(id),

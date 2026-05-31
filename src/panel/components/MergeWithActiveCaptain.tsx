@@ -5,14 +5,16 @@
  * a one-paragraph rationale; the duplication made the per-card files
  * harder to scan and was a real maintenance hazard whenever the copy
  * needed editing in one place. Centralizing the block here keeps every
- * card's merge UX in lockstep and matches the emitter-cannon pattern of
- * extracting cross-cutting fieldsets out of per-source card bodies.
+ * card's merge UX in lockstep.
+ *
+ * The fieldset, legend, toggle, and hint shell come from `ToggleFieldset`;
+ * this component slots its merge-radius NumberField as the children.
  */
 
 import type * as React from 'react'
 import { DEFAULT_OPENSEAMAP_DEDUPE_RADIUS_METERS } from '../normalize-config.js'
-import { S } from '../styles.js'
 import NumberField from './NumberField.js'
+import ToggleFieldset from './ToggleFieldset.js'
 
 /** Smallest dedupe radius the plugin accepts (matches every schema minimum). */
 const MIN_DEDUPE_RADIUS_METERS = 1
@@ -42,23 +44,20 @@ export default function MergeWithActiveCaptain ({
   radiusInputId
 }: Props): React.ReactElement {
   return (
-    <fieldset style={S.group}>
-      <legend style={S.groupTitle}>Merge with ActiveCaptain</legend>
-      <label style={S.checkboxRow}>
-        <input
-          type='checkbox'
-          style={S.checkbox}
-          checked={enabled}
-          onChange={(e) => onToggleEnabled(e.target.checked)}
-        />
-        Merge {sourceName} markers that duplicate an ActiveCaptain marker
-      </label>
-      <p style={S.hint}>
-        When enabled, a {sourceName} point of interest close to an
-        ActiveCaptain point of the same type is merged into it, so one
-        physical feature is shown once. The surviving marker records every
-        source that reported it.
-      </p>
+    <ToggleFieldset
+      title='Merge with ActiveCaptain'
+      toggleLabel={<>Merge {sourceName} markers that duplicate an ActiveCaptain marker</>}
+      toggleHint={
+        <>
+          When enabled, a {sourceName} point of interest close to an
+          ActiveCaptain point of the same type is merged into it, so one
+          physical feature is shown once. The surviving marker records every
+          source that reported it.
+        </>
+      }
+      enabled={enabled}
+      onToggleEnabled={onToggleEnabled}
+    >
       <NumberField
         id={radiusInputId}
         label='Merge radius (meters)'
@@ -71,6 +70,6 @@ export default function MergeWithActiveCaptain ({
         disabled={!enabled}
         dense
       />
-    </fieldset>
+    </ToggleFieldset>
   )
 }

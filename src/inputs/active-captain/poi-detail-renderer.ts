@@ -30,7 +30,7 @@ import {
 
 import type { PoiDetails, PoiNote } from './active-captain-types.js'
 import { formatRelativeDelta } from '../../shared/relative-time-format.js'
-import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE } from '../../shared/time.js'
+import { MS_PER_SECOND, SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE } from '../../shared/time.js'
 
 /** The root context handed to the point-of-interest template. */
 interface TemplateRoot {
@@ -134,7 +134,7 @@ export function fromNow (date: Date, now: Date = new Date()): string {
     return 'an unknown time ago'
   }
 
-  const deltaSeconds = Math.round((date.getTime() - now.getTime()) / 1000)
+  const deltaSeconds = Math.round((date.getTime() - now.getTime()) / MS_PER_SECOND)
   return formatRelativeDelta(deltaSeconds, RELATIVE_UNITS, relativeTimeFormat)
 }
 

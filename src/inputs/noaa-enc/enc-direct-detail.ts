@@ -16,6 +16,7 @@ import {
   WATLEV,
   QUASOU,
   TECSOU,
+  LAYER_LABEL,
   formatSordatDisplay,
   humanizeCategory,
   lookupCode
@@ -23,13 +24,6 @@ import {
 import type { EncLayerKey } from './enc-direct-types.js'
 import { escapeHtml, labeledParagraph } from '../../shared/html-escape.js'
 import { toFiniteNumber } from '../../shared/numbers.js'
-
-/** Layer-derived fallback header label when OBJNAM is null or absent. */
-const LAYER_LABEL: Readonly<Record<EncLayerKey, string>> = {
-  wreck: 'Wreck',
-  obstruction: 'Obstruction',
-  rock: 'Rock'
-}
 
 /** NOAA's standard disclaimer for ENC data published through Coast Survey. */
 const DISCLAIMER = 'NOAA ENC data is not intended for primary navigation.'
@@ -57,15 +51,6 @@ function readNumber (raw: unknown): number | undefined {
   return toFiniteNumber(raw) ?? undefined
 }
 
-/** Read a non-empty free-text property, treating null and blanks as absent. */
-function readText (raw: unknown): string | undefined {
-  if (typeof raw !== 'string') {
-    return undefined
-  }
-  const trimmed = raw.trim()
-  return trimmed.length > 0 ? trimmed : undefined
-}
-
 /**
  * Render the popup HTML for one feature. The `layerKey` selects the
  * appropriate category field (CATWRK, CATOBS, or none) and the fallback
@@ -78,7 +63,7 @@ export function renderEncDirectDetail (
 ): string {
   const blocks: string[] = []
 
-  const name = readText(properties.OBJNAM) ?? LAYER_LABEL[layerKey]
+  const name = humanizeCategory(properties.OBJNAM) ?? LAYER_LABEL[layerKey]
   const category = categoryLabel(layerKey, properties)
   const watlev = lookupCode(WATLEV, properties.WATLEV)
   const headerSuffix = [category, watlev]
@@ -106,12 +91,12 @@ export function renderEncDirectDetail (
     blocks.push(labeledParagraph('Survey technique', technique))
   }
 
-  const inform = readText(properties.INFORM)
+  const inform = humanizeCategory(properties.INFORM)
   if (inform !== undefined) {
     blocks.push(labeledParagraph('Information', inform))
   }
 
-  const dsnm = readText(properties.DSNM)
+  const dsnm = humanizeCategory(properties.DSNM)
   const surveyed = formatSordatDisplay(properties.SORDAT)
   if (dsnm !== undefined) {
     const suffix = surveyed !== undefined ? ` (surveyed ${surveyed})` : ''

@@ -31,9 +31,9 @@ const HTTP_OK = 200
 /**
  * Per-request timeout in milliseconds. A silently dropped TCP connection
  * (no FIN, no RST, a transparent proxy black-holing the socket) would
- * otherwise block the sequential refresh loop indefinitely. The shared
- * `http-client.ts` enforces an equivalent policy for the queued sources;
- * this raw client mirrors it.
+ * otherwise stall a refresh worker indefinitely, holding up the
+ * concurrency-capped refresh fan-out. The shared `http-client.ts` enforces an
+ * equivalent policy for the queued sources; this raw client mirrors it.
  */
 const REQUEST_TIMEOUT_MS = MS_PER_MINUTE
 

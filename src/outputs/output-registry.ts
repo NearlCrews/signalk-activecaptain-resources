@@ -13,13 +13,16 @@ import type { OutputContext, OutputHandle, OutputModule } from './output.js'
  * The result of starting the enabled outputs. `handles` and `startedIds` are
  * aligned and in registration order, and both exclude any output whose
  * `start()` threw and was isolated, so a caller can log exactly the outputs
- * that actually started.
+ * that actually started. `failedIds` carries the enabled outputs whose
+ * `start()` threw, so a caller can surface them without re-deriving the set.
  */
 export interface StartedOutputs {
   /** Handles for the outputs that started. */
   handles: OutputHandle[]
   /** Ids of the outputs that started. */
   startedIds: string[]
+  /** Ids of the enabled outputs whose `start()` threw and was isolated. */
+  failedIds: string[]
 }
 
 /** Public surface of the output registry. */
@@ -31,7 +34,7 @@ export interface OutputRegistry {
   /**
    * Start every enabled output. A start that throws is logged through
    * `context.app.error` and skipped; the remaining outputs still start. The
-   * result reports only the outputs that actually started.
+   * result reports the outputs that started and the enabled ones that threw.
    */
   startEnabled: (context: OutputContext) => StartedOutputs
 }
@@ -44,6 +47,7 @@ export function createOutputRegistry (modules: readonly OutputModule[]): OutputR
     startEnabled: (context: OutputContext): StartedOutputs => {
       const handles: OutputHandle[] = []
       const startedIds: string[] = []
+      const failedIds: string[] = []
       for (const module of modules) {
         if (!module.isEnabled(context.config)) {
           continue
@@ -52,10 +56,11 @@ export function createOutputRegistry (modules: readonly OutputModule[]): OutputR
           handles.push(module.start(context))
           startedIds.push(module.id)
         } catch (error) {
+          failedIds.push(module.id)
           context.app.error(`Cannot start output ${module.id}: ${String(error)}`)
         }
       }
-      return { handles, startedIds }
+      return { handles, startedIds, failedIds }
     }
   }
 }

@@ -53,11 +53,6 @@ export function seamarkToPoiType (value: string): PoiType {
   return SEAMARK_POI_TYPE[value] ?? 'Unknown'
 }
 
-/** Resolve the `PoiType` for an OpenSeaMap element from its OSM tags. */
-export function elementPoiType (tags: Record<string, string>): PoiType {
-  return elementMarking(tags).type
-}
-
 /**
  * Map a `seamark:type` value onto a Freeboard-SK note icon name (without the
  * `sk-` prefix the renderer applies). Freeboard registers a fixed set of POI
@@ -110,20 +105,14 @@ export function seamarkSkIcon (value: string): string {
   return SEAMARK_SK_ICON[value] ?? FALLBACK_SK_ICON
 }
 
-/** Resolve the Freeboard-SK note icon for an OpenSeaMap element from its OSM tags. */
-export function elementSkIcon (tags: Record<string, string>): string {
-  return elementMarking(tags).skIcon
-}
-
 /**
  * Resolve both the `PoiType` and the Freeboard-SK note icon for an OpenSeaMap
  * element in a single pass over its OSM tags. A `seamark:type` tag drives both
  * mappings; an element with no seamark type but tagged `leisure=marina` is a
  * `Marina` with the `marina` icon; everything else is `Unknown` with the
  * generic notice glyph, so a missing icon never renders as a bare yellow
- * square. The list and detail builders call this once per element rather than
- * normalizing the seamark value twice through {@link elementPoiType} and
- * {@link elementSkIcon}.
+ * square. The list and detail builders call this once per element so the
+ * seamark value is normalized only a single time.
  */
 export function elementMarking (tags: Record<string, string>): { type: PoiType, skIcon: string } {
   const seamark = tags['seamark:type']?.trim().toLowerCase()

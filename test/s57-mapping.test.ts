@@ -22,8 +22,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  layerPoiType,
-  layerSkIcon,
+  LAYER_POI_TYPE,
+  LAYER_SK_ICON,
   humanizeCategory,
   lookupCode,
   WATLEV,
@@ -32,12 +32,8 @@ import {
 } from '../src/inputs/noaa-enc/s57-mapping.js'
 
 test('every ENC hazard layer maps to PoiType Hazard and the hazard skIcon', () => {
-  assert.equal(layerPoiType('wreck'), 'Hazard')
-  assert.equal(layerPoiType('obstruction'), 'Hazard')
-  assert.equal(layerPoiType('rock'), 'Hazard')
-  assert.equal(layerSkIcon('wreck'), 'hazard')
-  assert.equal(layerSkIcon('obstruction'), 'hazard')
-  assert.equal(layerSkIcon('rock'), 'hazard')
+  assert.equal(LAYER_POI_TYPE, 'Hazard')
+  assert.equal(LAYER_SK_ICON, 'hazard')
 })
 
 test('humanizeCategory passes pre-decoded wire strings through, trimmed', () => {

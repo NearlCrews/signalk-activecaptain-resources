@@ -158,7 +158,7 @@ export function createPlugin (
       })
 
       const outputContext: OutputContext = { app, config, pois: source, status }
-      const { handles, startedIds } = outputs.startEnabled(outputContext)
+      const { handles, startedIds, failedIds: failedOutputIds } = outputs.startEnabled(outputContext)
       runtime = { source, handles }
 
       // Log the outputs that actually started, not merely the enabled ones, so
@@ -166,14 +166,9 @@ export function createPlugin (
       // reported as started.
       app.debug(`Crow's Nest started outputs: ${startedIds.join(', ') || '(none)'}`)
 
-      // Detect outputs whose start() threw and was isolated by the registry,
-      // so the admin UI surfaces a plugin error rather than the bland "Ready"
-      // status that would mask a dead output.
-      const enabledOutputIds = outputs.modules
-        .filter((module) => module.isEnabled(config))
-        .map((module) => module.id)
-      const startedSet = new Set(startedIds)
-      const failedOutputIds = enabledOutputIds.filter((id) => !startedSet.has(id))
+      // The registry reports the enabled outputs whose start() threw and was
+      // isolated, so the admin UI surfaces a plugin error rather than the bland
+      // "Ready" status that would mask a dead output.
 
       // The position monitor always starts, because the US-only inputs read
       // through its `getCurrentPosition` getter to skip outbound HTTP outside

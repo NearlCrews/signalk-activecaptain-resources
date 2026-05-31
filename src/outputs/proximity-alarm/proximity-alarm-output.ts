@@ -12,12 +12,8 @@ import { createProximityAlarms } from './proximity-alarms.js'
 import { PROXIMITY_ALARM_POI_TYPES } from './poi-types.js'
 import type { OutputContext, OutputHandle, OutputModule, PositionScanContributor } from '../output.js'
 import { positionToBbox } from '../../geo/position-utilities.js'
-
-/** Default proximity-alarm radius, in meters; mirrors the schema default. */
-const DEFAULT_PROXIMITY_ALARM_RADIUS_METERS = 500
-
-/** Lower bound on the hazard-scan radius, so the alarm check always has data. */
-const MIN_SCAN_RADIUS_METERS = 2000
+import { DEFAULT_PROXIMITY_ALARM_RADIUS_METERS, vesselScanRadiusMeters } from '../../shared/proximity-radius.js'
+import { positiveFiniteNumber } from '../../shared/numbers.js'
 
 /** The proximity-alarm config fragment. */
 const CONFIG_SCHEMA: Record<string, unknown> = {
@@ -34,18 +30,6 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   }
 }
 
-/**
- * Resolve the alarm radius from raw config, applying the default. Rejects
- * non-finite values (NaN, Infinity) so a hand-edited config file cannot
- * propagate NaN through positionToBbox into the outbound list URL.
- */
-function resolveRadius (raw: unknown): number {
-  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) {
-    return DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
-  }
-  return raw
-}
-
 /** The proximity-alarm output module. */
 export const proximityAlarmOutput: OutputModule = {
   id: 'proximity-alarm',
@@ -53,10 +37,10 @@ export const proximityAlarmOutput: OutputModule = {
   configSchema: CONFIG_SCHEMA,
   isEnabled: (config) => config.enableProximityAlarms === true,
   start: (context: OutputContext): OutputHandle => {
-    const radiusMeters = resolveRadius(context.config.proximityAlarmRadiusMeters)
+    const radiusMeters = positiveFiniteNumber(context.config.proximityAlarmRadiusMeters) ?? DEFAULT_PROXIMITY_ALARM_RADIUS_METERS
     // The scan box is wider than the alarm radius so a hazard is fetched well
     // before it crosses the radius. This mirrors the legacy monitor sizing.
-    const scanRadiusMeters = Math.max(radiusMeters * 3, MIN_SCAN_RADIUS_METERS)
+    const scanRadiusMeters = vesselScanRadiusMeters(radiusMeters)
     const alarms = createProximityAlarms(context.app, radiusMeters)
 
     const positionScan: PositionScanContributor = {

@@ -2,20 +2,20 @@
  * The bridge air-draft check controls: an opt-in toggle plus two numeric
  * settings, the fallback vessel air draft and the clearance safety margin.
  *
- * Unlike `ProximityAlarmFields` and `RouteHazardScanFields`, this control group
- * pairs the toggle with two numeric fields rather than one, so it lays out the
- * fieldset directly instead of reusing the single-field `AlarmFieldset`. Both
- * numeric inputs are disabled while the toggle is off, because the settings then
- * have no effect, matching the `AlarmFieldset` behavior.
+ * The fieldset, legend, toggle, and hint shell come from `ToggleFieldset`;
+ * this component slots both numeric fields as the children, which is why it
+ * composes the shell directly rather than reusing the single-field
+ * `AlarmFieldset`. Both numeric inputs are disabled while the toggle is off,
+ * because the settings then have no effect.
  */
 
 import type * as React from 'react'
 import NumberField from './NumberField.js'
-import { S } from '../styles.js'
+import ToggleFieldset from './ToggleFieldset.js'
 import {
   MIN_CLEARANCE_MARGIN_METERS,
   MAX_CLEARANCE_MARGIN_METERS
-} from '../../shared/bridge-clearance.js'
+} from '../normalize-config.js'
 
 /**
  * Smallest fallback air draft the field accepts. Zero is valid and means rely
@@ -46,24 +46,21 @@ export default function BridgeAirDraftFields ({
   onChangeMargin
 }: Props): React.ReactElement {
   return (
-    <fieldset style={S.group}>
-      <legend style={S.groupTitle}>Bridge air-draft check</legend>
-      <label style={S.checkboxRow}>
-        <input
-          type='checkbox'
-          style={S.checkbox}
-          checked={enabled}
-          onChange={(e) => onToggleEnabled(e.target.checked)}
-        />
-        Warn when an approaching bridge is too low for the vessel
-      </label>
-      <p style={S.hint}>
-        When enabled, the plugin compares each approaching bridge, and each
-        bridge on the active route ahead, against the vessel air draft, and
-        raises a Signal K notification when the charted clearance would not
-        clear the vessel. The route-ahead warning also needs the route-corridor
-        hazard scan enabled above.
-      </p>
+    <ToggleFieldset
+      title='Bridge air-draft check'
+      toggleLabel='Warn when an approaching bridge is too low for the vessel'
+      toggleHint={
+        <>
+          When enabled, the plugin compares each approaching bridge, and each
+          bridge on the active route ahead, against the vessel air draft, and
+          raises a Signal K notification when the charted clearance would not
+          clear the vessel. The route-ahead warning also needs the route-corridor
+          hazard scan enabled above.
+        </>
+      }
+      enabled={enabled}
+      onToggleEnabled={onToggleEnabled}
+    >
       <NumberField
         id='ac-bridge-air-draft'
         label='Vessel air draft (meters)'
@@ -87,6 +84,6 @@ export default function BridgeAirDraftFields ({
         disabled={!enabled}
         dense
       />
-    </fieldset>
+    </ToggleFieldset>
   )
 }
